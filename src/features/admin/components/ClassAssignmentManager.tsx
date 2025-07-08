@@ -287,14 +287,13 @@ export function ClassAssignmentManager() {
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class Type</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                $1
               {assignments.map(a => (
                 <tr key={a.id}>
                   <td className="px-4 py-2">{a.date}</td>
                   <td className="px-4 py-2">{a.start_time} - {a.end_time}</td>
                   <td className="px-4 py-2">{a.class_type?.name || '—'}</td>
                   <td className="px-4 py-2">{a.instructor_profile?.full_name || '—'}</td>
-                  <td className=\"px-4 py-2\">₹{a.payment_amount}</td>
+                  <td className="px-4 py-2">₹{a.payment_amount}</td>
                   <td className={`px-4 py-2 capitalize ${a.payment_status === 'not_conducted' ? 'text-red-500' : a.payment_status === 'completed' ? 'text-green-600' : a.payment_status === 'payment_pending' ? 'text-yellow-600' : ''}`}>
 
                     <select
@@ -315,16 +314,7 @@ export function ClassAssignmentManager() {
                   </td>
                 </tr>
               ))}
-              {assignments.map(a => (
-                <tr key={a.id}>
-                  <td className="px-4 py-2">{a.date}</td>
-                  <td className="px-4 py-2">{a.start_time} - {a.end_time}</td>
-                  <td className="px-4 py-2">{a.class_type?.name || '—'}</td>
-                  <td className="px-4 py-2">{a.instructor_profile?.full_name || '—'}</td>
-                  <td className="px-4 py-2">₹{a.payment_amount}</td>
-                  <td className="px-4 py-2 capitalize">{a.payment_status}</td>
-                </tr>
-              ))}
+              
             </tbody>
           </table>
         )}
