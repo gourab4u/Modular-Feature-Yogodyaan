@@ -55,7 +55,7 @@ export function ClassAssignmentManager() {
     class_type_id: '',
     date: '',
     start_time: '',
-    end_time: '',
+    duration: 60, // duration in minutes
     instructor_id: '',
     payment_amount: 0,
     notes: ''
@@ -133,12 +133,61 @@ export function ClassAssignmentManager() {
     const newErrors: any = {}
     if (!formData.class_type_id) newErrors.class_type_id = 'Class type is required'
     if (!formData.date) newErrors.date = 'Date is required'
-    if (!formData.start_time || !formData.end_time) newErrors.start_time = 'Time range is required'
+    if (!formData.start_time) newErrors.start_time = 'Start time is required'
+    if (!formData.duration) newErrors.duration = 'Duration is required'
     if (!formData.instructor_id) newErrors.instructor_id = 'Instructor is required'
     if (formData.payment_amount <= 0) newErrors.payment_amount = 'Amount must be greater than 0'
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }
+
+  const calculateEndTime = (startTime: string, durationMinutes: number) => {
+    const [hours, minutes] = startTime.split(':').map(Number)
+    const startDate = new Date()
+    startDate.setHours(hours, minutes, 0, 0)
+    
+    const endDate = new Date(startDate.getTime() + durationMinutes * 60000)
+    
+    return endDate.toTimeString().slice(0, 5) // Return in HH:MM format
+  }
+
+  const getDurationOptions = () => [
+    { value: 30, label: '30 minutes' },
+    { value: 60, label: '1 hour' },
+    { value: 90, label: '1 hour 30 minutes' },
+    { value: 120, label: '2 hours' }
+  ]
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const today = new Date()
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today'
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      return 'Tomorrow'
+    } else {
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric' 
+      })
+    }
+  }
+
+  const formatTime = (timeString: string) => {
+    const [hours, minutes] = timeString.split(':').map(Number)
+    const date = new Date()
+    date.setHours(hours, minutes)
+    
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -153,7 +202,7 @@ export function ClassAssignmentManager() {
         class_type_id: formData.class_type_id,
         date: formData.date,
         start_time: formData.start_time,
-        end_time: formData.end_time,
+        end_time: calculateEndTime(formData.start_time, formData.duration),
         instructor_id: formData.instructor_id,
         payment_amount: formData.payment_amount,
         notes: formData.notes,
@@ -170,7 +219,15 @@ export function ClassAssignmentManager() {
 
       await fetchData()
       setShowAssignForm(false)
-      setFormData({ class_type_id: '', date: '', start_time: '', end_time: '', instructor_id: '', payment_amount: 0, notes: '' })
+      setFormData({ 
+        class_type_id: '', 
+        date: '', 
+        start_time: '', 
+        duration: 60, 
+        instructor_id: '', 
+        payment_amount: 0, 
+        notes: '' 
+      })
       alert('Class assigned successfully')
     } catch (err: any) {
       console.error('Submit error:', err)
@@ -225,37 +282,68 @@ export function ClassAssignmentManager() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <Calendar className="w-4 h-4 inline mr-1" />
+                Class Date
+              </label>
               <input
                 type="date"
                 value={formData.date}
                 onChange={(e) => handleInputChange('date', e.target.value)}
-                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min={new Date().toISOString().split('T')[0]}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
               {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+              {formData.date && (
+                <p className="text-sm text-gray-600 mt-1">
+                  Selected: {formatDate(formData.date)}
+                </p>
+              )}
             </div>
 
-            <div className="flex space-x-2">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700">Start Time</label>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Clock className="w-4 h-4 inline mr-1" />
+                  Start Time
+                </label>
                 <input
                   type="time"
                   value={formData.start_time}
                   onChange={(e) => handleInputChange('start_time', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
+                {errors.start_time && <p className="text-red-500 text-sm mt-1">{errors.start_time}</p>}
+                {formData.start_time && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Starts at: {formatTime(formData.start_time)}
+                  </p>
+                )}
               </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700">End Time</label>
-                <input
-                  type="time"
-                  value={formData.end_time}
-                  onChange={(e) => handleInputChange('end_time', e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Duration
+                </label>
+                <select
+                  value={formData.duration}
+                  onChange={(e) => handleInputChange('duration', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {getDurationOptions().map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                {errors.duration && <p className="text-red-500 text-sm mt-1">{errors.duration}</p>}
+                {formData.start_time && formData.duration && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Ends at: {formatTime(calculateEndTime(formData.start_time, formData.duration))}
+                  </p>
+                )}
               </div>
             </div>
-            {errors.start_time && <p className="text-red-500 text-sm mt-1">{errors.start_time}</p>}
 
             <div>
               <label className="block text-sm font-medium text-gray-700">Instructor / Yoga Acharya</label>
@@ -360,10 +448,14 @@ export function ClassAssignmentManager() {
                   assignments.map(assignment => (
                     <tr key={assignment.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(assignment.date).toLocaleDateString()}
+                        <div className="font-medium">{formatDate(assignment.date)}</div>
+                        <div className="text-xs text-gray-500">{new Date(assignment.date).toLocaleDateString()}</div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                        {assignment.start_time} - {assignment.end_time}
+                        <div className="font-medium">{formatTime(assignment.start_time)} - {formatTime(assignment.end_time)}</div>
+                        <div className="text-xs text-gray-500">
+                          {Math.round((new Date(`1970-01-01T${assignment.end_time}:00`) - new Date(`1970-01-01T${assignment.start_time}:00`)) / (1000 * 60))} minutes
+                        </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         {assignment.class_type?.name || '—'}
