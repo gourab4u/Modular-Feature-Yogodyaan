@@ -5,8 +5,31 @@ import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
 
 interface ClassAssignment {
+  id: string
+  class_type_id: string
+  date: string
+  start_time: string
+  end_time: string
+  instructor_id: string
+  payment_amount: number
+  notes?: string
   class_status?: 'scheduled' | 'completed' | 'not_conducted'
+  payment_status?: 'scheduled' | 'completed' | 'not_conducted' | 'payment_pending' | 'paid'
   payment_date?: string
+  assigned_at: string
+  assigned_by: string
+  schedule_type: string
+  class_type?: {
+    id: string
+    name: string
+    difficulty_level: string
+  }
+  instructor_profile?: {
+    user_id: string
+    full_name: string
+    email: string
+  }
+}
 
 interface UserProfile {
   user_id: string
@@ -52,21 +75,21 @@ export function ClassAssignmentManager() {
         .select('id, name')
         .in('name', ['instructor', 'yoga_acharya'])
 
-      const roleIds = roles.map(r => r.id)
+      const roleIds = roles?.map(r => r.id) || []
       const { data: userRoles } = await supabase
         .from('user_roles')
         .select('user_id, role_id')
         .in('role_id', roleIds)
 
-      const userIds = [...new Set(userRoles.map(ur => ur.user_id))]
+      const userIds = [...new Set(userRoles?.map(ur => ur.user_id) || [])]
       const { data: profiles } = await supabase
         .from('profiles')
         .select('user_id, full_name, email')
         .in('user_id', userIds)
 
-      const profilesWithRoles = profiles.map(profile => {
-        const userRoleIds = userRoles.filter(ur => ur.user_id === profile.user_id).map(ur => ur.role_id)
-        const profileRoles = roles.filter(role => userRoleIds.includes(role.id)).map(role => ({ roles: { name: role.name } }))
+      const profilesWithRoles = (profiles || []).map(profile => {
+        const userRoleIds = (userRoles || []).filter(ur => ur.user_id === profile.user_id).map(ur => ur.role_id)
+        const profileRoles = (roles || []).filter(role => userRoleIds.includes(role.id)).map(role => ({ roles: { name: role.name } }))
         return {
           ...profile,
           user_roles: profileRoles
@@ -125,10 +148,22 @@ export function ClassAssignmentManager() {
     try {
       setSaving(true)
       const currentUser = await supabase.auth.getUser()
+      
       const assignment = {
-,
-        class_status: 'scheduled',
+        class_type_id: formData.class_type_id,
+        date: formData.date,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        instructor_id: formData.instructor_id,
+        payment_amount: formData.payment_amount,
+        notes: formData.notes,
+        schedule_type: 'adhoc',
+        assigned_by: currentUser.data.user?.id || '',
+        assigned_at: new Date().toISOString(),
+        class_status: 'scheduled' as const,
+        payment_status: 'scheduled' as const,
         payment_date: null
+      }
 
       const { error } = await supabase.from('class_assignments').insert([assignment])
       if (error) throw error
@@ -138,6 +173,7 @@ export function ClassAssignmentManager() {
       setFormData({ class_type_id: '', date: '', start_time: '', end_time: '', instructor_id: '', payment_amount: 0, notes: '' })
       alert('Class assigned successfully')
     } catch (err: any) {
+      console.error('Submit error:', err)
       setErrors({ general: err.message })
     } finally {
       setSaving(false)
@@ -157,153 +193,231 @@ export function ClassAssignmentManager() {
 
       {showAssignForm && (
         <div className="bg-white shadow p-6 rounded-lg max-w-xl mx-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Assign New Class</h3>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setShowAssignForm(false)}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          
           <form onSubmit={handleSubmit} className="space-y-4">
-            {errors.general && <div className="text-red-500">{errors.general}</div>}
+            {errors.general && <div className="text-red-500 text-sm">{errors.general}</div>}
+            
             <div>
-  <label className="block text-sm font-medium text-gray-700">Class Type</label>
-  <select
-    value={formData.class_type_id}
-    onChange={(e) => handleInputChange('class_type_id', e.target.value)}
-    className="w-full px-3 py-2 border rounded"
-  >
-    <option value="">Select class type</option>
-    {classTypes.map(ct => (
-      <option key={ct.id} value={ct.id}>
-        {ct.name} ({ct.difficulty_level})
-      </option>
-    ))}
-  </select>
-  {errors.class_type_id && <p className="text-red-500 text-sm">{errors.class_type_id}</p>}
-</div>
+              <label className="block text-sm font-medium text-gray-700">Class Type</label>
+              <select
+                value={formData.class_type_id}
+                onChange={(e) => handleInputChange('class_type_id', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select class type</option>
+                {classTypes.map(ct => (
+                  <option key={ct.id} value={ct.id}>
+                    {ct.name} ({ct.difficulty_level})
+                  </option>
+                ))}
+              </select>
+              {errors.class_type_id && <p className="text-red-500 text-sm mt-1">{errors.class_type_id}</p>}
+            </div>
 
-<div>
-  <label className="block text-sm font-medium text-gray-700">Date</label>
-  <input
-    type="date"
-    value={formData.date}
-    onChange={(e) => handleInputChange('date', e.target.value)}
-    className="w-full px-3 py-2 border rounded"
-  />
-  {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
-</div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Date</label>
+              <input
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleInputChange('date', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+            </div>
 
-<div className="flex space-x-2">
-  <div className="flex-1">
-    <label className="block text-sm font-medium text-gray-700">Start Time</label>
-    <input
-      type="time"
-      value={formData.start_time}
-      onChange={(e) => handleInputChange('start_time', e.target.value)}
-      className="w-full px-3 py-2 border rounded"
-    />
-  </div>
-  <div className="flex-1">
-    <label className="block text-sm font-medium text-gray-700">End Time</label>
-    <input
-      type="time"
-      value={formData.end_time}
-      onChange={(e) => handleInputChange('end_time', e.target.value)}
-      className="w-full px-3 py-2 border rounded"
-    />
-  </div>
-</div>
-{errors.start_time && <p className="text-red-500 text-sm">{errors.start_time}</p>}
+            <div className="flex space-x-2">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700">Start Time</label>
+                <input
+                  type="time"
+                  value={formData.start_time}
+                  onChange={(e) => handleInputChange('start_time', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700">End Time</label>
+                <input
+                  type="time"
+                  value={formData.end_time}
+                  onChange={(e) => handleInputChange('end_time', e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            {errors.start_time && <p className="text-red-500 text-sm mt-1">{errors.start_time}</p>}
 
-<div>
-  <label className="block text-sm font-medium text-gray-700">Instructor / Yoga Acharya</label>
-  <select
-    value={formData.instructor_id}
-    onChange={(e) => handleInputChange('instructor_id', e.target.value)}
-    className="w-full px-3 py-2 border rounded"
-  >
-    <option value="">Select instructor</option>
-    {userProfiles.map(profile => (
-      <option key={profile.user_id} value={profile.user_id}>
-        {profile.full_name || profile.email}
-      </option>
-    ))}
-  </select>
-  {errors.instructor_id && <p className="text-red-500 text-sm">{errors.instructor_id}</p>}
-</div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Instructor / Yoga Acharya</label>
+              <select
+                value={formData.instructor_id}
+                onChange={(e) => handleInputChange('instructor_id', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select instructor</option>
+                {userProfiles.map(profile => (
+                  <option key={profile.user_id} value={profile.user_id}>
+                    {profile.full_name || profile.email}
+                  </option>
+                ))}
+              </select>
+              {errors.instructor_id && <p className="text-red-500 text-sm mt-1">{errors.instructor_id}</p>}
+            </div>
 
-<div>
-  <label className="block text-sm font-medium text-gray-700">Payment Amount (₹)</label>
-  <input
-    type="number"
-    value={formData.payment_amount}
-    onChange={(e) => handleInputChange('payment_amount', parseFloat(e.target.value) || 0)}
-    className="w-full px-3 py-2 border rounded"
-  />
-  {errors.payment_amount && <p className="text-red-500 text-sm">{errors.payment_amount}</p>}
-</div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Payment Amount (₹)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.payment_amount}
+                onChange={(e) => handleInputChange('payment_amount', parseFloat(e.target.value) || 0)}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {errors.payment_amount && <p className="text-red-500 text-sm mt-1">{errors.payment_amount}</p>}
+            </div>
 
-<div>
-  <label className="block text-sm font-medium text-gray-700">Notes (Optional)</label>
-  <textarea
-    value={formData.notes}
-    onChange={(e) => handleInputChange('notes', e.target.value)}
-    className="w-full px-3 py-2 border rounded"
-    rows={3}
-  />
-</div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Notes (Optional)</label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => handleInputChange('notes', e.target.value)}
+                className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={3}
+                placeholder="Add any additional notes..."
+              />
+            </div>
 
-<div className="flex justify-end">
-  <Button type="submit" loading={saving}>
-    <Save className="w-4 h-4 mr-2" /> {saving ? 'Saving...' : 'Assign Class'}
-  </Button>
-</div>
+            <div className="flex justify-end space-x-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowAssignForm(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={saving}>
+                <Save className="w-4 h-4 mr-2" /> 
+                {saving ? 'Saving...' : 'Assign Class'}
+              </Button>
+            </div>
           </form>
         </div>
       )}
 
       <div className="mt-8">
-        <h3 className="text-lg font-semibold mb-2">Assigned Classes</h3>
-        {loading ? <LoadingSpinner size="lg" /> : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class Type</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Date</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {assignments.map(a => (
-                <tr key={a.id}>
-                  <td className="px-4 py-2">{a.date}</td>
-                  <td className="px-4 py-2">{a.start_time} - {a.end_time}</td>
-                  <td className="px-4 py-2">{a.class_type?.name || '—'}</td>
-                  <td className="px-4 py-2">{a.instructor_profile?.full_name || '—'}</td>
-                  <td className={`px-4 py-2 capitalize ${a.payment_status === 'not_conducted' ? 'text-red-500' : a.payment_status === 'completed' ? 'text-green-600' : a.payment_status === 'payment_pending' ? 'text-yellow-600' : ''}`}>
-                    <select
-                      value={a.payment_status}
-                      onChange={async (e) => {
-                        const updated = e.target.value;
-                        const updateData: any = { payment_status: updated };
-                        if (updated === 'paid') {
-                          updateData.payment_date = new Date().toISOString().split('T')[0];
-                        } else {
-                          updateData.payment_date = null;
-                        }
-                        await supabase.from('class_assignments').update(updateData).eq('id', a.id);
-                        fetchData();
-                      }}
-                      className="text-sm border rounded px-2 py-1"
-                    >
-                      <option value="scheduled">Scheduled</option>
-                      <option value="completed">Completed</option>
-                      <option value="not_conducted">Not Conducted</option>
-                      <option value="payment_pending">Payment Pending</option>
-                      <option value="paid">Paid</option>
-                    </select>
-                  </td>
-                  <td className="px-4 py-2">{a.payment_date || '—'}</td>
+        <h3 className="text-lg font-semibold mb-4">Assigned Classes</h3>
+        {loading ? (
+          <div className="flex justify-center">
+            <LoadingSpinner size="lg" />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Calendar className="w-4 h-4 inline mr-1" />
+                    Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <Clock className="w-4 h-4 inline mr-1" />
+                    Time
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Class Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Instructor
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <DollarSign className="w-4 h-4 inline mr-1" />
+                    Payment Date
+                  </th>
                 </tr>
-              ))}</tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {assignments.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                      No classes assigned yet
+                    </td>
+                  </tr>
+                ) : (
+                  assignments.map(assignment => (
+                    <tr key={assignment.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {new Date(assignment.date).toLocaleDateString()}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {assignment.start_time} - {assignment.end_time}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {assignment.class_type?.name || '—'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {assignment.instructor_profile?.full_name || assignment.instructor_profile?.email || '—'}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm">
+                        <select
+                          value={assignment.payment_status || 'scheduled'}
+                          onChange={async (e) => {
+                            const updated = e.target.value;
+                            const updateData: any = { payment_status: updated };
+                            if (updated === 'paid') {
+                              updateData.payment_date = new Date().toISOString().split('T')[0];
+                            } else if (updated === 'scheduled' || updated === 'payment_pending') {
+                              updateData.payment_date = null;
+                            }
+                            
+                            const { error } = await supabase
+                              .from('class_assignments')
+                              .update(updateData)
+                              .eq('id', assignment.id);
+                            
+                            if (error) {
+                              console.error('Status update error:', error);
+                            } else {
+                              fetchData();
+                            }
+                          }}
+                          className={`text-sm border rounded px-2 py-1 ${
+                            assignment.payment_status === 'not_conducted' ? 'text-red-600 bg-red-50' :
+                            assignment.payment_status === 'completed' ? 'text-green-600 bg-green-50' :
+                            assignment.payment_status === 'paid' ? 'text-blue-600 bg-blue-50' :
+                            assignment.payment_status === 'payment_pending' ? 'text-yellow-600 bg-yellow-50' :
+                            'text-gray-600 bg-gray-50'
+                          }`}
+                        >
+                          <option value="scheduled">Scheduled</option>
+                          <option value="completed">Completed</option>
+                          <option value="not_conducted">Not Conducted</option>
+                          <option value="payment_pending">Payment Pending</option>
+                          <option value="paid">Paid</option>
+                        </select>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                        {assignment.payment_date ? new Date(assignment.payment_date).toLocaleDateString() : '—'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
