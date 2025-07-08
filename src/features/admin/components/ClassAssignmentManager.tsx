@@ -32,6 +32,26 @@ interface ClassAssignment {
   }
 }
 
+interface ClassSchedule {
+  id: string
+  class_type_id: string
+  day_of_week: number // 0 = Sunday, 1 = Monday, etc.
+  start_time: string
+  end_time: string
+  instructor_id: string
+  class_status?: 'active' | 'inactive' | 'cancelled'
+  class_type?: {
+    id: string
+    name: string
+    difficulty_level: string
+  }
+  instructor_profile?: {
+    user_id: string
+    full_name: string
+    email: string
+  }
+}
+
 interface UserProfile {
   user_id: string
   full_name: string
@@ -45,12 +65,13 @@ interface UserProfile {
 
 interface ConflictDetails {
   hasConflict: boolean
-  conflictingClass?: ClassAssignment
+  conflictingClass?: ClassAssignment | ClassSchedule
   message?: string
 }
 
 export function ClassAssignmentManager() {
   const [assignments, setAssignments] = useState<ClassAssignment[]>([])
+  const [weeklySchedules, setWeeklySchedules] = useState<ClassSchedule[]>([])
   const [classTypes, setClassTypes] = useState<any[]>([])
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,11 +135,19 @@ export function ClassAssignmentManager() {
         }
       })
 
+      // Fetch adhoc assignments
       const { data: assignmentsData } = await supabase
         .from('class_assignments')
         .select('*')
         .eq('schedule_type', 'adhoc')
         .order('assigned_at', { ascending: false })
+
+      // Fetch weekly schedules
+      const { data: weeklySchedulesData } = await supabase
+        .from('class_schedules')
+        .select('*')
+        .eq('class_status', 'active')
+        .order('day_of_week', { ascending: true })
 
       const enrichedAssignments = (assignmentsData || []).map(assignment => {
         const classType = classTypesData?.find(ct => ct.id === assignment.class_type_id)
@@ -130,9 +159,20 @@ export function ClassAssignmentManager() {
         }
       })
 
+      const enrichedWeeklySchedules = (weeklySchedulesData || []).map(schedule => {
+        const classType = classTypesData?.find(ct => ct.id === schedule.class_type_id)
+        const instructorProfile = profilesWithRoles.find(p => p.user_id === schedule.instructor_id)
+        return {
+          ...schedule,
+          class_type: classType,
+          instructor_profile: instructorProfile
+        }
+      })
+
       setClassTypes(classTypesData || [])
       setUserProfiles(profilesWithRoles)
       setAssignments(enrichedAssignments)
+      setWeeklySchedules(enrichedWeeklySchedules)
     } catch (e) {
       console.error('Fetch error:', e)
     } finally {
@@ -148,8 +188,10 @@ export function ClassAssignmentManager() {
 
     const proposedStart = timeToMinutes(formData.start_time)
     const proposedEnd = timeToMinutes(formData.end_time)
+    const proposedDate = new Date(formData.date)
+    const proposedDayOfWeek = proposedDate.getDay() // 0 = Sunday, 1 = Monday, etc.
 
-    // Check for conflicts with existing assignments
+    // Check for conflicts with existing adhoc assignments
     const conflictingAssignment = assignments.find(assignment => {
       // Only check assignments that are not cancelled
       if (assignment.class_status === 'cancelled') return false
@@ -167,14 +209,43 @@ export function ClassAssignmentManager() {
       return false
     })
 
+    // Check for conflicts with weekly schedules
+    const conflictingWeeklySchedule = weeklySchedules.find(schedule => {
+      // Only check active schedules
+      if (schedule.class_status !== 'active') return false
+      
+      // Check if same instructor and same day of week
+      if (schedule.instructor_id === formData.instructor_id && schedule.day_of_week === proposedDayOfWeek) {
+        if (schedule.start_time && schedule.end_time) {
+          const existingStart = timeToMinutes(schedule.start_time)
+          const existingEnd = timeToMinutes(schedule.end_time)
+          
+          // Check if times overlap
+          return (proposedStart < existingEnd && proposedEnd > existingStart)
+        }
+      }
+      return false
+    })
+
+    const instructor = userProfiles.find(p => p.user_id === formData.instructor_id)
+    
     if (conflictingAssignment) {
-      const instructor = userProfiles.find(p => p.user_id === formData.instructor_id)
       const conflictTime = `${formatTime(conflictingAssignment.start_time)} - ${formatTime(conflictingAssignment.end_time)}`
       
       setConflictWarning({
         hasConflict: true,
         conflictingClass: conflictingAssignment,
-        message: `${instructor?.full_name || 'This instructor'} already has a class scheduled from ${conflictTime} on ${formatDate(formData.date)}`
+        message: `${instructor?.full_name || 'This instructor'} already has an adhoc class scheduled from ${conflictTime} on ${formatDate(formData.date)}`
+      })
+    } else if (conflictingWeeklySchedule) {
+      const conflictTime = `${formatTime(conflictingWeeklySchedule.start_time)} - ${formatTime(conflictingWeeklySchedule.end_time)}`
+      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      const dayName = dayNames[proposedDayOfWeek]
+      
+      setConflictWarning({
+        hasConflict: true,
+        conflictingClass: conflictingWeeklySchedule as any, // Type assertion since we're reusing the interface
+        message: `${instructor?.full_name || 'This instructor'} has a weekly recurring class scheduled from ${conflictTime} every ${dayName}`
       })
     } else {
       setConflictWarning(null)
@@ -188,9 +259,12 @@ export function ClassAssignmentManager() {
 
     const proposedStart = timeToMinutes(formData.start_time)
     const proposedEnd = timeToMinutes(formData.end_time)
+    const proposedDate = new Date(formData.date)
+    const proposedDayOfWeek = proposedDate.getDay()
 
     return userProfiles.filter(instructor => {
-      const hasConflict = assignments.some(assignment => {
+      // Check for conflicts with adhoc assignments
+      const hasAdhocConflict = assignments.some(assignment => {
         if (assignment.class_status === 'cancelled') return false
         
         if (assignment.instructor_id === instructor.user_id && assignment.date === formData.date) {
@@ -202,8 +276,22 @@ export function ClassAssignmentManager() {
         }
         return false
       })
+
+      // Check for conflicts with weekly schedules
+      const hasWeeklyConflict = weeklySchedules.some(schedule => {
+        if (schedule.class_status !== 'active') return false
+        
+        if (schedule.instructor_id === instructor.user_id && schedule.day_of_week === proposedDayOfWeek) {
+          if (schedule.start_time && schedule.end_time) {
+            const existingStart = timeToMinutes(schedule.start_time)
+            const existingEnd = timeToMinutes(schedule.end_time)
+            return (proposedStart < existingEnd && proposedEnd > existingStart)
+          }
+        }
+        return false
+      })
       
-      return !hasConflict
+      return !hasAdhocConflict && !hasWeeklyConflict
     })
   }
 
@@ -496,7 +584,7 @@ export function ClassAssignmentManager() {
                 <select
                   value={formData.duration}
                   onChange={(e) => handleDurationChange(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   {getDurationOptions().map(option => (
                     <option key={option.value} value={option.value}>
