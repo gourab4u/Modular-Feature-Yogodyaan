@@ -69,23 +69,160 @@ export function ClassAssignmentManager() {
     fetchData()
   }, [])
 
-  const fetchData = async () => {
+ 
+const fetchData = async () => {
   try {
     setLoading(true)
 
-    // Fetch scheduled classes
-    const { data: classesData, error: classesError } = await supabase
+    // DIAGNOSTIC: First let's check what's in the scheduled_classes table
+    console.log('🔍 Checking scheduled_classes table...')
+    
+    // Check all scheduled classes (without status filter)
+    const { data: allClassesData, error: allClassesError } = await supabase
       .from('scheduled_classes')
-      .select(`
-        *,
-        class_type:class_types(name, difficulty_level)
-      `)
-      .eq('status', 'scheduled')
+      .select('*')
       .order('start_time')
 
-    if (classesError) throw classesError
+    if (allClassesError) {
+      console.error('❌ Error fetching all scheduled classes:', allClassesError)
+    } else {
+      console.log('📊 All scheduled classes (no filter):', allClassesData)
+      console.log('📊 Total classes found:', allClassesData?.length || 0)
+      
+      // Check what status values exist
+      const statusValues = [...new Set(allClassesData?.map(cls => cls.status) || [])]
+      console.log('📊 Unique status values found:', statusValues)
+      
+      // Check if there are any with 'scheduled' status
+      const scheduledClasses = allClassesData?.filter(cls => cls.status === 'scheduled') || []
+      console.log('📊 Classes with "scheduled" status:', scheduledClasses.length)
+    }
+
+    // DIAGNOSTIC: Check the class_types table
+    console.log('🔍 Checking class_types table...')
+    const { data: classTypesData, error: classTypesError } = await supabase
+      .from('class_types')
+      .select('*')
+
+    if (classTypesError) {
+      console.error('❌ Error fetching class types:', classTypesError)
+    } else {
+      console.log('📊 Class types data:', classTypesData)
+      console.log('📊 Total class types found:', classTypesData?.length || 0)
+    }
+
+    // Try different approaches to fetch scheduled classes
+    let classesData = []
     
-    console.log('📊 Raw scheduled classes:', classesData)
+    // Approach 1: Try with foreign key relationship
+    try {
+      const { data: scheduledWithTypes, error: scheduledWithTypesError } = await supabase
+        .from('scheduled_classes')
+        .select(`
+          *,
+          class_type:class_types(name, difficulty_level)
+        `)
+        .eq('status', 'scheduled')
+        .order('start_time')
+
+      if (scheduledWithTypesError) {
+        console.log('⚠️ Foreign key approach failed:', scheduledWithTypesError)
+      } else {
+        console.log('✅ Foreign key approach succeeded:', scheduledWithTypes)
+        classesData = scheduledWithTypes || []
+      }
+    } catch (error) {
+      console.log('⚠️ Foreign key approach exception:', error)
+    }
+
+    // Approach 2: If foreign key fails, try separate queries
+    if (classesData.length === 0) {
+      try {
+        // Get scheduled classes without class_type relationship
+        const { data: scheduledOnly, error: scheduledOnlyError } = await supabase
+          .from('scheduled_classes')
+          .select('*')
+          .eq('status', 'scheduled')
+          .order('start_time')
+
+        if (scheduledOnlyError) {
+          console.error('❌ Error fetching scheduled classes (no relationship):', scheduledOnlyError)
+        } else {
+          console.log('📊 Scheduled classes (no relationship):', scheduledOnly)
+          
+          // Get class types separately
+          const { data: classTypes, error: classTypesError } = await supabase
+            .from('class_types')
+            .select('*')
+
+          if (classTypesError) {
+            console.error('❌ Error fetching class types separately:', classTypesError)
+          } else {
+            // Combine manually
+            const enrichedClasses = (scheduledOnly || []).map(cls => {
+              const classType = classTypes?.find(ct => ct.id === cls.class_type_id)
+              return {
+                ...cls,
+                class_type: classType || { name: 'Unknown', difficulty_level: 'Unknown' }
+              }
+            })
+            
+            console.log('📊 Manually enriched classes:', enrichedClasses)
+            classesData = enrichedClasses
+          }
+        }
+      } catch (error) {
+        console.error('❌ Separate queries approach failed:', error)
+      }
+    }
+
+    // Approach 3: Try without any status filter if still no data
+    if (classesData.length === 0) {
+      console.log('🔍 Trying without status filter...')
+      try {
+        const { data: allScheduled, error: allScheduledError } = await supabase
+          .from('scheduled_classes')
+          .select('*')
+          .order('start_time')
+
+        if (allScheduledError) {
+          console.error('❌ Error fetching all scheduled classes:', allScheduledError)
+        } else {
+          console.log('📊 All scheduled classes (for fallback):', allScheduled)
+          
+          // Get class types separately
+          const { data: classTypes, error: classTypesError } = await supabase
+            .from('class_types')
+            .select('*')
+
+          if (!classTypesError && classTypes) {
+            // Combine manually and filter for any reasonable status
+            const enrichedClasses = (allScheduled || []).map(cls => {
+              const classType = classTypes?.find(ct => ct.id === cls.class_type_id)
+              return {
+                ...cls,
+                class_type: classType || { name: 'Unknown', difficulty_level: 'Unknown' }
+              }
+            })
+            
+            // Filter for non-cancelled classes or take first 10 for testing
+            const filteredClasses = enrichedClasses.filter(cls => 
+              cls.status !== 'cancelled' && cls.status !== 'completed'
+            ).slice(0, 10)
+            
+            console.log('📊 Fallback enriched classes:', filteredClasses)
+            classesData = filteredClasses
+          }
+        }
+      } catch (error) {
+        console.error('❌ Fallback approach failed:', error)
+      }
+    }
+
+    console.log('📊 Final classes data:', classesData)
+    
+    // Continue with the rest of the function (profiles fetching)
+    // ... (rest of the profile fetching code from previous version)
 
     // Method 1: Try to fetch profiles with user_roles using the correct relationship
     let instructorProfiles = []
@@ -334,7 +471,6 @@ export function ClassAssignmentManager() {
     setLoading(false)
   }
 }
-
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
