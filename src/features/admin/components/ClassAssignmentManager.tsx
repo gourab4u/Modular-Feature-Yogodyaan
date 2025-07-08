@@ -74,33 +74,34 @@ export function ClassAssignmentManager() {
       setLoading(true)
       console.log('🔍 Starting data fetch...')
 
-      // Step 1: Fetch class schedules (weekly recurring classes)
-      console.log('📅 Fetching class schedules...')
-      const { data: classSchedulesData, error: classSchedulesError } = await supabase
-        .from('class_schedules')
+      // Step 1: Fetch scheduled classes (actual class instances) - NOT class_schedules
+      console.log('📅 Fetching scheduled classes...')
+      const { data: scheduledClassesData, error: scheduledClassesError } = await supabase
+        .from('scheduled_classes')
         .select(`
           *,
-          class_types(
+          class_type:class_types(
             id,
             name,
             difficulty_level,
             description
+          ),
+          instructor:profiles!instructor_id(
+            user_id,
+            full_name,
+            email
           )
         `)
-        .eq('is_active', true)
-        .order('day_of_week', { ascending: true })
         .order('start_time', { ascending: true })
 
-      let finalClassSchedules = classSchedulesData
+      let finalScheduledClasses = scheduledClassesData
 
-      if (classSchedulesError) {
-        console.error('❌ Error fetching class schedules:', classSchedulesError)
-        // Fallback: try without join
-        const { data: fallbackSchedules, error: fallbackError } = await supabase
-          .from('class_schedules')
+      if (scheduledClassesError) {
+        console.error('❌ Error fetching scheduled classes:', scheduledClassesError)
+        // Fallback: try without joins
+        const { data: fallbackClasses, error: fallbackError } = await supabase
+          .from('scheduled_classes')
           .select('*')
-          .eq('is_active', true)
-          .order('day_of_week', { ascending: true })
           .order('start_time', { ascending: true })
         
         if (fallbackError) {
@@ -108,25 +109,32 @@ export function ClassAssignmentManager() {
           return
         }
         
-        // Manually fetch class types
-        const { data: classTypes, error: classTypesError } = await supabase
+        // Manually fetch related data and join
+        const { data: classTypes } = await supabase
           .from('class_types')
           .select('*')
         
-        if (classTypesError) {
-          console.error('❌ Error fetching class types:', classTypesError)
-          return
-        }
+        const { data: instructorProfiles } = await supabase
+          .from('profiles')
+          .select('*')
         
         // Manually join the data
-        finalClassSchedules = (fallbackSchedules || []).map(schedule => ({
-          ...schedule,
-          class_types: classTypes?.find(ct => ct.id === schedule.class_type_id) || null
+        finalScheduledClasses = (fallbackClasses || []).map(cls => ({
+          ...cls,
+          class_type: classTypes?.find(ct => ct.id === cls.class_type_id) || { 
+            name: 'Unknown Class', 
+            difficulty_level: 'Unknown' 
+          },
+          instructor: instructorProfiles?.find(p => p.user_id === cls.instructor_id) || { 
+            full_name: 'Unknown Instructor', 
+            email: '', 
+            user_id: cls.instructor_id 
+          }
         }))
         
-        console.log('📊 Class schedules (manual join):', finalClassSchedules)
+        console.log('📊 Scheduled classes (manual join):', finalScheduledClasses)
       } else {
-        console.log('📊 Class schedules (with join):', finalClassSchedules)
+        console.log('📊 Scheduled classes (with join):', finalScheduledClasses)
       }
 
       // Step 2: Fetch user profiles with roles using a more reliable approach
@@ -164,7 +172,7 @@ export function ClassAssignmentManager() {
       
       if (userIds.length === 0) {
         console.warn('⚠️ No users found with instructor or yoga_acharya roles')
-        setScheduledClasses(finalClassSchedules || [])
+        setScheduledClasses(finalScheduledClasses || [])
         setUserProfiles([])
         setAssignments([])
         return
@@ -204,79 +212,78 @@ export function ClassAssignmentManager() {
       
       console.log('📊 Profiles with roles:', profilesWithRoles)
 
-      // Step 3: Enrich class schedules with instructor info
-      const enrichedClassSchedules = (finalClassSchedules || []).map(classSchedule => {
-        const instructorProfile = profilesWithRoles.find(p => p.user_id === classSchedule.instructor_id)
-        
-        // Convert day_of_week number to day name for display
-        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-        const dayName = dayNames[classSchedule.day_of_week] || 'Unknown'
-        
-        return {
-          ...classSchedule,
-          day_name: dayName,
-          // Ensure class_type exists with fallback
-          class_type: classSchedule.class_types || {
-            name: 'Unknown Class',
-            difficulty_level: 'Unknown'
-          },
-          instructor: {
-            full_name: instructorProfile?.full_name || 'Unknown Instructor',
-            email: instructorProfile?.email || '',
-            user_id: instructorProfile?.user_id || classSchedule.instructor_id
-          }
-        }
-      })
-      
-      console.log('📅 Enriched class schedules:', enrichedClassSchedules)
-
-      // Step 4: Fetch class assignments
+      // Step 3: Fetch class assignments
       console.log('📋 Fetching class assignments...')
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('class_assignments')
-        .select('*')
+        .select(`
+          *,
+          scheduled_class:scheduled_classes(
+            id,
+            start_time,
+            end_time,
+            class_type:class_types(
+              name,
+              difficulty_level
+            ),
+            instructor:profiles!instructor_id(
+              full_name,
+              email
+            )
+          ),
+          instructor_profile:profiles!instructor_id(
+            user_id,
+            full_name,
+            email
+          )
+        `)
         .order('assigned_at', { ascending: false })
 
       if (assignmentsError) {
         console.error('❌ Error fetching assignments:', assignmentsError)
-        // Don't return here, we can still show classes without assignments
-      }
-      
-      console.log('📊 Assignments found:', assignmentsData)
+        // Fallback: fetch assignments without joins
+        const { data: fallbackAssignments, error: fallbackAssignmentsError } = await supabase
+          .from('class_assignments')
+          .select('*')
+          .order('assigned_at', { ascending: false })
+        
+        if (fallbackAssignmentsError) {
+          console.error('❌ Fallback assignments query failed:', fallbackAssignmentsError)
+          setAssignments([])
+        } else {
+          // Manually enrich assignments
+          const enrichedAssignments = (fallbackAssignments || []).map(assignment => {
+            const scheduledClass = finalScheduledClasses?.find(cls => cls.id === assignment.scheduled_class_id)
+            const instructorProfile = profilesWithRoles.find(p => p.user_id === assignment.instructor_id)
 
-      // Step 5: Enrich assignments with related data
-      const enrichedAssignments = (assignmentsData || []).map(assignment => {
-        // Check if assignment references class_schedule_id instead of scheduled_class_id
-        const classSchedule = enrichedClassSchedules.find(cls => 
-          cls.id === assignment.class_schedule_id || cls.id === assignment.scheduled_class_id
-        )
-        const instructorProfile = profilesWithRoles.find(p => p.user_id === assignment.instructor_id)
-
-        return {
-          ...assignment,
-          scheduled_class: classSchedule ? {
-            id: classSchedule.id,
-            start_time: classSchedule.start_time,
-            end_time: classSchedule.end_time,
-            class_type: classSchedule.class_type,
-            instructor: classSchedule.instructor
-          } : null,
-          instructor_profile: instructorProfile
+            return {
+              ...assignment,
+              scheduled_class: scheduledClass ? {
+                id: scheduledClass.id,
+                start_time: scheduledClass.start_time,
+                end_time: scheduledClass.end_time,
+                class_type: scheduledClass.class_type,
+                instructor: scheduledClass.instructor
+              } : null,
+              instructor_profile: instructorProfile
+            }
+          })
+          
+          setAssignments(enrichedAssignments)
         }
-      })
-      
-      console.log('📋 Enriched assignments:', enrichedAssignments)
+      } else {
+        setAssignments(assignmentsData || [])
+      }
 
       // Update state
-      setScheduledClasses(enrichedClassSchedules)
+      setScheduledClasses(finalScheduledClasses || [])
       setUserProfiles(profilesWithRoles)
-      setAssignments(enrichedAssignments)
       
       console.log('✅ Data fetching completed successfully')
       console.log('📊 Final state:', {
-        classSchedules: enrichedClassSchedules.length,
+        scheduledClasses: finalScheduledClasses?.length || 0,
         userProfiles: profilesWithRoles.length,
-        assignments: enrichedAssignments.length
+        assignments: assignmentsData?.length || 0
       })
       
     } catch (error) {
@@ -299,10 +306,6 @@ export function ClassAssignmentManager() {
     if (!formData.scheduled_class_id) newErrors.scheduled_class_id = 'Class is required'
     if (!formData.instructor_id) newErrors.instructor_id = 'Instructor/Acharya is required'
     if (formData.payment_amount <= 0) newErrors.payment_amount = 'Payment amount must be greater than 0'
-
-                    // Add this before your insert to see what ID you're trying to use
-                    console.log('🔍 Attempting to insert with scheduled_class_id:', formData.scheduled_class_id)
-                    console.log('🔍 Available class IDs:', scheduledClasses.map(c => c.id))
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -327,16 +330,24 @@ export function ClassAssignmentManager() {
         notes: formData.notes || null
       }
 
+      console.log('🔍 Attempting to insert with scheduled_class_id:', formData.scheduled_class_id)
+      console.log('🔍 Available class IDs:', scheduledClasses.map(c => c.id))
+      console.log('🚀 Submitting assignment data:', assignmentData)
+
       const { error } = await supabase
         .from('class_assignments')
         .insert([assignmentData])
 
-      if (error) throw error
+      if (error) {
+        console.error('❌ Supabase error:', error)
+        throw error
+      }
 
       await fetchData()
       resetForm()
       alert('Class assigned successfully!')
     } catch (error: any) {
+      console.error('❌ Error in handleSubmit:', error)
       setErrors({ general: error.message })
     } finally {
       setSaving(false)
@@ -488,7 +499,7 @@ export function ClassAssignmentManager() {
                   <option value="">Select a class</option>
                   {scheduledClasses.map(cls => (
                     <option key={cls.id} value={cls.id}>
-                      {cls.class_type?.name || 'Unknown Class'} - {cls.day_name} {cls.start_time}
+                      {cls.class_type?.name || 'Unknown Class'} - {formatDateTime(cls.start_time)}
                     </option>
                   ))}
                 </select>
