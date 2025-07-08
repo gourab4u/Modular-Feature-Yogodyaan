@@ -71,45 +71,170 @@ export function ClassAssignmentManager() {
 
   // Replace your current fetchData function with this:
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  
-  if (!validateForm()) return
+// Replace your current fetchData function with this:
 
+const fetchData = async () => {
   try {
-    setSaving(true)
-    
-    const currentUser = await supabase.auth.getUser()
-    
-    // Check if the foreign key is to class_schedules instead of scheduled_classes
-    const assignmentData = {
-      class_schedule_id: formData.scheduled_class_id, // Changed from scheduled_class_id
-      instructor_id: formData.instructor_id,
-      assigned_by: currentUser.data.user?.id,
-      payment_amount: formData.payment_amount,
-      payment_status: 'pending' as const,
-      notes: formData.notes || null
+    setLoading(true)
+    console.log('🔍 Starting data fetch...')
+
+    // Step 1: Fetch scheduled classes (actual class instances)
+    console.log('📅 Fetching scheduled classes...')
+    const { data: scheduledClassesData, error: scheduledClassesError } = await supabase
+      .from('scheduled_classes')
+      .select(`
+        *,
+        class_type:class_types(
+          id,
+          name,
+          difficulty_level,
+          description
+        ),
+        instructor:profiles!instructor_id(
+          user_id,
+          full_name,
+          email
+        )
+      `)
+      .order('start_time', { ascending: true })
+
+    if (scheduledClassesError) {
+      console.error('❌ Error fetching scheduled classes:', scheduledClassesError)
+      // Fallback: try without joins
+      const { data: fallbackClasses, error: fallbackError } = await supabase
+        .from('scheduled_classes')
+        .select('*')
+        .order('start_time', { ascending: true })
+      
+      if (fallbackError) {
+        console.error('❌ Fallback query also failed:', fallbackError)
+        return
+      }
+      
+      // Manually fetch related data and join
+      const { data: classTypes } = await supabase
+        .from('class_types')
+        .select('*')
+      
+      const { data: instructorProfiles } = await supabase
+        .from('profiles')
+        .select('*')
+      
+      // Manually join the data
+      const enrichedClasses = (fallbackClasses || []).map(cls => ({
+        ...cls,
+        class_type: classTypes?.find(ct => ct.id === cls.class_type_id) || { name: 'Unknown Class', difficulty_level: 'Unknown' },
+        instructor: instructorProfiles?.find(p => p.user_id === cls.instructor_id) || { full_name: 'Unknown Instructor', email: '', user_id: cls.instructor_id }
+      }))
+      
+      setScheduledClasses(enrichedClasses)
+    } else {
+      setScheduledClasses(scheduledClassesData || [])
     }
 
-    console.log('🚀 Submitting assignment data:', assignmentData)
+    // Step 2: Fetch user profiles with roles (same as before)
+    console.log('👥 Fetching user profiles...')
+    
+    const { data: roles, error: rolesError } = await supabase
+      .from('roles')
+      .select('id, name')
+      .in('name', ['instructor', 'yoga_acharya'])
+    
+    if (rolesError) {
+      console.error('❌ Error fetching roles:', rolesError)
+      return
+    }
+    
+    const roleIds = roles.map(r => r.id)
+    const { data: userRoles, error: userRolesError } = await supabase
+      .from('user_roles')
+      .select('user_id, role_id')
+      .in('role_id', roleIds)
+    
+    if (userRolesError) {
+      console.error('❌ Error fetching user roles:', userRolesError)
+      return
+    }
+    
+    const userIds = [...new Set(userRoles.map(ur => ur.user_id))]
+    
+    if (userIds.length === 0) {
+      console.warn('⚠️ No users found with instructor or yoga_acharya roles')
+      setUserProfiles([])
+      setAssignments([])
+      return
+    }
+    
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id, full_name, email, phone, bio')
+      .in('user_id', userIds)
+    
+    if (profilesError) {
+      console.error('❌ Error fetching profiles:', profilesError)
+      return
+    }
+    
+    const profilesWithRoles = (profiles || []).map(profile => {
+      const userRoleIds = userRoles
+        .filter(ur => ur.user_id === profile.user_id)
+        .map(ur => ur.role_id)
+      
+      const profileRoles = roles
+        .filter(role => userRoleIds.includes(role.id))
+        .map(role => ({ roles: { name: role.name } }))
+      
+      return {
+        ...profile,
+        user_roles: profileRoles,
+        full_name: profile.full_name?.trim() || 
+                  profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
+                  'Unknown Instructor'
+      }
+    })
+    
+    setUserProfiles(profilesWithRoles)
 
-    const { error } = await supabase
+    // Step 3: Fetch class assignments
+    console.log('📋 Fetching class assignments...')
+    const { data: assignmentsData, error: assignmentsError } = await supabase
       .from('class_assignments')
-      .insert([assignmentData])
+      .select(`
+        *,
+        scheduled_class:scheduled_classes(
+          id,
+          start_time,
+          end_time,
+          class_type:class_types(
+            name,
+            difficulty_level
+          ),
+          instructor:profiles!instructor_id(
+            full_name,
+            email
+          )
+        ),
+        instructor_profile:profiles!instructor_id(
+          user_id,
+          full_name,
+          email
+        )
+      `)
+      .order('assigned_at', { ascending: false })
 
-    if (error) {
-      console.error('❌ Supabase error:', error)
-      throw error
+    if (assignmentsError) {
+      console.error('❌ Error fetching assignments:', assignmentsError)
+      setAssignments([])
+    } else {
+      setAssignments(assignmentsData || [])
     }
-
-    await fetchData()
-    resetForm()
-    alert('Class assigned successfully!')
-  } catch (error: any) {
-    console.error('❌ Error in handleSubmit:', error)
-    setErrors({ general: error.message })
+    
+    console.log('✅ Data fetching completed successfully')
+    
+  } catch (error) {
+    console.error('❌ Critical error in fetchData:', error)
   } finally {
-    setSaving(false)
+    setLoading(false)
   }
 }
 
