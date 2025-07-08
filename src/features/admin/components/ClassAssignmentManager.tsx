@@ -558,6 +558,9 @@ export function ClassAssignmentManager() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Additional notes or instructions"
                 />
+                // Add this before your insert to see what ID you're trying to use
+                    console.log('🔍 Attempting to insert with scheduled_class_id:', formData.scheduled_class_id)
+                    console.log('🔍 Available class IDs:', scheduledClasses.map(c => c.id))
               </div>
 
               <div className="flex justify-end space-x-3 pt-4">
