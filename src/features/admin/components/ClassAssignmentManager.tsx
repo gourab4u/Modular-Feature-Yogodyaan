@@ -87,42 +87,170 @@ export function ClassAssignmentManager() {
     
     console.log('📊 Raw scheduled classes:', classesData)
 
-    // Fetch instructor profiles
-    const { data: instructors, error: instructorsError } = await supabase
-      .from('profiles')
-      .select(`
-        user_id,
-        full_name,
-        email,
-        phone,
-        bio,
-        user_roles!inner(
-          roles!inner(name)
+    // Method 1: Try to fetch profiles with user_roles using the correct relationship
+    let instructorProfiles = []
+    let yogaAcharyaProfiles = []
+
+    try {
+      // First, try the original query structure (if foreign keys exist)
+      const { data: instructors, error: instructorsError } = await supabase
+        .from('profiles')
+        .select(`
+          user_id,
+          full_name,
+          email,
+          phone,
+          bio,
+          user_roles!inner(
+            roles!inner(name)
+          )
+        `)
+        .eq('user_roles.roles.name', 'instructor')
+
+      if (!instructorsError) {
+        instructorProfiles = instructors || []
+      }
+    } catch (error) {
+      console.log('Foreign key query failed, trying alternative approach...')
+    }
+
+    // Method 2: If foreign key approach fails, use separate queries
+    if (instructorProfiles.length === 0) {
+      try {
+        // Get all user roles for instructors
+        const { data: instructorRoles, error: instructorRolesError } = await supabase
+          .from('user_roles')
+          .select(`
+            user_id,
+            roles!inner(name)
+          `)
+          .eq('roles.name', 'instructor')
+
+        if (instructorRolesError) throw instructorRolesError
+
+        // Get all user roles for yoga acharyas
+        const { data: yogaAcharyaRoles, error: yogaAcharyaRolesError } = await supabase
+          .from('user_roles')
+          .select(`
+            user_id,
+            roles!inner(name)
+          `)
+          .eq('roles.name', 'yoga_acharya')
+
+        if (yogaAcharyaRolesError) throw yogaAcharyaRolesError
+
+        // Combine all user IDs
+        const allRoleUserIds = [
+          ...(instructorRoles || []).map(r => r.user_id),
+          ...(yogaAcharyaRoles || []).map(r => r.user_id)
+        ]
+
+        // Remove duplicates
+        const uniqueUserIds = [...new Set(allRoleUserIds)]
+
+        if (uniqueUserIds.length > 0) {
+          // Fetch profiles for these users
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select(`
+              user_id,
+              full_name,
+              email,
+              phone,
+              bio
+            `)
+            .in('user_id', uniqueUserIds)
+
+          if (profilesError) throw profilesError
+
+          // Combine profiles with their roles
+          const enrichedProfiles = (profiles || []).map(profile => {
+            const userRoles = []
+            
+            // Add instructor role if user has it
+            if (instructorRoles?.some(r => r.user_id === profile.user_id)) {
+              userRoles.push({ roles: { name: 'instructor' } })
+            }
+            
+            // Add yoga_acharya role if user has it
+            if (yogaAcharyaRoles?.some(r => r.user_id === profile.user_id)) {
+              userRoles.push({ roles: { name: 'yoga_acharya' } })
+            }
+
+            return {
+              ...profile,
+              user_roles: userRoles
+            }
+          })
+
+          // Separate by role type
+          instructorProfiles = enrichedProfiles.filter(profile => 
+            profile.user_roles.some(ur => ur.roles.name === 'instructor')
+          )
+          
+          yogaAcharyaProfiles = enrichedProfiles.filter(profile => 
+            profile.user_roles.some(ur => ur.roles.name === 'yoga_acharya')
+          )
+        }
+      } catch (error) {
+        console.error('Alternative query approach failed:', error)
+      }
+    }
+
+    // Method 3: If both above fail, try a simpler approach
+    if (instructorProfiles.length === 0 && yogaAcharyaProfiles.length === 0) {
+      try {
+        // Just get all profiles and we'll filter later based on available data
+        const { data: allProfiles, error: allProfilesError } = await supabase
+          .from('profiles')
+          .select(`
+            user_id,
+            full_name,
+            email,
+            phone,
+            bio
+          `)
+
+        if (allProfilesError) throw allProfilesError
+
+        // Get all user roles separately
+        const { data: allUserRoles, error: allUserRolesError } = await supabase
+          .from('user_roles')
+          .select(`
+            user_id,
+            role_id,
+            roles(name)
+          `)
+
+        if (allUserRolesError) throw allUserRolesError
+
+        // Combine profiles with their roles
+        const profilesWithRoles = (allProfiles || []).map(profile => {
+          const userRoles = (allUserRoles || [])
+            .filter(ur => ur.user_id === profile.user_id)
+            .map(ur => ({ roles: ur.roles }))
+          
+          return {
+            ...profile,
+            user_roles: userRoles
+          }
+        })
+
+        // Filter by role
+        instructorProfiles = profilesWithRoles.filter(profile => 
+          profile.user_roles.some(ur => ur.roles?.name === 'instructor')
         )
-      `)
-      .eq('user_roles.roles.name', 'instructor')
-
-    if (instructorsError) throw instructorsError
-
-    // Fetch yoga acharya profiles
-    const { data: yogaAcharyas, error: yogaAcharyasError } = await supabase
-      .from('profiles')
-      .select(`
-        user_id,
-        full_name,
-        email,
-        phone,
-        bio,
-        user_roles!inner(
-          roles!inner(name)
+        
+        yogaAcharyaProfiles = profilesWithRoles.filter(profile => 
+          profile.user_roles.some(ur => ur.roles?.name === 'yoga_acharya')
         )
-      `)
-      .eq('user_roles.roles.name', 'yoga_acharya')
-
-    if (yogaAcharyasError) throw yogaAcharyasError
+      } catch (error) {
+        console.error('Fallback query approach failed:', error)
+      }
+    }
 
     // Combine and deduplicate profiles
-    const allProfiles = [...(instructors || []), ...(yogaAcharyas || [])]
+    const allProfiles = [...instructorProfiles, ...yogaAcharyaProfiles]
     const uniqueProfiles = allProfiles.filter((profile, index, self) => 
       index === self.findIndex(p => p.user_id === profile.user_id)
     )
