@@ -280,43 +280,46 @@ export function ClassAssignmentManager() {
         <h3 className="text-lg font-semibold mb-2">Assigned Classes</h3>
         {loading ? <LoadingSpinner size="lg" /> : (
           <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class Type</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-              {assignments.map(a => (
-                <tr key={a.id}>
-                  <td className="px-4 py-2">{a.date}</td>
-                  <td className="px-4 py-2">{a.start_time} - {a.end_time}</td>
-                  <td className="px-4 py-2">{a.class_type?.name || '—'}</td>
-                  <td className="px-4 py-2">{a.instructor_profile?.full_name || '—'}</td>
-                  <td className="px-4 py-2">₹{a.payment_amount}</td>
-                  <td className={`px-4 py-2 capitalize ${a.payment_status === 'not_conducted' ? 'text-red-500' : a.payment_status === 'completed' ? 'text-green-600' : a.payment_status === 'payment_pending' ? 'text-yellow-600' : ''}`}>
+  <thead className="bg-gray-100">
+    <tr>
+      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class Type</th>
+      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
+      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+    </tr>
+  </thead>
+  <tbody className="bg-white divide-y divide-gray-200">
+    {assignments.map(a => (
+      <tr key={a.id}>
+        <td className="px-4 py-2">{a.date}</td>
+        <td className="px-4 py-2">{a.start_time} - {a.end_time}</td>
+        <td className="px-4 py-2">{a.class_type?.name || '—'}</td>
+        <td className="px-4 py-2">{a.instructor_profile?.full_name || '—'}</td>
+        <td className="px-4 py-2">₹{a.payment_amount}</td>
+        <td className={`px-4 py-2 capitalize ${a.payment_status === 'not_conducted' ? 'text-red-500' : a.payment_status === 'completed' ? 'text-green-600' : a.payment_status === 'payment_pending' ? 'text-yellow-600' : ''}`}>
+          <select
+            value={a.payment_status}
+            onChange={async (e) => {
+              const updated = e.target.value;
+              await supabase.from('class_assignments').update({ payment_status: updated }).eq('id', a.id);
+              fetchData();
+            }}
+            className="text-sm border rounded px-2 py-1"
+          >
+            <option value="scheduled">Scheduled</option>
+            <option value="completed">Completed</option>
+            <option value="not_conducted">Not Conducted</option>
+            <option value="payment_pending">Payment Pending</option>
+            <option value="paid">Paid</option>
+          </select>
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
 
-                    <select
-                      value={a.payment_status}
-                      onChange={async (e) => {
-                        const updated = e.target.value;
-                        await supabase.from('class_assignments').update({ payment_status: updated }).eq('id', a.id);
-                        fetchData();
-                      }}
-                      className="text-sm border rounded px-2 py-1"
-                    >
-                      <option value="scheduled">Scheduled</option>
-                      <option value="completed">Completed</option>
-                      <option value="not_conducted">Not Conducted</option>
-                      <option value="payment_pending">Payment Pending</option>
-                      <option value="paid">Paid</option>
-                    </select>
-                  </td>
-                </tr>
-              ))}
-              
-            </tbody>
-          </table>
         )}
       </div>
     </div>
