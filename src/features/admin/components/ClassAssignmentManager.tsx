@@ -89,20 +89,50 @@ export function ClassAssignmentManager() {
 
       // Fetch instructor/yoga_acharya profiles
       
-// Option 2: If the above doesn't work, try this approach
-const { data: profilesData, error: profilesError } = await supabase
-  .from('profiles')
-  .select(`
-    user_id,
-    full_name,
-    email,
-    phone,
-    bio,
-    user_roles!inner(
-      roles!inner(name)
-    )
-  `)
-  .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya', { foreignTable: 'user_roles.roles' })
+// Option 3: Alternative approach using multiple queries if the above don't work
+const fetchProfilesAlternative = async () => {
+  // Fetch instructors
+  const { data: instructors, error: instructorsError } = await supabase
+    .from('profiles')
+    .select(`
+      user_id,
+      full_name,
+      email,
+      phone,
+      bio,
+      user_roles!inner(
+        roles!inner(name)
+      )
+    `)
+    .eq('user_roles.roles.name', 'instructor')
+
+  // Fetch yoga acharyas
+  const { data: yogaAcharyas, error: yogaAcharyasError } = await supabase
+    .from('profiles')
+    .select(`
+      user_id,
+      full_name,
+      email,
+      phone,
+      bio,
+      user_roles!inner(
+        roles!inner(name)
+      )
+    `)
+    .eq('user_roles.roles.name', 'yoga_acharya')
+
+  if (instructorsError || yogaAcharyasError) {
+    throw instructorsError || yogaAcharyasError
+  }
+
+  // Combine and deduplicate
+  const allProfiles = [...(instructors || []), ...(yogaAcharyas || [])]
+  const uniqueProfiles = allProfiles.filter((profile, index, self) => 
+    index === self.findIndex(p => p.user_id === profile.user_id)
+  )
+
+  return uniqueProfiles
+}
 
       if (profilesError) throw profilesError
       
