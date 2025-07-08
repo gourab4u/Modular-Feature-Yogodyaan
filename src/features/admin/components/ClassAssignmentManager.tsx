@@ -6,7 +6,7 @@ import { supabase } from '../../../shared/lib/supabase'
 
 interface ClassAssignment {
   id?: string
-  class_schedule_id: string
+  scheduled_class_id: string
   instructor_id: string
   assigned_by: string
   payment_amount: number
@@ -38,7 +38,7 @@ export function ClassAssignmentManager() {
   const [errors, setErrors] = useState<any>({})
 
   const [formData, setFormData] = useState({
-    class_schedule_id: '',
+    scheduled_class_id: '',
     instructor_id: '',
     role_type: 'instructor',
     payment_amount: 0,
@@ -91,7 +91,7 @@ export function ClassAssignmentManager() {
         .order('assigned_at', { ascending: false })
 
       const enrichedAssignments = (assignmentsData || []).map(assignment => {
-        const classSchedule = schedules.find(cls => cls.id === assignment.class_schedule_id)
+        const classSchedule = schedules.find(cls => cls.id === assignment.scheduled_class_id)
         const instructorProfile = profilesWithRoles.find(p => p.user_id === assignment.instructor_id)
         return {
           ...assignment,
@@ -119,7 +119,7 @@ export function ClassAssignmentManager() {
 
   const validateForm = () => {
     const newErrors: any = {}
-    if (!formData.class_schedule_id) newErrors.class_schedule_id = 'Class is required'
+    if (!formData.scheduled_class_id) newErrors.scheduled_class_id = 'Class is required'
     if (!formData.instructor_id) newErrors.instructor_id = 'Instructor is required'
     if (formData.payment_amount <= 0) newErrors.payment_amount = 'Amount must be greater than 0'
     setErrors(newErrors)
@@ -134,7 +134,7 @@ export function ClassAssignmentManager() {
       setSaving(true)
       const currentUser = await supabase.auth.getUser()
       const assignment = {
-        class_schedule_id: formData.class_schedule_id,
+        scheduled_class_id: formData.scheduled_class_id,
         instructor_id: formData.instructor_id,
         assigned_by: currentUser.data.user?.id,
         payment_amount: formData.payment_amount,
@@ -147,7 +147,7 @@ export function ClassAssignmentManager() {
 
       await fetchData()
       setShowAssignForm(false)
-      setFormData({ class_schedule_id: '', instructor_id: '', role_type: 'instructor', payment_amount: 0, notes: '' })
+      setFormData({ scheduled_class_id: '', instructor_id: '', role_type: 'instructor', payment_amount: 0, notes: '' })
       alert('Class assigned successfully')
     } catch (err: any) {
       setErrors({ general: err.message })
@@ -175,8 +175,8 @@ export function ClassAssignmentManager() {
             <div>
               <label className="block text-sm font-medium">Class Schedule</label>
               <select
-                value={formData.class_schedule_id}
-                onChange={(e) => handleInputChange('class_schedule_id', e.target.value)}
+                value={formData.scheduled_class_id}
+                onChange={(e) => handleInputChange('scheduled_class_id', e.target.value)}
                 className="w-full border px-3 py-2 rounded-lg"
               >
                 <option value="">Select a class</option>
@@ -184,7 +184,7 @@ export function ClassAssignmentManager() {
                   <option key={cs.id} value={cs.id}>{cs.day_of_week} - {cs.start_time}</option>
                 ))}
               </select>
-              {errors.class_schedule_id && <p className="text-red-500 text-sm">{errors.class_schedule_id}</p>}
+              {errors.scheduled_class_id && <p className="text-red-500 text-sm">{errors.scheduled_class_id}</p>}
             </div>
 
             <div>
