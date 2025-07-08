@@ -30,7 +30,7 @@ interface UserProfile {
 
 export function ClassAssignmentManager() {
   const [assignments, setAssignments] = useState<ClassAssignment[]>([])
-  const [classSchedules, setClassSchedules] = useState<any[]>([])
+  const [classTypes, setClassTypes] = useState<any[]>([])
   const [userProfiles, setUserProfiles] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [showAssignForm, setShowAssignForm] = useState(false)
@@ -38,9 +38,11 @@ export function ClassAssignmentManager() {
   const [errors, setErrors] = useState<any>({})
 
   const [formData, setFormData] = useState({
-    scheduled_class_id: '',
+    class_type_id: '',
+    date: '',
+    start_time: '',
+    end_time: '',
     instructor_id: '',
-    role_type: 'instructor',
     payment_amount: 0,
     notes: ''
   })
@@ -53,12 +55,7 @@ export function ClassAssignmentManager() {
     try {
       setLoading(true)
 
-      const { data: schedules } = await supabase
-        .from('class_schedules')
-        .select('*, class_types(id, name, difficulty_level)')
-        .order('day_of_week')
-        .order('start_time')
-
+      const { data: classTypesData } = await supabase.from('class_types').select('id, name, difficulty_level')
       const { data: roles } = await supabase
         .from('roles')
         .select('id, name')
@@ -90,38 +87,14 @@ export function ClassAssignmentManager() {
         .select('*')
         .order('assigned_at', { ascending: false })
 
-      const enrichedAssignments = (assignmentsData || []).map(assignment => {
-        const classSchedule = schedules.find(cls => cls.id === assignment.scheduled_class_id)
-        const instructorProfile = profilesWithRoles.find(p => p.user_id === assignment.instructor_id)
-        return {
-          ...assignment,
-          class_schedule: classSchedule,
-          instructor_profile: instructorProfile
-        }
-      })
-
-      setClassSchedules(schedules)
+      setClassTypes(classTypesData || [])
       setUserProfiles(profilesWithRoles)
-      setAssignments(enrichedAssignments)
+      setAssignments(assignmentsData || [])
     } catch (e) {
       console.error('Fetch error:', e)
     } finally {
       setLoading(false)
     }
-  }
-
-  const isSlotOccupied = (scheduleId: string, instructorId: string) => {
-    const selectedSchedule = classSchedules.find(cs => cs.id === scheduleId)
-    if (!selectedSchedule) return false
-
-    return assignments.some(a => {
-      const assignedSchedule = classSchedules.find(cs => cs.id === a.scheduled_class_id)
-      return (
-        a.instructor_id === instructorId &&
-        assignedSchedule?.day_of_week === selectedSchedule.day_of_week &&
-        assignedSchedule?.start_time === selectedSchedule.start_time
-      )
-    })
   }
 
   const handleInputChange = (field: string, value: any) => {
@@ -133,13 +106,11 @@ export function ClassAssignmentManager() {
 
   const validateForm = () => {
     const newErrors: any = {}
-    if (!formData.scheduled_class_id) newErrors.scheduled_class_id = 'Class is required'
+    if (!formData.class_type_id) newErrors.class_type_id = 'Class type is required'
+    if (!formData.date) newErrors.date = 'Date is required'
+    if (!formData.start_time || !formData.end_time) newErrors.start_time = 'Time range is required'
     if (!formData.instructor_id) newErrors.instructor_id = 'Instructor is required'
     if (formData.payment_amount <= 0) newErrors.payment_amount = 'Amount must be greater than 0'
-
-    if (isSlotOccupied(formData.scheduled_class_id, formData.instructor_id)) {
-      newErrors.scheduled_class_id = 'Instructor is already assigned to another class at this time'
-    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -153,7 +124,10 @@ export function ClassAssignmentManager() {
       setSaving(true)
       const currentUser = await supabase.auth.getUser()
       const assignment = {
-        scheduled_class_id: formData.scheduled_class_id,
+        class_type_id: formData.class_type_id,
+        date: formData.date,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
         instructor_id: formData.instructor_id,
         assigned_by: currentUser.data.user?.id,
         payment_amount: formData.payment_amount,
@@ -166,7 +140,7 @@ export function ClassAssignmentManager() {
 
       await fetchData()
       setShowAssignForm(false)
-      setFormData({ scheduled_class_id: '', instructor_id: '', role_type: 'instructor', payment_amount: 0, notes: '' })
+      setFormData({ class_type_id: '', date: '', start_time: '', end_time: '', instructor_id: '', payment_amount: 0, notes: '' })
       alert('Class assigned successfully')
     } catch (err: any) {
       setErrors({ general: err.message })
@@ -192,21 +166,52 @@ export function ClassAssignmentManager() {
             {errors.general && <div className="text-red-500">{errors.general}</div>}
 
             <div>
-              <label className="block text-sm font-medium">Class Schedule</label>
+              <label className="block text-sm font-medium">Class Type</label>
               <select
-                value={formData.scheduled_class_id}
-                onChange={(e) => handleInputChange('scheduled_class_id', e.target.value)}
+                value={formData.class_type_id}
+                onChange={(e) => handleInputChange('class_type_id', e.target.value)}
                 className="w-full border px-3 py-2 rounded-lg"
               >
-                <option value="">Select a class</option>
-                {classSchedules.map(cs => (
-                  <option key={cs.id} value={cs.id}>
-                    {cs.class_types?.name || 'Class'} - {cs.day_of_week}, {cs.start_time} to {cs.end_time}
-                  </option>
+                <option value="">Select class type</option>
+                {classTypes.map(ct => (
+                  <option key={ct.id} value={ct.id}>{ct.name}</option>
                 ))}
               </select>
-              {errors.scheduled_class_id && <p className="text-red-500 text-sm">{errors.scheduled_class_id}</p>}
+              {errors.class_type_id && <p className="text-red-500 text-sm">{errors.class_type_id}</p>}
             </div>
+
+            <div>
+              <label className="block text-sm font-medium">Date</label>
+              <input
+                type="date"
+                value={formData.date}
+                onChange={(e) => handleInputChange('date', e.target.value)}
+                className="w-full border px-3 py-2 rounded-lg"
+              />
+              {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium">Start Time</label>
+                <input
+                  type="time"
+                  value={formData.start_time}
+                  onChange={(e) => handleInputChange('start_time', e.target.value)}
+                  className="w-full border px-3 py-2 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium">End Time</label>
+                <input
+                  type="time"
+                  value={formData.end_time}
+                  onChange={(e) => handleInputChange('end_time', e.target.value)}
+                  className="w-full border px-3 py-2 rounded-lg"
+                />
+              </div>
+            </div>
+            {errors.start_time && <p className="text-red-500 text-sm">{errors.start_time}</p>}
 
             <div>
               <label className="block text-sm font-medium">Instructor / Yoga Acharya</label>
@@ -217,9 +222,7 @@ export function ClassAssignmentManager() {
               >
                 <option value="">Select person</option>
                 {userProfiles.map(profile => (
-                  <option key={profile.user_id} value={profile.user_id}>
-                    {profile.full_name || profile.email}
-                  </option>
+                  <option key={profile.user_id} value={profile.user_id}>{profile.full_name}</option>
                 ))}
               </select>
               {errors.instructor_id && <p className="text-red-500 text-sm">{errors.instructor_id}</p>}
@@ -252,31 +255,6 @@ export function ClassAssignmentManager() {
           </form>
         </div>
       )}
-
-      <div className="bg-white rounded shadow-md">
-        {loading ? <LoadingSpinner size="lg" /> : (
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Class</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {assignments.map(a => (
-                <tr key={a.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">{a.class_schedule?.class_types?.name || 'Class'} - {a.class_schedule?.day_of_week} {a.class_schedule?.start_time}</td>
-                  <td className="px-6 py-4">{a.instructor_profile?.full_name || 'Unknown'}</td>
-                  <td className="px-6 py-4">${a.payment_amount}</td>
-                  <td className="px-6 py-4 capitalize">{a.payment_status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
     </div>
   )
 }
