@@ -1,4 +1,4 @@
-import { Calendar, Clock, DollarSign, Filter, Plus, Save, Search, Users, X } from 'lucide-react'
+import { Calendar, Clock, DollarSign, Filter, Plus, Save, Search, Users, X, AlertTriangle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
@@ -43,6 +43,12 @@ interface UserProfile {
   }[]
 }
 
+interface ConflictDetails {
+  hasConflict: boolean
+  conflictingClass?: ClassAssignment
+  message?: string
+}
+
 export function ClassAssignmentManager() {
   const [assignments, setAssignments] = useState<ClassAssignment[]>([])
   const [classTypes, setClassTypes] = useState<any[]>([])
@@ -51,6 +57,7 @@ export function ClassAssignmentManager() {
   const [showAssignForm, setShowAssignForm] = useState(false)
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<any>({})
+  const [conflictWarning, setConflictWarning] = useState<ConflictDetails | null>(null)
 
   const [formData, setFormData] = useState({
     class_type_id: '',
@@ -66,6 +73,15 @@ export function ClassAssignmentManager() {
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Check for scheduling conflicts when relevant fields change
+  useEffect(() => {
+    if (formData.instructor_id && formData.date && formData.start_time && formData.end_time) {
+      checkForConflicts()
+    } else {
+      setConflictWarning(null)
+    }
+  }, [formData.instructor_id, formData.date, formData.start_time, formData.end_time])
 
   const fetchData = async () => {
     try {
@@ -122,6 +138,73 @@ export function ClassAssignmentManager() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const checkForConflicts = () => {
+    if (!formData.instructor_id || !formData.date || !formData.start_time || !formData.end_time) {
+      setConflictWarning(null)
+      return
+    }
+
+    const proposedStart = timeToMinutes(formData.start_time)
+    const proposedEnd = timeToMinutes(formData.end_time)
+
+    // Check for conflicts with existing assignments
+    const conflictingAssignment = assignments.find(assignment => {
+      // Only check assignments that are not cancelled
+      if (assignment.class_status === 'cancelled') return false
+      
+      // Check if same instructor and same date
+      if (assignment.instructor_id === formData.instructor_id && assignment.date === formData.date) {
+        if (assignment.start_time && assignment.end_time) {
+          const existingStart = timeToMinutes(assignment.start_time)
+          const existingEnd = timeToMinutes(assignment.end_time)
+          
+          // Check if times overlap
+          return (proposedStart < existingEnd && proposedEnd > existingStart)
+        }
+      }
+      return false
+    })
+
+    if (conflictingAssignment) {
+      const instructor = userProfiles.find(p => p.user_id === formData.instructor_id)
+      const conflictTime = `${formatTime(conflictingAssignment.start_time)} - ${formatTime(conflictingAssignment.end_time)}`
+      
+      setConflictWarning({
+        hasConflict: true,
+        conflictingClass: conflictingAssignment,
+        message: `${instructor?.full_name || 'This instructor'} already has a class scheduled from ${conflictTime} on ${formatDate(formData.date)}`
+      })
+    } else {
+      setConflictWarning(null)
+    }
+  }
+
+  const getAvailableInstructors = () => {
+    if (!formData.date || !formData.start_time || !formData.end_time) {
+      return userProfiles
+    }
+
+    const proposedStart = timeToMinutes(formData.start_time)
+    const proposedEnd = timeToMinutes(formData.end_time)
+
+    return userProfiles.filter(instructor => {
+      const hasConflict = assignments.some(assignment => {
+        if (assignment.class_status === 'cancelled') return false
+        
+        if (assignment.instructor_id === instructor.user_id && assignment.date === formData.date) {
+          if (assignment.start_time && assignment.end_time) {
+            const existingStart = timeToMinutes(assignment.start_time)
+            const existingEnd = timeToMinutes(assignment.end_time)
+            return (proposedStart < existingEnd && proposedEnd > existingStart)
+          }
+        }
+        return false
+      })
+      
+      return !hasConflict
+    })
   }
 
   const handleInputChange = (field: string, value: any) => {
@@ -199,6 +282,11 @@ export function ClassAssignmentManager() {
       if (endMinutes <= startMinutes) {
         newErrors.end_time = 'End time must be after start time';
       }
+    }
+
+    // Check for conflicts
+    if (conflictWarning?.hasConflict) {
+      newErrors.conflict = 'Please resolve the scheduling conflict before proceeding'
     }
 
     setErrors(newErrors)
@@ -303,6 +391,7 @@ export function ClassAssignmentManager() {
         payment_amount: 0, 
         notes: '' 
       })
+      setConflictWarning(null)
       alert('Class assigned successfully')
     } catch (err: any) {
       console.error('Submit error:', err)
@@ -311,6 +400,8 @@ export function ClassAssignmentManager() {
       setSaving(false)
     }
   }
+
+  const availableInstructors = getAvailableInstructors()
 
   return (
     <div className="space-y-6 p-4">
@@ -330,7 +421,10 @@ export function ClassAssignmentManager() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setShowAssignForm(false)}
+              onClick={() => {
+                setShowAssignForm(false)
+                setConflictWarning(null)
+              }}
             >
               <X className="w-4 h-4" />
             </Button>
@@ -402,7 +496,7 @@ export function ClassAssignmentManager() {
                 <select
                   value={formData.duration}
                   onChange={(e) => handleDurationChange(parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:2 focus:ring-blue-500 focus:border-transparent"
                 >
                   {getDurationOptions().map(option => (
                     <option key={option.value} value={option.value}>
@@ -418,21 +512,40 @@ export function ClassAssignmentManager() {
               </div>
             </div>
 
+            {/* Conflict Warning */}
+            {conflictWarning?.hasConflict && (
+              <div className="bg-red-50 border border-red-200 rounded-md p-4 flex items-start space-x-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="text-sm font-medium text-red-800">Scheduling Conflict</h4>
+                  <p className="text-sm text-red-700 mt-1">{conflictWarning.message}</p>
+                </div>
+              </div>
+            )}
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">Instructor / Yoga Acharya</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Instructor / Yoga Acharya
+                {formData.date && formData.start_time && formData.end_time && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    ({availableInstructors.length} available)
+                  </span>
+                )}
+              </label>
               <select
                 value={formData.instructor_id}
                 onChange={(e) => handleInputChange('instructor_id', e.target.value)}
                 className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">Select instructor</option>
-                {userProfiles.map(profile => (
+                {availableInstructors.map(profile => (
                   <option key={profile.user_id} value={profile.user_id}>
                     {profile.full_name || profile.email}
                   </option>
                 ))}
               </select>
               {errors.instructor_id && <p className="text-red-500 text-sm mt-1">{errors.instructor_id}</p>}
+              {errors.conflict && <p className="text-red-500 text-sm mt-1">{errors.conflict}</p>}
             </div>
 
             <div>
@@ -463,11 +576,14 @@ export function ClassAssignmentManager() {
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => setShowAssignForm(false)}
+                onClick={() => {
+                  setShowAssignForm(false)
+                  setConflictWarning(null)
+                }}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || conflictWarning?.hasConflict}>
                 <Save className="w-4 h-4 mr-2" /> 
                 {saving ? 'Saving...' : 'Assign Class'}
               </Button>
