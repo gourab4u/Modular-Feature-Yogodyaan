@@ -266,8 +266,7 @@ $1,
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class Type</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
-                $1
-                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Date</th>
               {assignments.map(a => (
                 <tr key={a.id}>
