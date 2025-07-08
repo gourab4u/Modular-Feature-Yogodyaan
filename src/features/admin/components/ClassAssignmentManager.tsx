@@ -5,7 +5,6 @@ import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
 
 interface ClassAssignment {
-$1
   class_status?: 'scheduled' | 'completed' | 'not_conducted'
   payment_date?: string
 
@@ -301,30 +300,6 @@ $1,
                     </select>
                   </td>
                   <td className="px-4 py-2">{a.payment_date || '—'}</td>
-                  <td className={`px-4 py-2 capitalize ${a.payment_status === 'not_conducted' ? 'text-red-500' : a.payment_status === 'completed' ? 'text-green-600' : a.payment_status === 'payment_pending' ? 'text-yellow-600' : ''}`}>
-
-                    <select
-                      value={a.payment_status}
-                      onChange={async (e) => {
-                        const updated = e.target.value;
-                        const updateData: any = { payment_status: updated };
-                        if (updated === 'paid') {
-                          updateData.payment_date = new Date().toISOString().split('T')[0];
-                        } else {
-                          updateData.payment_date = null;
-                        }
-                        await supabase.from('class_assignments').update(updateData).eq('id', a.id);
-                        fetchData();
-                      }}
-                      className="text-sm border rounded px-2 py-1"
-                    >
-                      <option value="scheduled">Scheduled</option>
-                      <option value="completed">Completed</option>
-                      <option value="not_conducted">Not Conducted</option>
-                      <option value="payment_pending">Payment Pending</option>
-                      <option value="paid">Paid</option>
-                    </select>
-                  </td>
                 </tr>
               ))}
               
