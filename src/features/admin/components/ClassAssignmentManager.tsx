@@ -66,11 +66,7 @@ export function ClassAssignmentManager() {
   })
 
   useEffect(() => {
-    
-    
-    
-    
-    Data()
+    fetchData()
   }, [])
 
   const fetchData = async () => {
@@ -93,7 +89,7 @@ export function ClassAssignmentManager() {
 
       // Fetch instructor/yoga_acharya profiles
       
-// Option 1: Use in() operator instead of or()
+// Option 2: If the above doesn't work, try this approach
 const { data: profilesData, error: profilesError } = await supabase
   .from('profiles')
   .select(`
@@ -106,7 +102,7 @@ const { data: profilesData, error: profilesError } = await supabase
       roles!inner(name)
     )
   `)
-  .in('user_roles.roles.name', ['instructor', 'yoga_acharya'])
+  .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya', { foreignTable: 'user_roles.roles' })
 
       if (profilesError) throw profilesError
       
