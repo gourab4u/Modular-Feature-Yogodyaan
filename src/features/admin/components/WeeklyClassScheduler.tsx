@@ -82,8 +82,8 @@ const fetchData = async () => {
   try {
     setLoading(true)
 
-    // Fetch schedules, class types, and instructors in parallel
-    const [schedulesRes, classTypesRes, instructorsRes] = await Promise.all([
+    // Fetch schedules and class types first (these should work fine)
+    const [schedulesRes, classTypesRes] = await Promise.all([
       supabase
         .from('class_schedules')
         .select(`
@@ -97,10 +97,19 @@ const fetchData = async () => {
         .from('class_types')
         .select('*')
         .eq('is_active', true)
-        .order('name'),
-      
-      // Option 1: Query from user_roles table instead (most likely to work)
-      supabase
+        .order('name')
+    ])
+
+    if (schedulesRes.error) throw schedulesRes.error
+    if (classTypesRes.error) throw classTypesRes.error
+
+    // Try multiple approaches to get instructor data
+    let instructorsRes
+    let instructorData = []
+
+    // Approach 1: Query from user_roles table
+    try {
+      instructorsRes = await supabase
         .from('user_roles')
         .select(`
           user_id,
@@ -115,65 +124,118 @@ const fetchData = async () => {
         `)
         .in('roles.name', ['instructor', 'yoga_acharya'])
         .order('profiles.full_name')
+
+      if (!instructorsRes.error && instructorsRes.data) {
+        instructorData = instructorsRes.data.map(userRole => ({
+          user_id: userRole.profiles.user_id,
+          full_name: userRole.profiles.full_name,
+          email: userRole.profiles.email,
+          bio: userRole.profiles.bio,
+          specialties: userRole.profiles.specialties,
+          role: userRole.roles.name
+        }))
+        console.log('✅ Successfully fetched instructors via user_roles approach')
+      }
+    } catch (error) {
+      console.log('❌ user_roles approach failed:', error)
+    }
+
+    // Approach 2: If approach 1 fails, try separate queries
+    if (instructorData.length === 0) {
+      try {
+        // First get all instructor/yoga_acharya user IDs
+        const rolesRes = await supabase
+          .from('user_roles')
+          .select(`
+            user_id,
+            roles!inner(name)
+          `)
+          .in('roles.name', ['instructor', 'yoga_acharya'])
+
+        if (!rolesRes.error && rolesRes.data) {
+          const instructorUserIds = rolesRes.data.map(ur => ur.user_id)
+          
+          // Then get profiles for these users
+          const profilesRes = await supabase
+            .from('profiles')
+            .select(`
+              user_id,
+              full_name,
+              email,
+              bio,
+              specialties
+            `)
+            .in('user_id', instructorUserIds)
+            .order('full_name')
+
+          if (!profilesRes.error && profilesRes.data) {
+            instructorData = profilesRes.data
+            console.log('✅ Successfully fetched instructors via separate queries approach')
+          }
+        }
+      } catch (error) {
+        console.log('❌ Separate queries approach failed:', error)
+      }
+    }
+
+    // Approach 3: If all else fails, get all profiles and filter manually
+    if (instructorData.length === 0) {
+      try {
+        console.log('🔄 Trying fallback approach: fetching all profiles...')
         
-      // Option 2: If user_roles doesn't work, try separate queries
-      // First, let's just get all profiles and then filter
-      // supabase
-      //   .from('profiles')
-      //   .select(`
-      //     user_id, 
-      //     full_name, 
-      //     email, 
-      //     bio, 
-      //     specialties
-      //   `)
-      //   .order('full_name')
-      
-      // Option 3: Query user_roles first, then get profiles
-      // supabase
-      //   .from('user_roles')
-      //   .select(`
-      //     user_id,
-      //     roles!inner(name)
-      //   `)
-      //   .in('roles.name', ['instructor', 'yoga_acharya'])
-    ])
+        const allProfilesRes = await supabase
+          .from('profiles')
+          .select(`
+            user_id,
+            full_name,
+            email,
+            bio,
+            specialties
+          `)
+          .order('full_name')
 
-    if (schedulesRes.error) throw schedulesRes.error
-    if (classTypesRes.error) throw classTypesRes.error
-    if (instructorsRes.error) throw instructorsRes.error
-    
-    console.log('📊 Raw instructor data:', instructorsRes.data)
+        const allRolesRes = await supabase
+          .from('user_roles')
+          .select(`
+            user_id,
+            roles!inner(name)
+          `)
+          .in('roles.name', ['instructor', 'yoga_acharya'])
 
-    // Process the data based on the query structure
-    // Since we're querying from user_roles, the structure is different
-    const validInstructors = (instructorsRes.data || []).filter(userRole => {
-      const profile = userRole.profiles
-      const hasValidName = profile?.full_name?.trim()
-      const hasValidEmail = profile?.email?.trim()
-      const hasInstructorRole = ['instructor', 'yoga_acharya'].includes(userRole.roles?.name)
+        if (!allProfilesRes.error && !allRolesRes.error && allProfilesRes.data && allRolesRes.data) {
+          const instructorUserIds = new Set(allRolesRes.data.map(ur => ur.user_id))
+          instructorData = allProfilesRes.data.filter(profile => 
+            instructorUserIds.has(profile.user_id)
+          )
+          console.log('✅ Successfully fetched instructors via fallback approach')
+        }
+      } catch (error) {
+        console.log('❌ Fallback approach failed:', error)
+      }
+    }
+
+    console.log('📊 Raw instructor data:', instructorData)
+
+    // Filter and validate instructor profiles
+    const validInstructors = instructorData.filter(profile => {
+      const hasValidName = profile.full_name?.trim()
+      const hasValidEmail = profile.email?.trim()
       
-      const isValid = profile?.user_id && 
-                     (hasValidName || hasValidEmail) && 
-                     hasInstructorRole
+      const isValid = profile.user_id && (hasValidName || hasValidEmail)
       
       if (!isValid) {
-        console.warn('⚠️ Filtering out invalid instructor profile:', userRole)
+        console.warn('⚠️ Filtering out invalid instructor profile:', profile)
       }
       
       return isValid
-    }).map(userRole => {
-      // Transform to match the expected Instructor interface
-      const profile = userRole.profiles
-      return {
-        user_id: profile.user_id,
-        full_name: profile.full_name?.trim() || 
-                  profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
-                  'Unknown Instructor',
-        bio: profile.bio,
-        specialties: profile.specialties
-      }
-    })
+    }).map(profile => ({
+      user_id: profile.user_id,
+      full_name: profile.full_name?.trim() || 
+                profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
+                'Unknown Instructor',
+      bio: profile.bio,
+      specialties: profile.specialties
+    }))
     
     console.log('✅ Valid instructors after filtering:', validInstructors)
     
