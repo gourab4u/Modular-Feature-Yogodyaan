@@ -86,9 +86,9 @@ export function ClassAssignmentManager() {
       })
 
       const { data: assignmentsData } = await supabase
-        .from('class_assignments')
-        .select('*')
-        .order('assigned_at', { ascending: false })
+      .from('class_assignments')
+      .select('*')
+      .eq('schedule_type', 'adhoc') -- if added there
 
       const enrichedAssignments = (assignmentsData || []).map(assignment => {
         const classType = classTypesData?.find(ct => ct.id === assignment.class_type_id)
