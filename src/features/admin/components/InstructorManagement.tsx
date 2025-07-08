@@ -51,80 +51,80 @@ export function InstructorManagement() {
   }, [])
 
   const fetchInstructors = async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch profiles with instructor/yoga_acharya roles using a join
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select(`
-          id, 
-          user_id, 
-          full_name, 
-          email, 
-          phone, 
-          bio, 
-          specialties, 
-          experience_years, 
-          certification, 
-          avatar_url, 
-          is_active,
-          user_roles!inner(
-            roles!inner(name)
-          )
-        `)
-        .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya')
-        .order('full_name')
-
-      if (profileError) throw profileError
-      
-      console.log('📊 Raw instructor profiles:', profileData)
-      
-      // Filter and validate instructor profiles
-      const validProfiles = (profileData || []).filter(profile => {
-        const hasValidName = profile.full_name?.trim()
-        const hasValidEmail = profile.email?.trim()
-        const hasInstructorRole = profile.user_roles?.some(ur => 
-          ['instructor', 'yoga_acharya'].includes(ur.roles?.name)
+  try {
+    setLoading(true)
+    
+    // Fetch profiles with instructor/yoga_acharya roles using a join
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select(`
+        id, 
+        user_id, 
+        full_name, 
+        email, 
+        phone, 
+        bio, 
+        specialties, 
+        experience_years, 
+        certification, 
+        avatar_url, 
+        is_active,
+        user_roles!inner(
+          roles!inner(name)
         )
-        
-        const isValid = profile.user_id && 
-                       (hasValidName || hasValidEmail) && 
-                       hasInstructorRole
-        
-        if (!isValid) {
-          console.warn('⚠️ Filtering out invalid instructor profile:', profile)
-        }
-        
-        return isValid
-      })
-      
-      console.log('✅ Valid instructor profiles after filtering:', validProfiles)
-      
-      // Transform to Instructor interface
-      const instructorData = validProfiles.map(profile => ({
-        id: profile.id,
-        user_id: profile.user_id,
-        full_name: profile.full_name?.trim() || profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 'Unknown Instructor',
-        email: profile.email?.trim() || '',
-        phone: profile.phone || '',
-        bio: profile.bio || '',
-        specialties: profile.specialties || [],
-        experience_years: profile.experience_years || 0,
-        certification: profile.certification || '',
-        avatar_url: profile.avatar_url || '',
-        is_active: profile.is_active ?? true
-      }))
-      
-      console.log('📋 Final instructor data:', instructorData)
+      `)
+      .in('user_roles.roles.name', ['instructor', 'yoga_acharya'])
+      .order('full_name')
 
-      setInstructors(instructorData)
-    } catch (error) {
-      console.error('❌ Error fetching instructors:', error)
-    } finally {
-      setLoading(false)
-    }
+    if (profileError) throw profileError
+    
+    console.log('📊 Raw instructor profiles:', profileData)
+    
+    // Filter and validate instructor profiles
+    const validProfiles = (profileData || []).filter(profile => {
+      const hasValidName = profile.full_name?.trim()
+      const hasValidEmail = profile.email?.trim()
+      const hasInstructorRole = profile.user_roles?.some(ur => 
+        ['instructor', 'yoga_acharya'].includes(ur.roles?.name)
+      )
+      
+      const isValid = profile.user_id && 
+                     (hasValidName || hasValidEmail) && 
+                     hasInstructorRole
+      
+      if (!isValid) {
+        console.warn('⚠️ Filtering out invalid instructor profile:', profile)
+      }
+      
+      return isValid
+    })
+    
+    console.log('✅ Valid instructor profiles after filtering:', validProfiles)
+    
+    // Transform to Instructor interface
+    const instructorData = validProfiles.map(profile => ({
+      id: profile.id,
+      user_id: profile.user_id,
+      full_name: profile.full_name?.trim() || profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 'Unknown Instructor',
+      email: profile.email?.trim() || '',
+      phone: profile.phone || '',
+      bio: profile.bio || '',
+      specialties: profile.specialties || [],
+      experience_years: profile.experience_years || 0,
+      certification: profile.certification || '',
+      avatar_url: profile.avatar_url || '',
+      is_active: profile.is_active ?? true
+    }))
+    
+    console.log('📋 Final instructor data:', instructorData)
+
+    setInstructors(instructorData)
+  } catch (error) {
+    console.error('❌ Error fetching instructors:', error)
+  } finally {
+    setLoading(false)
   }
+}
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
