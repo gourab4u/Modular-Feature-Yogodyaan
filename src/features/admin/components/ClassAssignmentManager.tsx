@@ -300,6 +300,10 @@ export function ClassAssignmentManager() {
     if (!formData.instructor_id) newErrors.instructor_id = 'Instructor/Acharya is required'
     if (formData.payment_amount <= 0) newErrors.payment_amount = 'Payment amount must be greater than 0'
 
+                    // Add this before your insert to see what ID you're trying to use
+                    console.log('🔍 Attempting to insert with scheduled_class_id:', formData.scheduled_class_id)
+                    console.log('🔍 Available class IDs:', scheduledClasses.map(c => c.id))
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -561,9 +565,6 @@ export function ClassAssignmentManager() {
               </div>
 
               <div className="flex justify-end space-x-3 pt-4">
-                // Add this before your insert to see what ID you're trying to use
-                    console.log('🔍 Attempting to insert with scheduled_class_id:', formData.scheduled_class_id)
-                    console.log('🔍 Available class IDs:', scheduledClasses.map(c => c.id))
                 <Button type="button" variant="outline" onClick={resetForm}>
                   Cancel
                 </Button>
