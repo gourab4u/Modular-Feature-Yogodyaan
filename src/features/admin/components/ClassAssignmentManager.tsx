@@ -53,13 +53,11 @@ export function ClassAssignmentManager() {
     try {
       setLoading(true)
 
-const { data: schedules } = await supabase
-  .from('class_schedules')
-  .select('*')
-  .eq('is_recurring', false) // Only fetch non-recurring, manually assignable classes
-  .order('day_of_week')
-  .order('start_time')
-
+      const { data: schedules } = await supabase
+        .from('class_schedules')
+        .select('*, class_types(id, name, difficulty_level)')
+        .order('day_of_week')
+        .order('start_time')
 
       const { data: roles } = await supabase
         .from('roles')
@@ -112,6 +110,20 @@ const { data: schedules } = await supabase
     }
   }
 
+  const isSlotOccupied = (scheduleId: string, instructorId: string) => {
+    const selectedSchedule = classSchedules.find(cs => cs.id === scheduleId)
+    if (!selectedSchedule) return false
+
+    return assignments.some(a => {
+      const assignedSchedule = classSchedules.find(cs => cs.id === a.scheduled_class_id)
+      return (
+        a.instructor_id === instructorId &&
+        assignedSchedule?.day_of_week === selectedSchedule.day_of_week &&
+        assignedSchedule?.start_time === selectedSchedule.start_time
+      )
+    })
+  }
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
@@ -124,6 +136,11 @@ const { data: schedules } = await supabase
     if (!formData.scheduled_class_id) newErrors.scheduled_class_id = 'Class is required'
     if (!formData.instructor_id) newErrors.instructor_id = 'Instructor is required'
     if (formData.payment_amount <= 0) newErrors.payment_amount = 'Amount must be greater than 0'
+
+    if (isSlotOccupied(formData.scheduled_class_id, formData.instructor_id)) {
+      newErrors.scheduled_class_id = 'Instructor is already assigned to another class at this time'
+    }
+
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -183,22 +200,26 @@ const { data: schedules } = await supabase
               >
                 <option value="">Select a class</option>
                 {classSchedules.map(cs => (
-                  <option key={cs.id} value={cs.id}>{cs.day_of_week} - {cs.start_time}</option>
+                  <option key={cs.id} value={cs.id}>
+                    {cs.class_types?.name || 'Class'} - {cs.day_of_week}, {cs.start_time} to {cs.end_time}
+                  </option>
                 ))}
               </select>
               {errors.scheduled_class_id && <p className="text-red-500 text-sm">{errors.scheduled_class_id}</p>}
             </div>
 
             <div>
-              <label className="block text-sm font-medium">Instructor</label>
+              <label className="block text-sm font-medium">Instructor / Yoga Acharya</label>
               <select
                 value={formData.instructor_id}
                 onChange={(e) => handleInputChange('instructor_id', e.target.value)}
                 className="w-full border px-3 py-2 rounded-lg"
               >
-                <option value="">Select an instructor</option>
+                <option value="">Select person</option>
                 {userProfiles.map(profile => (
-                  <option key={profile.user_id} value={profile.user_id}>{profile.full_name || profile.email}</option>
+                  <option key={profile.user_id} value={profile.user_id}>
+                    {profile.full_name || profile.email}
+                  </option>
                 ))}
               </select>
               {errors.instructor_id && <p className="text-red-500 text-sm">{errors.instructor_id}</p>}
@@ -246,7 +267,7 @@ const { data: schedules } = await supabase
             <tbody>
               {assignments.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">{a.class_schedule?.day_of_week} - {a.class_schedule?.start_time}</td>
+                  <td className="px-6 py-4">{a.class_schedule?.class_types?.name || 'Class'} - {a.class_schedule?.day_of_week} {a.class_schedule?.start_time}</td>
                   <td className="px-6 py-4">{a.instructor_profile?.full_name || 'Unknown'}</td>
                   <td className="px-6 py-4">${a.payment_amount}</td>
                   <td className="px-6 py-4 capitalize">{a.payment_status}</td>
