@@ -5,20 +5,9 @@ import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
 
 interface ClassAssignment {
-  id?: string
-  class_type_id: string
-  date: string
-  start_time: string
-  end_time: string
-  instructor_id: string
-  assigned_by: string
-  payment_amount: number
-  payment_status: 'pending' | 'paid' | 'cancelled'
-  notes?: string
-  assigned_at?: string
-  class_type?: any
-  instructor_profile?: any
-}
+$1
+  class_status?: 'scheduled' | 'completed' | 'not_conducted'
+  payment_date?: string
 
 interface UserProfile {
   user_id: string
@@ -138,17 +127,9 @@ export function ClassAssignmentManager() {
       setSaving(true)
       const currentUser = await supabase.auth.getUser()
       const assignment = {
-        class_type_id: formData.class_type_id,
-        date: formData.date,
-        start_time: formData.start_time,
-        end_time: formData.end_time,
-        instructor_id: formData.instructor_id,
-        assigned_by: currentUser.data.user?.id,
-        payment_amount: formData.payment_amount,
-        payment_status: 'pending',
-        notes: formData.notes || null,
-        schedule_type: 'adhoc' // ✅ set schedule type explicitly
-      }
+$1,
+        class_status: 'scheduled',
+        payment_date: null
 
       const { error } = await supabase.from('class_assignments').insert([assignment])
       if (error) throw error
@@ -280,46 +261,75 @@ export function ClassAssignmentManager() {
         <h3 className="text-lg font-semibold mb-2">Assigned Classes</h3>
         {loading ? <LoadingSpinner size="lg" /> : (
           <table className="min-w-full divide-y divide-gray-200">
-  <thead className="bg-gray-100">
-    <tr>
-      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
-      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class Type</th>
-      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
-      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-    </tr>
-  </thead>
-  <tbody className="bg-white divide-y divide-gray-200">
-    {assignments.map(a => (
-      <tr key={a.id}>
-        <td className="px-4 py-2">{a.date}</td>
-        <td className="px-4 py-2">{a.start_time} - {a.end_time}</td>
-        <td className="px-4 py-2">{a.class_type?.name || '—'}</td>
-        <td className="px-4 py-2">{a.instructor_profile?.full_name || '—'}</td>
-        <td className="px-4 py-2">₹{a.payment_amount}</td>
-        <td className={`px-4 py-2 capitalize ${a.payment_status === 'not_conducted' ? 'text-red-500' : a.payment_status === 'completed' ? 'text-green-600' : a.payment_status === 'payment_pending' ? 'text-yellow-600' : ''}`}>
-          <select
-            value={a.payment_status}
-            onChange={async (e) => {
-              const updated = e.target.value;
-              await supabase.from('class_assignments').update({ payment_status: updated }).eq('id', a.id);
-              fetchData();
-            }}
-            className="text-sm border rounded px-2 py-1"
-          >
-            <option value="scheduled">Scheduled</option>
-            <option value="completed">Completed</option>
-            <option value="not_conducted">Not Conducted</option>
-            <option value="payment_pending">Payment Pending</option>
-            <option value="paid">Paid</option>
-          </select>
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Class Type</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Instructor</th>
+                $1
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Payment Date</th>
+              {assignments.map(a => (
+                <tr key={a.id}>
+                  <td className="px-4 py-2">{a.date}</td>
+                  <td className="px-4 py-2">{a.start_time} - {a.end_time}</td>
+                  <td className="px-4 py-2">{a.class_type?.name || '—'}</td>
+                  <td className="px-4 py-2">{a.instructor_profile?.full_name || '—'}</td>
+                  $1
+                  <td className={`px-4 py-2 capitalize ${a.payment_status === 'not_conducted' ? 'text-red-500' : a.payment_status === 'completed' ? 'text-green-600' : a.payment_status === 'payment_pending' ? 'text-yellow-600' : ''}`}>
+                    <select
+                      value={a.payment_status}
+                      onChange={async (e) => {
+                        const updated = e.target.value;
+                        const updateData: any = { payment_status: updated };
+                        if (updated === 'paid') {
+                          updateData.payment_date = new Date().toISOString().split('T')[0];
+                        } else {
+                          updateData.payment_date = null;
+                        }
+                        await supabase.from('class_assignments').update(updateData).eq('id', a.id);
+                        fetchData();
+                      }}
+                      className="text-sm border rounded px-2 py-1"
+                    >
+                      <option value="scheduled">Scheduled</option>
+                      <option value="completed">Completed</option>
+                      <option value="not_conducted">Not Conducted</option>
+                      <option value="payment_pending">Payment Pending</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </td>
+                  <td className="px-4 py-2">{a.payment_date || '—'}</td>
+                  <td className={`px-4 py-2 capitalize ${a.payment_status === 'not_conducted' ? 'text-red-500' : a.payment_status === 'completed' ? 'text-green-600' : a.payment_status === 'payment_pending' ? 'text-yellow-600' : ''}`}>
 
+                    <select
+                      value={a.payment_status}
+                      onChange={async (e) => {
+                        const updated = e.target.value;
+                        const updateData: any = { payment_status: updated };
+                        if (updated === 'paid') {
+                          updateData.payment_date = new Date().toISOString().split('T')[0];
+                        } else {
+                          updateData.payment_date = null;
+                        }
+                        await supabase.from('class_assignments').update(updateData).eq('id', a.id);
+                        fetchData();
+                      }}
+                      className="text-sm border rounded px-2 py-1"
+                    >
+                      <option value="scheduled">Scheduled</option>
+                      <option value="completed">Completed</option>
+                      <option value="not_conducted">Not Conducted</option>
+                      <option value="payment_pending">Payment Pending</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+              
+            </tbody>
+          </table>
         )}
       </div>
     </div>
