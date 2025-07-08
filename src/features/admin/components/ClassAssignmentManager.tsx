@@ -76,26 +76,216 @@ export function ClassAssignmentManager() {
 
       // Step 1: Fetch scheduled classes (actual class instances) - NOT class_schedules
       console.log('📅 Fetching scheduled classes...')
-      const { data: scheduledClassesData, error: scheduledClassesError } = await supabase
-        .from('scheduled_classes')
-        .select(`
-          *,
-          class_type:class_types(
-            id,
-            name,
-            difficulty_level,
-            description
-          ),
-          instructor:profiles!instructor_id(
-            user_id,
-            full_name,
-            email
-          )
-        `)
-        .order('start_time', { ascending: true })
+//      const { data: scheduledClassesData, error: //scheduledClassesError } = await supabase
+  //      .from('scheduled_classes')
+ //       .select(`
+ //         *,
+ //         class_type:class_types(
+ //           id,
+  //          name,
+  //          difficulty_level,
+   //         description
+   //       ),
+    //      instructor:profiles!instructor_id(
+    ///        user_id,
+    //        full_name,
+     //       email
+    //      )
+   //     `)
+  //      .order('start_time', { ascending: true })
 
-      let finalScheduledClasses = scheduledClassesData
+ //     let finalScheduledClasses = scheduledClassesData
 
+      // Add this debugging function to your ClassAssignmentManager component
+// Place it right after the fetchData function
+
+const debugScheduledClasses = async () => {
+  console.log('🔍 DEBUG: Starting scheduled classes investigation...')
+  
+  // First, let's check if the table exists and has any data
+  const { data: rawData, error: rawError } = await supabase
+    .from('scheduled_classes')
+    .select('*')
+    .limit(5)
+  
+  console.log('📊 Raw scheduled_classes data:', { rawData, rawError })
+  
+  if (rawError) {
+    console.error('❌ Error fetching raw scheduled classes:', rawError)
+    return
+  }
+  
+  if (!rawData || rawData.length === 0) {
+    console.log('⚠️ No scheduled classes found in database')
+    
+    // Check if the table structure is correct
+    const { data: tableInfo, error: tableError } = await supabase
+      .from('scheduled_classes')
+      .select('*')
+      .limit(1)
+    
+    console.log('📋 Table structure check:', { tableInfo, tableError })
+    return
+  }
+  
+  // Check class_types table
+  const { data: classTypes, error: classTypesError } = await supabase
+    .from('class_types')
+    .select('*')
+    .limit(5)
+  
+  console.log('📊 Class types data:', { classTypes, classTypesError })
+  
+  // Check profiles table
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('*')
+    .limit(5)
+  
+  console.log('📊 Profiles data:', { profiles, profilesError })
+  
+  // Try the join query step by step
+  console.log('🔍 Testing joins...')
+  
+  // Test class_type join
+  const { data: withClassType, error: classTypeJoinError } = await supabase
+    .from('scheduled_classes')
+    .select(`
+      *,
+      class_type:class_types(*)
+    `)
+    .limit(3)
+  
+  console.log('📊 With class_type join:', { withClassType, classTypeJoinError })
+  
+  // Test instructor join
+  const { data: withInstructor, error: instructorJoinError } = await supabase
+    .from('scheduled_classes')
+    .select(`
+      *,
+      instructor:profiles!instructor_id(*)
+    `)
+    .limit(3)
+  
+  console.log('📊 With instructor join:', { withInstructor, instructorJoinError })
+  
+  // Test full join
+  const { data: fullJoin, error: fullJoinError } = await supabase
+    .from('scheduled_classes')
+    .select(`
+      *,
+      class_type:class_types(
+        id,
+        name,
+        difficulty_level,
+        description
+      ),
+      instructor:profiles!instructor_id(
+        user_id,
+        full_name,
+        email
+      )
+    `)
+    .limit(3)
+  
+  console.log('📊 Full join test:', { fullJoin, fullJoinError })
+}
+
+// Call this function in your useEffect for debugging
+// Add this line in your useEffect after fetchData():
+// debugScheduledClasses()
+
+// Alternative simplified fetchData function for scheduled classes
+const fetchScheduledClassesSimple = async () => {
+  console.log('🔍 Fetching scheduled classes with simple approach...')
+  
+  try {
+    // Step 1: Get basic scheduled classes
+    const { data: classes, error: classesError } = await supabase
+      .from('scheduled_classes')
+      .select('*')
+      .order('start_time', { ascending: true })
+    
+    if (classesError) {
+      console.error('❌ Error fetching classes:', classesError)
+      return []
+    }
+    
+    if (!classes || classes.length === 0) {
+      console.log('⚠️ No scheduled classes found')
+      return []
+    }
+    
+    console.log('📊 Found classes:', classes)
+    
+    // Step 2: Get class types
+    const { data: classTypes, error: classTypesError } = await supabase
+      .from('class_types')
+      .select('*')
+    
+    if (classTypesError) {
+      console.error('❌ Error fetching class types:', classTypesError)
+    }
+    
+    console.log('📊 Found class types:', classTypes)
+    
+    // Step 3: Get instructor profiles
+    const instructorIds = [...new Set(classes.map(c => c.instructor_id).filter(Boolean))]
+    let instructorProfiles = []
+    
+    if (instructorIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', instructorIds)
+      
+      if (profilesError) {
+        console.error('❌ Error fetching instructor profiles:', profilesError)
+      } else {
+        instructorProfiles = profiles || []
+      }
+    }
+    
+    console.log('📊 Found instructor profiles:', instructorProfiles)
+    
+    // Step 4: Manually join the data
+    const enrichedClasses = classes.map(cls => {
+      const classType = classTypes?.find(ct => ct.id === cls.class_type_id) || {
+        id: cls.class_type_id,
+        name: 'Unknown Class',
+        difficulty_level: 'Unknown',
+        description: ''
+      }
+      
+      const instructor = instructorProfiles.find(p => p.user_id === cls.instructor_id) || {
+        user_id: cls.instructor_id,
+        full_name: 'Unknown Instructor',
+        email: '',
+      }
+      
+      return {
+        ...cls,
+        class_type: classType,
+        instructor: instructor
+      }
+    })
+    
+    console.log('📊 Enriched classes:', enrichedClasses)
+    return enrichedClasses
+    
+  } catch (error) {
+    console.error('❌ Critical error in fetchScheduledClassesSimple:', error)
+    return []
+  }
+}
+
+// Replace your scheduled classes fetching section with this:
+/*
+// Replace this part in your fetchData function:
+const scheduledClassesData = await fetchScheduledClassesSimple()
+setScheduledClasses(scheduledClassesData)
+*/
+      
       if (scheduledClassesError) {
         console.error('❌ Error fetching scheduled classes:', scheduledClassesError)
         // Fallback: try without joins
