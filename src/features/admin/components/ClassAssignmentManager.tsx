@@ -53,11 +53,13 @@ export function ClassAssignmentManager() {
     try {
       setLoading(true)
 
-      const { data: schedules } = await supabase
-        .from('class_schedules')
-        .select('*')
-        .order('day_of_week')
-        .order('start_time')
+const { data: schedules } = await supabase
+  .from('class_schedules')
+  .select('*')
+  .eq('is_recurring', false) // Only fetch non-recurring, manually assignable classes
+  .order('day_of_week')
+  .order('start_time')
+
 
       const { data: roles } = await supabase
         .from('roles')
