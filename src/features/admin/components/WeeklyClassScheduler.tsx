@@ -78,7 +78,7 @@ export function WeeklyClassScheduler() {
     fetchData()
   }, [])
 
- const fetchData = async () => {
+const fetchData = async () => {
   try {
     setLoading(true)
 
@@ -99,23 +99,25 @@ export function WeeklyClassScheduler() {
         .eq('is_active', true)
         .order('name'),
       
-      // Option 1: Use in() operator (recommended)
+      // Option 1: Query from user_roles table instead (most likely to work)
       supabase
-        .from('profiles')
+        .from('user_roles')
         .select(`
-          user_id, 
-          full_name, 
-          email, 
-          bio, 
-          specialties,
-          user_roles!inner(
-            roles!inner(name)
-          )
+          user_id,
+          profiles!inner(
+            user_id,
+            full_name,
+            email,
+            bio,
+            specialties
+          ),
+          roles!inner(name)
         `)
-        .in('user_roles.roles.name', ['instructor', 'yoga_acharya'])
-        .order('full_name')
+        .in('roles.name', ['instructor', 'yoga_acharya'])
+        .order('profiles.full_name')
         
-      // Option 2: Alternative approach using or() with proper syntax
+      // Option 2: If user_roles doesn't work, try separate queries
+      // First, let's just get all profiles and then filter
       // supabase
       //   .from('profiles')
       //   .select(`
@@ -123,28 +125,18 @@ export function WeeklyClassScheduler() {
       //     full_name, 
       //     email, 
       //     bio, 
-      //     specialties,
-      //     user_roles!inner(
-      //       roles!inner(name)
-      //     )
+      //     specialties
       //   `)
-      //   .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya')
       //   .order('full_name')
       
-      // Option 3: Fetch all profiles and filter in JavaScript
+      // Option 3: Query user_roles first, then get profiles
       // supabase
-      //   .from('profiles')
+      //   .from('user_roles')
       //   .select(`
-      //     user_id, 
-      //     full_name, 
-      //     email, 
-      //     bio, 
-      //     specialties,
-      //     user_roles!inner(
-      //       roles!inner(name)
-      //     )
+      //     user_id,
+      //     roles!inner(name)
       //   `)
-      //   .order('full_name')
+      //   .in('roles.name', ['instructor', 'yoga_acharya'])
     ])
 
     if (schedulesRes.error) throw schedulesRes.error
@@ -153,40 +145,41 @@ export function WeeklyClassScheduler() {
     
     console.log('📊 Raw instructor data:', instructorsRes.data)
 
-    // Filter and validate instructor profiles
-    const validInstructors = (instructorsRes.data || []).filter(profile => {
-      const hasValidName = profile.full_name?.trim()
-      const hasValidEmail = profile.email?.trim()
-      const hasInstructorRole = profile.user_roles?.some(ur => 
-        ['instructor', 'yoga_acharya'].includes(ur.roles?.name)
-      )
+    // Process the data based on the query structure
+    // Since we're querying from user_roles, the structure is different
+    const validInstructors = (instructorsRes.data || []).filter(userRole => {
+      const profile = userRole.profiles
+      const hasValidName = profile?.full_name?.trim()
+      const hasValidEmail = profile?.email?.trim()
+      const hasInstructorRole = ['instructor', 'yoga_acharya'].includes(userRole.roles?.name)
       
-      const isValid = profile.user_id && 
+      const isValid = profile?.user_id && 
                      (hasValidName || hasValidEmail) && 
                      hasInstructorRole
       
       if (!isValid) {
-        console.warn('⚠️ Filtering out invalid instructor profile:', profile)
+        console.warn('⚠️ Filtering out invalid instructor profile:', userRole)
       }
       
       return isValid
+    }).map(userRole => {
+      // Transform to match the expected Instructor interface
+      const profile = userRole.profiles
+      return {
+        user_id: profile.user_id,
+        full_name: profile.full_name?.trim() || 
+                  profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
+                  'Unknown Instructor',
+        bio: profile.bio,
+        specialties: profile.specialties
+      }
     })
     
     console.log('✅ Valid instructors after filtering:', validInstructors)
     
     // Map instructors for quick lookup
-    const instructorMap = validInstructors.reduce((acc, profile) => {
-      // Ensure we have a display name
-      const displayName = profile.full_name?.trim() || 
-                         profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
-                         'Unknown Instructor'
-      
-      acc[profile.user_id] = {
-        user_id: profile.user_id,
-        full_name: displayName,
-        bio: profile.bio,
-        specialties: profile.specialties
-      }
+    const instructorMap = validInstructors.reduce((acc, instructor) => {
+      acc[instructor.user_id] = instructor
       return acc
     }, {} as Record<string, Instructor>)
 
