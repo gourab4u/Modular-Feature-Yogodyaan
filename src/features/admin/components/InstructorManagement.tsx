@@ -50,11 +50,30 @@ export function InstructorManagement() {
     fetchInstructors()
   }, [])
 
-  const fetchInstructors = async () => {
+const fetchInstructors = async () => {
   try {
     setLoading(true)
     
-    // Fetch profiles with instructor/yoga_acharya roles using a join
+    // First, get all user IDs with instructor or yoga_acharya roles
+    const { data: userRoles, error: userRolesError } = await supabase
+      .from('user_roles')
+      .select(`
+        user_id,
+        roles!inner(name)
+      `)
+      .in('roles.name', ['instructor', 'yoga_acharya'])
+
+    if (userRolesError) throw userRolesError
+
+    // Extract unique user IDs
+    const instructorUserIds = [...new Set(userRoles?.map(ur => ur.user_id) || [])]
+    
+    if (instructorUserIds.length === 0) {
+      setInstructors([])
+      return
+    }
+
+    // Then fetch profiles for these users
     const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select(`
@@ -68,12 +87,9 @@ export function InstructorManagement() {
         experience_years, 
         certification, 
         avatar_url, 
-        is_active,
-        user_roles!inner(
-          roles!inner(name)
-        )
+        is_active
       `)
-      .in('user_roles.roles.name', ['instructor', 'yoga_acharya'])
+      .in('user_id', instructorUserIds)
       .order('full_name')
 
     if (profileError) throw profileError
@@ -84,13 +100,9 @@ export function InstructorManagement() {
     const validProfiles = (profileData || []).filter(profile => {
       const hasValidName = profile.full_name?.trim()
       const hasValidEmail = profile.email?.trim()
-      const hasInstructorRole = profile.user_roles?.some(ur => 
-        ['instructor', 'yoga_acharya'].includes(ur.roles?.name)
-      )
       
       const isValid = profile.user_id && 
-                     (hasValidName || hasValidEmail) && 
-                     hasInstructorRole
+                     (hasValidName || hasValidEmail)
       
       if (!isValid) {
         console.warn('⚠️ Filtering out invalid instructor profile:', profile)
