@@ -177,7 +177,99 @@ export function ClassAssignmentManager() {
         <div className="bg-white shadow p-6 rounded-lg max-w-xl mx-auto">
           <form onSubmit={handleSubmit} className="space-y-4">
             {errors.general && <div className="text-red-500">{errors.general}</div>}
-            {/* (Form fields stay unchanged here) */}
+            <div>
+  <label className="block text-sm font-medium text-gray-700">Class Type</label>
+  <select
+    value={formData.class_type_id}
+    onChange={(e) => handleInputChange('class_type_id', e.target.value)}
+    className="w-full px-3 py-2 border rounded"
+  >
+    <option value="">Select class type</option>
+    {classTypes.map(ct => (
+      <option key={ct.id} value={ct.id}>
+        {ct.name} ({ct.difficulty_level})
+      </option>
+    ))}
+  </select>
+  {errors.class_type_id && <p className="text-red-500 text-sm">{errors.class_type_id}</p>}
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700">Date</label>
+  <input
+    type="date"
+    value={formData.date}
+    onChange={(e) => handleInputChange('date', e.target.value)}
+    className="w-full px-3 py-2 border rounded"
+  />
+  {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
+</div>
+
+<div className="flex space-x-2">
+  <div className="flex-1">
+    <label className="block text-sm font-medium text-gray-700">Start Time</label>
+    <input
+      type="time"
+      value={formData.start_time}
+      onChange={(e) => handleInputChange('start_time', e.target.value)}
+      className="w-full px-3 py-2 border rounded"
+    />
+  </div>
+  <div className="flex-1">
+    <label className="block text-sm font-medium text-gray-700">End Time</label>
+    <input
+      type="time"
+      value={formData.end_time}
+      onChange={(e) => handleInputChange('end_time', e.target.value)}
+      className="w-full px-3 py-2 border rounded"
+    />
+  </div>
+</div>
+{errors.start_time && <p className="text-red-500 text-sm">{errors.start_time}</p>}
+
+<div>
+  <label className="block text-sm font-medium text-gray-700">Instructor / Yoga Acharya</label>
+  <select
+    value={formData.instructor_id}
+    onChange={(e) => handleInputChange('instructor_id', e.target.value)}
+    className="w-full px-3 py-2 border rounded"
+  >
+    <option value="">Select instructor</option>
+    {userProfiles.map(profile => (
+      <option key={profile.user_id} value={profile.user_id}>
+        {profile.full_name || profile.email}
+      </option>
+    ))}
+  </select>
+  {errors.instructor_id && <p className="text-red-500 text-sm">{errors.instructor_id}</p>}
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700">Payment Amount (₹)</label>
+  <input
+    type="number"
+    value={formData.payment_amount}
+    onChange={(e) => handleInputChange('payment_amount', parseFloat(e.target.value) || 0)}
+    className="w-full px-3 py-2 border rounded"
+  />
+  {errors.payment_amount && <p className="text-red-500 text-sm">{errors.payment_amount}</p>}
+</div>
+
+<div>
+  <label className="block text-sm font-medium text-gray-700">Notes (Optional)</label>
+  <textarea
+    value={formData.notes}
+    onChange={(e) => handleInputChange('notes', e.target.value)}
+    className="w-full px-3 py-2 border rounded"
+    rows={3}
+  />
+</div>
+
+<div className="flex justify-end">
+  <Button type="submit" loading={saving}>
+    <Save className="w-4 h-4 mr-2" /> {saving ? 'Saving...' : 'Assign Class'}
+  </Button>
+</div>
           </form>
         </div>
       )}
