@@ -78,7 +78,7 @@ export function WeeklyClassScheduler() {
     fetchData()
   }, [])
 
-  const fetchData = async () => {
+ const fetchData = async () => {
   try {
     setLoading(true)
 
@@ -99,6 +99,7 @@ export function WeeklyClassScheduler() {
         .eq('is_active', true)
         .order('name'),
       
+      // Option 1: Use in() operator (recommended)
       supabase
         .from('profiles')
         .select(`
@@ -111,8 +112,39 @@ export function WeeklyClassScheduler() {
             roles!inner(name)
           )
         `)
-        .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya')
+        .in('user_roles.roles.name', ['instructor', 'yoga_acharya'])
         .order('full_name')
+        
+      // Option 2: Alternative approach using or() with proper syntax
+      // supabase
+      //   .from('profiles')
+      //   .select(`
+      //     user_id, 
+      //     full_name, 
+      //     email, 
+      //     bio, 
+      //     specialties,
+      //     user_roles!inner(
+      //       roles!inner(name)
+      //     )
+      //   `)
+      //   .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya')
+      //   .order('full_name')
+      
+      // Option 3: Fetch all profiles and filter in JavaScript
+      // supabase
+      //   .from('profiles')
+      //   .select(`
+      //     user_id, 
+      //     full_name, 
+      //     email, 
+      //     bio, 
+      //     specialties,
+      //     user_roles!inner(
+      //       roles!inner(name)
+      //     )
+      //   `)
+      //   .order('full_name')
     ])
 
     if (schedulesRes.error) throw schedulesRes.error
@@ -149,7 +181,12 @@ export function WeeklyClassScheduler() {
                          profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
                          'Unknown Instructor'
       
-      acc[profile.user_id] = profile
+      acc[profile.user_id] = {
+        user_id: profile.user_id,
+        full_name: displayName,
+        bio: profile.bio,
+        specialties: profile.specialties
+      }
       return acc
     }, {} as Record<string, Instructor>)
 
