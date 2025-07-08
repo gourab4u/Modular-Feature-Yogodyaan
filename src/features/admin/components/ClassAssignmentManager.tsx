@@ -69,213 +69,222 @@ export function ClassAssignmentManager() {
     fetchData()
   }, [])
 
- 
-const fetchData = async () => {
-  try {
-    setLoading(true)
-    console.log('🔍 Starting data fetch...')
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      console.log('🔍 Starting data fetch...')
 
-    // Step 1: Fetch class schedules (weekly recurring classes)
-    console.log('📅 Fetching class schedules...')
-    const { data: classSchedulesData, error: classSchedulesError } = await supabase
-      .from('class_schedules')
-      .select(`
-        *,
-        class_types(
-          id,
-          name,
-          difficulty_level,
-          description
-        )
-      `)
-      .eq('is_active', true) // Assuming you have an is_active field
-      .order('day_of_week', { ascending: true })
-      .order('start_time', { ascending: true })
-
-    if (classSchedulesError) {
-      console.error('❌ Error fetching class schedules:', classSchedulesError)
-      // Fallback: try without join
-      const { data: fallbackSchedules, error: fallbackError } = await supabase
+      // Step 1: Fetch class schedules (weekly recurring classes)
+      console.log('📅 Fetching class schedules...')
+      const { data: classSchedulesData, error: classSchedulesError } = await supabase
         .from('class_schedules')
-        .select('*')
+        .select(`
+          *,
+          class_types(
+            id,
+            name,
+            difficulty_level,
+            description
+          )
+        `)
         .eq('is_active', true)
         .order('day_of_week', { ascending: true })
         .order('start_time', { ascending: true })
-      
-      if (fallbackError) {
-        console.error('❌ Fallback query also failed:', fallbackError)
-        return
-      }
-      
-      // Manually fetch class types
-      const { data: classTypes, error: classTypesError } = await supabase
-        .from('class_types')
-        .select('*')
-      
-      if (classTypesError) {
-        console.error('❌ Error fetching class types:', classTypesError)
-        return
-      }
-      
-      // Manually join the data
-      const enrichedSchedules = (fallbackSchedules || []).map(schedule => ({
-        ...schedule,
-        class_types: classTypes?.find(ct => ct.id === schedule.class_type_id) || null
-      }))
-      
-      console.log('📊 Class schedules (manual join):', enrichedSchedules)
-      classSchedulesData = enrichedSchedules
-    } else {
-      console.log('📊 Class schedules (with join):', classSchedulesData)
-    }
 
-    // Step 2: Fetch user profiles with roles using a more reliable approach
-    console.log('👥 Fetching user profiles...')
-    
-    // First, get all roles we're interested in
-    const { data: roles, error: rolesError } = await supabase
-      .from('roles')
-      .select('id, name')
-      .in('name', ['instructor', 'yoga_acharya'])
-    
-    if (rolesError) {
-      console.error('❌ Error fetching roles:', rolesError)
-      return
-    }
-    
-    console.log('📊 Roles found:', roles)
-    
-    // Get user_roles for these roles
-    const roleIds = roles.map(r => r.id)
-    const { data: userRoles, error: userRolesError } = await supabase
-      .from('user_roles')
-      .select('user_id, role_id')
-      .in('role_id', roleIds)
-    
-    if (userRolesError) {
-      console.error('❌ Error fetching user roles:', userRolesError)
-      return
-    }
-    
-    console.log('📊 User roles found:', userRoles)
-    
-    // Get profiles for these users
-    const userIds = [...new Set(userRoles.map(ur => ur.user_id))]
-    
-    if (userIds.length === 0) {
-      console.warn('⚠️ No users found with instructor or yoga_acharya roles')
-      setScheduledClasses(classSchedulesData || []) // Using class schedules as scheduled classes
-      setUserProfiles([])
-      setAssignments([])
-      return
-    }
-    
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('user_id, full_name, email, phone, bio')
-      .in('user_id', userIds)
-    
-    if (profilesError) {
-      console.error('❌ Error fetching profiles:', profilesError)
-      return
-    }
-    
-    console.log('📊 Profiles found:', profiles)
-    
-    // Combine profiles with their roles
-    const profilesWithRoles = (profiles || []).map(profile => {
-      const userRoleIds = userRoles
-        .filter(ur => ur.user_id === profile.user_id)
-        .map(ur => ur.role_id)
-      
-      const profileRoles = roles
-        .filter(role => userRoleIds.includes(role.id))
-        .map(role => ({ roles: { name: role.name } }))
-      
-      return {
-        ...profile,
-        user_roles: profileRoles,
-        // Ensure we have a display name
-        full_name: profile.full_name?.trim() || 
-                  profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
-                  'Unknown Instructor'
-      }
-    })
-    
-    console.log('📊 Profiles with roles:', profilesWithRoles)
+      let finalClassSchedules = classSchedulesData
 
-    // Step 3: Enrich class schedules with instructor info
-    const enrichedClassSchedules = (classSchedulesData || []).map(classSchedule => {
-      const instructorProfile = profilesWithRoles.find(p => p.user_id === classSchedule.instructor_id)
-      
-      // Convert day_of_week number to day name for display
-      const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-      const dayName = dayNames[classSchedule.day_of_week] || 'Unknown'
-      
-      return {
-        ...classSchedule,
-        day_name: dayName,
-        instructor: {
-          full_name: instructorProfile?.full_name || 'Unknown Instructor',
-          email: instructorProfile?.email || '',
-          user_id: instructorProfile?.user_id || classSchedule.instructor_id
+      if (classSchedulesError) {
+        console.error('❌ Error fetching class schedules:', classSchedulesError)
+        // Fallback: try without join
+        const { data: fallbackSchedules, error: fallbackError } = await supabase
+          .from('class_schedules')
+          .select('*')
+          .eq('is_active', true)
+          .order('day_of_week', { ascending: true })
+          .order('start_time', { ascending: true })
+        
+        if (fallbackError) {
+          console.error('❌ Fallback query also failed:', fallbackError)
+          return
         }
+        
+        // Manually fetch class types
+        const { data: classTypes, error: classTypesError } = await supabase
+          .from('class_types')
+          .select('*')
+        
+        if (classTypesError) {
+          console.error('❌ Error fetching class types:', classTypesError)
+          return
+        }
+        
+        // Manually join the data
+        finalClassSchedules = (fallbackSchedules || []).map(schedule => ({
+          ...schedule,
+          class_types: classTypes?.find(ct => ct.id === schedule.class_type_id) || null
+        }))
+        
+        console.log('📊 Class schedules (manual join):', finalClassSchedules)
+      } else {
+        console.log('📊 Class schedules (with join):', finalClassSchedules)
       }
-    })
-    
-    console.log('📅 Enriched class schedules:', enrichedClassSchedules)
 
-    // Step 4: Fetch class assignments (these might reference class_schedules instead of scheduled_classes)
-    console.log('📋 Fetching class assignments...')
-    const { data: assignmentsData, error: assignmentsError } = await supabase
-      .from('class_assignments')
-      .select('*')
-      .order('assigned_at', { ascending: false })
+      // Step 2: Fetch user profiles with roles using a more reliable approach
+      console.log('👥 Fetching user profiles...')
+      
+      // First, get all roles we're interested in
+      const { data: roles, error: rolesError } = await supabase
+        .from('roles')
+        .select('id, name')
+        .in('name', ['instructor', 'yoga_acharya'])
+      
+      if (rolesError) {
+        console.error('❌ Error fetching roles:', rolesError)
+        return
+      }
+      
+      console.log('📊 Roles found:', roles)
+      
+      // Get user_roles for these roles
+      const roleIds = roles.map(r => r.id)
+      const { data: userRoles, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role_id')
+        .in('role_id', roleIds)
+      
+      if (userRolesError) {
+        console.error('❌ Error fetching user roles:', userRolesError)
+        return
+      }
+      
+      console.log('📊 User roles found:', userRoles)
+      
+      // Get profiles for these users
+      const userIds = [...new Set(userRoles.map(ur => ur.user_id))]
+      
+      if (userIds.length === 0) {
+        console.warn('⚠️ No users found with instructor or yoga_acharya roles')
+        setScheduledClasses(finalClassSchedules || [])
+        setUserProfiles([])
+        setAssignments([])
+        return
+      }
+      
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, email, phone, bio')
+        .in('user_id', userIds)
+      
+      if (profilesError) {
+        console.error('❌ Error fetching profiles:', profilesError)
+        return
+      }
+      
+      console.log('📊 Profiles found:', profiles)
+      
+      // Combine profiles with their roles
+      const profilesWithRoles = (profiles || []).map(profile => {
+        const userRoleIds = userRoles
+          .filter(ur => ur.user_id === profile.user_id)
+          .map(ur => ur.role_id)
+        
+        const profileRoles = roles
+          .filter(role => userRoleIds.includes(role.id))
+          .map(role => ({ roles: { name: role.name } }))
+        
+        return {
+          ...profile,
+          user_roles: profileRoles,
+          // Ensure we have a display name
+          full_name: profile.full_name?.trim() || 
+                    profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
+                    'Unknown Instructor'
+        }
+      })
+      
+      console.log('📊 Profiles with roles:', profilesWithRoles)
 
-    if (assignmentsError) {
-      console.error('❌ Error fetching assignments:', assignmentsError)
-      // Don't return here, we can still show classes without assignments
+      // Step 3: Enrich class schedules with instructor info
+      const enrichedClassSchedules = (finalClassSchedules || []).map(classSchedule => {
+        const instructorProfile = profilesWithRoles.find(p => p.user_id === classSchedule.instructor_id)
+        
+        // Convert day_of_week number to day name for display
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        const dayName = dayNames[classSchedule.day_of_week] || 'Unknown'
+        
+        return {
+          ...classSchedule,
+          day_name: dayName,
+          // Ensure class_type exists with fallback
+          class_type: classSchedule.class_types || {
+            name: 'Unknown Class',
+            difficulty_level: 'Unknown'
+          },
+          instructor: {
+            full_name: instructorProfile?.full_name || 'Unknown Instructor',
+            email: instructorProfile?.email || '',
+            user_id: instructorProfile?.user_id || classSchedule.instructor_id
+          }
+        }
+      })
+      
+      console.log('📅 Enriched class schedules:', enrichedClassSchedules)
+
+      // Step 4: Fetch class assignments
+      console.log('📋 Fetching class assignments...')
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from('class_assignments')
+        .select('*')
+        .order('assigned_at', { ascending: false })
+
+      if (assignmentsError) {
+        console.error('❌ Error fetching assignments:', assignmentsError)
+        // Don't return here, we can still show classes without assignments
+      }
+      
+      console.log('📊 Assignments found:', assignmentsData)
+
+      // Step 5: Enrich assignments with related data
+      const enrichedAssignments = (assignmentsData || []).map(assignment => {
+        // Check if assignment references class_schedule_id instead of scheduled_class_id
+        const classSchedule = enrichedClassSchedules.find(cls => 
+          cls.id === assignment.class_schedule_id || cls.id === assignment.scheduled_class_id
+        )
+        const instructorProfile = profilesWithRoles.find(p => p.user_id === assignment.instructor_id)
+
+        return {
+          ...assignment,
+          scheduled_class: classSchedule ? {
+            id: classSchedule.id,
+            start_time: classSchedule.start_time,
+            end_time: classSchedule.end_time,
+            class_type: classSchedule.class_type,
+            instructor: classSchedule.instructor
+          } : null,
+          instructor_profile: instructorProfile
+        }
+      })
+      
+      console.log('📋 Enriched assignments:', enrichedAssignments)
+
+      // Update state
+      setScheduledClasses(enrichedClassSchedules)
+      setUserProfiles(profilesWithRoles)
+      setAssignments(enrichedAssignments)
+      
+      console.log('✅ Data fetching completed successfully')
+      console.log('📊 Final state:', {
+        classSchedules: enrichedClassSchedules.length,
+        userProfiles: profilesWithRoles.length,
+        assignments: enrichedAssignments.length
+      })
+      
+    } catch (error) {
+      console.error('❌ Critical error in fetchData:', error)
+    } finally {
+      setLoading(false)
     }
-    
-    console.log('📊 Assignments found:', assignmentsData)
-
-    // Step 5: Enrich assignments with related data
-    // Note: You might need to adjust this based on whether assignments reference
-    // class_schedules or scheduled_classes
-    const enrichedAssignments = (assignmentsData || []).map(assignment => {
-      // Check if assignment references class_schedule_id instead of scheduled_class_id
-      const classSchedule = enrichedClassSchedules.find(cls => 
-        cls.id === assignment.class_schedule_id || cls.id === assignment.scheduled_class_id
-      )
-      const instructorProfile = profilesWithRoles.find(p => p.user_id === assignment.instructor_id)
-
-      return {
-        ...assignment,
-        class_schedule: classSchedule, // Using class_schedule instead of scheduled_class
-        instructor_profile: instructorProfile
-      }
-    })
-    
-    console.log('📋 Enriched assignments:', enrichedAssignments)
-
-    // Update state - using class schedules as "scheduled classes" for the UI
-    setScheduledClasses(enrichedClassSchedules) // These are actually class schedules
-    setUserProfiles(profilesWithRoles)
-    setAssignments(enrichedAssignments)
-    
-    console.log('✅ Data fetching completed successfully')
-    console.log('📊 Final state:', {
-      classSchedules: enrichedClassSchedules.length,
-      userProfiles: profilesWithRoles.length,
-      assignments: enrichedAssignments.length
-    })
-    
-  } catch (error) {
-    console.error('❌ Critical error in fetchData:', error)
-  } finally {
-    setLoading(false)
   }
-}
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -475,7 +484,7 @@ const fetchData = async () => {
                   <option value="">Select a class</option>
                   {scheduledClasses.map(cls => (
                     <option key={cls.id} value={cls.id}>
-                      {cls.class_type.name} - {formatDateTime(cls.start_time)}
+                      {cls.class_type?.name || 'Unknown Class'} - {cls.day_name} {cls.start_time}
                     </option>
                   ))}
                 </select>
@@ -647,21 +656,21 @@ const fetchData = async () => {
                     <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {assignment.scheduled_class?.class_type?.name}
+                          {assignment.scheduled_class?.class_type?.name || 'Unknown Class'}
                         </div>
                         <div className="text-sm text-gray-500 flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
-                          {assignment.scheduled_class && formatDateTime(assignment.scheduled_class.start_time)}
+                          {assignment.scheduled_class?.start_time ? formatDateTime(assignment.scheduled_class.start_time) : 'Unknown Time'}
                         </div>
                         <div className="text-xs text-gray-500">
-                          Difficulty: {assignment.scheduled_class?.class_type?.difficulty_level}
+                          Difficulty: {assignment.scheduled_class?.class_type?.difficulty_level || 'Unknown'}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {assignment.instructor_profile?.full_name || assignment.instructor_profile?.email}
+                          {assignment.instructor_profile?.full_name || assignment.instructor_profile?.email || 'Unknown'}
                         </div>
                         <div className="text-sm text-gray-500 capitalize">
                           {getUserRole(assignment.instructor_id).replace('_', ' ')}
