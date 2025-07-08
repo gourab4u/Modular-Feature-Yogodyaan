@@ -66,7 +66,11 @@ export function ClassAssignmentManager() {
   })
 
   useEffect(() => {
-    fetchData()
+    
+    
+    
+    
+    Data()
   }, [])
 
   const fetchData = async () => {
@@ -88,19 +92,21 @@ export function ClassAssignmentManager() {
       console.log('📊 Raw scheduled classes:', classesData)
 
       // Fetch instructor/yoga_acharya profiles
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select(`
-          user_id,
-          full_name,
-          email,
-          phone,
-          bio,
-          user_roles!inner(
-            roles!inner(name)
-          )
-        `)
-        .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya')
+      
+// Option 1: Use in() operator instead of or()
+const { data: profilesData, error: profilesError } = await supabase
+  .from('profiles')
+  .select(`
+    user_id,
+    full_name,
+    email,
+    phone,
+    bio,
+    user_roles!inner(
+      roles!inner(name)
+    )
+  `)
+  .in('user_roles.roles.name', ['instructor', 'yoga_acharya'])
 
       if (profilesError) throw profilesError
       
