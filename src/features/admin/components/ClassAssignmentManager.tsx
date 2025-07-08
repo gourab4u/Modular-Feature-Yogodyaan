@@ -178,7 +178,7 @@ export function ClassAssignmentManager() {
     }
   }
 
-const formatTime = (timeString: string | null) => {
+  const formatTime = (timeString: string | null) => {
   // Handle null or undefined timeString
   if (!timeString) {
     return '—';
@@ -210,13 +210,6 @@ const formatTime = (timeString: string | null) => {
     return '—';
   }
 }
-    
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    })
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
