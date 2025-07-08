@@ -13,8 +13,8 @@ interface ClassAssignment {
   instructor_id: string
   payment_amount: number
   notes?: string
-  class_status?: 'scheduled' | 'completed' | 'not_conducted'
-  payment_status?: 'scheduled' | 'completed' | 'not_conducted' | 'payment_pending' | 'paid'
+  class_status?: 'scheduled' | 'completed' | 'cancelled'
+  payment_status?: 'pending' | 'paid' | 'cancelled'
   payment_date?: string
   assigned_at: string
   assigned_by: string
@@ -161,7 +161,7 @@ export function ClassAssignmentManager() {
         assigned_by: currentUser.data.user?.id || '',
         assigned_at: new Date().toISOString(),
         class_status: 'scheduled' as const,
-        payment_status: 'scheduled' as const,
+        payment_status: 'pending' as const,
         payment_date: null
       }
 
@@ -373,13 +373,13 @@ export function ClassAssignmentManager() {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         <select
-                          value={assignment.payment_status || 'scheduled'}
+                          value={assignment.payment_status || 'pending'}
                           onChange={async (e) => {
                             const updated = e.target.value;
                             const updateData: any = { payment_status: updated };
                             if (updated === 'paid') {
                               updateData.payment_date = new Date().toISOString().split('T')[0];
-                            } else if (updated === 'scheduled' || updated === 'payment_pending') {
+                            } else if (updated === 'pending' || updated === 'cancelled') {
                               updateData.payment_date = null;
                             }
                             
@@ -395,18 +395,14 @@ export function ClassAssignmentManager() {
                             }
                           }}
                           className={`text-sm border rounded px-2 py-1 ${
-                            assignment.payment_status === 'not_conducted' ? 'text-red-600 bg-red-50' :
-                            assignment.payment_status === 'completed' ? 'text-green-600 bg-green-50' :
-                            assignment.payment_status === 'paid' ? 'text-blue-600 bg-blue-50' :
-                            assignment.payment_status === 'payment_pending' ? 'text-yellow-600 bg-yellow-50' :
-                            'text-gray-600 bg-gray-50'
+                            assignment.payment_status === 'cancelled' ? 'text-red-600 bg-red-50' :
+                            assignment.payment_status === 'paid' ? 'text-green-600 bg-green-50' :
+                            'text-yellow-600 bg-yellow-50'
                           }`}
                         >
-                          <option value="scheduled">Scheduled</option>
-                          <option value="completed">Completed</option>
-                          <option value="not_conducted">Not Conducted</option>
-                          <option value="payment_pending">Payment Pending</option>
+                          <option value="pending">Pending</option>
                           <option value="paid">Paid</option>
+                          <option value="cancelled">Cancelled</option>
                         </select>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
