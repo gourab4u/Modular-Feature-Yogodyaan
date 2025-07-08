@@ -85,12 +85,11 @@ export function ClassAssignmentManager() {
         }
       })
 
-const { data: assignmentsData } = await supabase
-  .from('class_assignments')
-  .select('*')
-  .eq('schedule_type', 'adhoc')
-  .order('assigned_at', { ascending: false })
-
+      const { data: assignmentsData } = await supabase
+        .from('class_assignments')
+        .select('*')
+        .eq('schedule_type', 'adhoc')
+        .order('assigned_at', { ascending: false })
 
       const enrichedAssignments = (assignmentsData || []).map(assignment => {
         const classType = classTypesData?.find(ct => ct.id === assignment.class_type_id)
@@ -147,7 +146,8 @@ const { data: assignmentsData } = await supabase
         assigned_by: currentUser.data.user?.id,
         payment_amount: formData.payment_amount,
         payment_status: 'pending',
-        notes: formData.notes || null
+        notes: formData.notes || null,
+        schedule_type: 'adhoc' // ✅ set schedule type explicitly
       }
 
       const { error } = await supabase.from('class_assignments').insert([assignment])
