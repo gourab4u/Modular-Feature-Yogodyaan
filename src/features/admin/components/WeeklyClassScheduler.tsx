@@ -82,51 +82,7 @@ export function WeeklyClassScheduler() {
   try {
     setLoading(true)
 
-    // Step 1: Get both instructor and yoga_acharya role IDs
-    console.log('🔍 Fetching instructor and yoga_acharya roles...')
-    const { data: roles, error: roleError } = await supabase
-      .from('roles')
-      .select('id, name')
-      .in('name', ['instructor', 'yoga_acharya'])
-
-    if (roleError) throw roleError
-    
-    console.log('📋 Found roles:', roles)
-    
-    if (!roles || roles.length === 0) {
-      console.warn('⚠️ No instructor or yoga_acharya roles found')
-      setSchedules([])
-      setClassTypes([])
-      setInstructors([])
-      return
-    }
-
-    // Step 2: Get user IDs with instructor or yoga_acharya roles
-    const roleIds = roles.map(role => role.id)
-    console.log('🔑 Role IDs to search for:', roleIds)
-    
-    const { data: instructorUserRoles, error: userRolesError } = await supabase
-      .from('user_roles')
-      .select('user_id')
-      .in('role_id', roleIds)
-
-    if (userRolesError) throw userRolesError
-    
-    console.log('👥 Found user roles:', instructorUserRoles)
-
-    const instructorUserIds = instructorUserRoles.map(ur => ur.user_id)
-    
-    if (instructorUserIds.length === 0) {
-      console.warn('⚠️ No users found with instructor or yoga_acharya roles')
-      setSchedules([])
-      setClassTypes([])
-      setInstructors([])
-      return
-    }
-    
-    console.log('🆔 Instructor user IDs:', instructorUserIds)
-
-    // Step 3: Fetch schedules, class types, and instructors
+    // Fetch schedules, class types, and instructors in parallel
     const [schedulesRes, classTypesRes, instructorsRes] = await Promise.all([
       supabase
         .from('class_schedules')
@@ -145,10 +101,17 @@ export function WeeklyClassScheduler() {
       
       supabase
         .from('profiles')
-        .select('user_id, full_name, email, bio, specialties')
-        .in('user_id', instructorUserIds)
-        .not('full_name', 'is', null)
-        .neq('full_name', '')
+        .select(`
+          user_id, 
+          full_name, 
+          email, 
+          bio, 
+          specialties,
+          user_roles!inner(
+            roles!inner(name)
+          )
+        `)
+        .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya')
         .order('full_name')
     ])
 
@@ -156,12 +119,19 @@ export function WeeklyClassScheduler() {
     if (classTypesRes.error) throw classTypesRes.error
     if (instructorsRes.error) throw instructorsRes.error
     
-    console.log('📊 Raw instructor profiles:', instructorsRes.data)
+    console.log('📊 Raw instructor data:', instructorsRes.data)
 
-    // Step 4: Filter and validate instructor profiles
+    // Filter and validate instructor profiles
     const validInstructors = (instructorsRes.data || []).filter(profile => {
+      const hasValidName = profile.full_name?.trim()
+      const hasValidEmail = profile.email?.trim()
+      const hasInstructorRole = profile.user_roles?.some(ur => 
+        ['instructor', 'yoga_acharya'].includes(ur.roles?.name)
+      )
+      
       const isValid = profile.user_id && 
-                     (profile.full_name?.trim() || profile.email)
+                     (hasValidName || hasValidEmail) && 
+                     hasInstructorRole
       
       if (!isValid) {
         console.warn('⚠️ Filtering out invalid instructor profile:', profile)
@@ -172,7 +142,7 @@ export function WeeklyClassScheduler() {
     
     console.log('✅ Valid instructors after filtering:', validInstructors)
     
-    // Step 5: Map instructors to quickly lookup by user_id
+    // Map instructors for quick lookup
     const instructorMap = validInstructors.reduce((acc, profile) => {
       // Ensure we have a display name
       const displayName = profile.full_name?.trim() || 
@@ -185,7 +155,7 @@ export function WeeklyClassScheduler() {
 
     console.log('🗺️ Instructor map:', instructorMap)
 
-    // Step 6: Enrich each schedule with instructor object
+    // Enrich schedules with instructor data
     const enrichedSchedules = (schedulesRes.data || []).map(schedule => ({
       ...schedule,
       instructor: instructorMap[schedule.instructor_id] || undefined
@@ -193,7 +163,7 @@ export function WeeklyClassScheduler() {
     
     console.log('📅 Enriched schedules:', enrichedSchedules)
 
-    // Step 7: Set state
+    // Set state
     setSchedules(enrichedSchedules)
     setClassTypes(classTypesRes.data || [])
     setInstructors(validInstructors)

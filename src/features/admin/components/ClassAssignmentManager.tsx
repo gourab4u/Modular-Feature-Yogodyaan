@@ -73,47 +73,7 @@ export function ClassAssignmentManager() {
     try {
       setLoading(true)
 
-      console.log('🔍 Fetching instructor and yoga_acharya roles...')
-      const { data: roles, error: roleError } = await supabase
-        .from('roles')
-        .select('id, name')
-        .in('name', ['instructor', 'yoga_acharya'])
-
-      if (roleError) throw roleError
-      
-      console.log('📋 Found roles:', roles)
-      
-      if (!roles || roles.length === 0) {
-        console.warn('⚠️ No instructor or yoga_acharya roles found')
-        setAssignments([])
-        setScheduledClasses([])
-        setUserProfiles([])
-        return
-      }
-
-      // Step 2: Get user IDs with instructor or yoga_acharya roles
-      const roleIds = roles.map(role => role.id)
-      console.log('🔑 Role IDs to search for:', roleIds)
-      
-      const { data: userRoleData, error: userRolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role_id, roles(name)')
-        .in('role_id', roleIds)
-
-      if (userRolesError) throw userRolesError
-      
-      console.log('👥 Found user roles:', userRoleData)
-      
-      if (!userRoleData || userRoleData.length === 0) {
-        console.warn('⚠️ No users found with instructor or yoga_acharya roles')
-        setAssignments([])
-        setScheduledClasses([])
-        setUserProfiles([])
-        return
-      }
-
-      // Fetch scheduled classes WITHOUT broken join
-      console.log('📅 Fetching scheduled classes...')
+      // Fetch scheduled classes, profiles, and assignments in parallel
       const { data: classesData, error: classesError } = await supabase
         .from('scheduled_classes')
         .select(`
@@ -127,8 +87,7 @@ export function ClassAssignmentManager() {
       
       console.log('📊 Raw scheduled classes:', classesData)
 
-      // Fetch profiles with user_roles
-      console.log('👤 Fetching user profiles...')
+      // Fetch instructor/yoga_acharya profiles
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
@@ -137,26 +96,28 @@ export function ClassAssignmentManager() {
           email,
           phone,
           bio,
-          user_roles(
-            roles(name)
+          user_roles!inner(
+            roles!inner(name)
           )
         `)
+        .or('user_roles.roles.name.eq.instructor,user_roles.roles.name.eq.yoga_acharya')
 
       if (profilesError) throw profilesError
       
       console.log('📊 Raw profiles data:', profilesData)
 
-      // Get unique user IDs from role data
-      const instructorUserIds = [...new Set(userRoleData.map(ur => ur.user_id))]
-      console.log('🆔 Instructor user IDs:', instructorUserIds)
-      
-      // Filter profiles to only those with instructor/yoga_acharya roles and valid data
+      // Filter and validate profiles
       const filteredProfiles = (profilesData || [])
-        .filter(profile => instructorUserIds.includes(profile.user_id))
         .filter(profile => {
           const hasValidName = profile.full_name?.trim()
           const hasValidEmail = profile.email?.trim()
-          const isValid = profile.user_id && (hasValidName || hasValidEmail)
+          const hasInstructorRole = profile.user_roles?.some(ur => 
+            ['instructor', 'yoga_acharya'].includes(ur.roles?.name)
+          )
+          
+          const isValid = profile.user_id && 
+                         (hasValidName || hasValidEmail) && 
+                         hasInstructorRole
           
           if (!isValid) {
             console.warn('⚠️ Filtering out invalid profile:', profile)
@@ -173,24 +134,10 @@ export function ClassAssignmentManager() {
         }))
       
       console.log('✅ Filtered and enhanced profiles:', filteredProfiles)
-      
-      // Also filter by role in the user_roles array for extra validation
-      const finalFilteredProfiles = filteredProfiles.filter(profile => {
-        const userRoles = profile.user_roles?.map(ur => ur.roles?.name) || []
-        const hasRequiredRole = userRoles.includes('instructor') || userRoles.includes('yoga_acharya')
-        
-        if (!hasRequiredRole) {
-          console.warn('⚠️ Profile missing required role:', profile)
-        }
-        
-        return hasRequiredRole
-      })
-      
-      console.log('✅ Final filtered profiles:', finalFilteredProfiles)
 
-      // Enrich scheduledClasses: attach instructor full_name manually
+      // Enrich scheduled classes with instructor data
       const enrichedScheduledClasses = (classesData || []).map(scheduledClass => {
-        const instructorProfile = finalFilteredProfiles?.find(profile => profile.user_id === scheduledClass.instructor_id)
+        const instructorProfile = filteredProfiles?.find(profile => profile.user_id === scheduledClass.instructor_id)
         return {
           ...scheduledClass,
           instructor: {
@@ -201,8 +148,7 @@ export function ClassAssignmentManager() {
       
       console.log('📅 Enriched scheduled classes:', enrichedScheduledClasses)
 
-      // Fetch assignments
-      console.log('📋 Fetching assignments...')
+      // Fetch class assignments
       const { data: assignmentsData, error: assignmentsError } = await supabase
         .from('class_assignments')
         .select('*')
@@ -212,10 +158,10 @@ export function ClassAssignmentManager() {
       
       console.log('📊 Raw assignments data:', assignmentsData)
 
-      // Merge assignments with related data
+      // Enrich assignments with related data
       const enrichedAssignments = (assignmentsData || []).map(assignment => {
         const scheduledClass = enrichedScheduledClasses?.find(cls => cls.id === assignment.scheduled_class_id)
-        const instructorProfile = finalFilteredProfiles?.find(profile => profile.user_id === assignment.instructor_id)
+        const instructorProfile = filteredProfiles?.find(profile => profile.user_id === assignment.instructor_id)
 
         return {
           ...assignment,
@@ -228,7 +174,7 @@ export function ClassAssignmentManager() {
 
       setAssignments(enrichedAssignments)
       setScheduledClasses(enrichedScheduledClasses)
-      setUserProfiles(finalFilteredProfiles)
+      setUserProfiles(filteredProfiles)
       
       console.log('✅ Data fetching completed successfully')
     } catch (error) {
