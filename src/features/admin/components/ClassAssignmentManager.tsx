@@ -238,12 +238,47 @@ const fetchData = async () => {
   }
 }
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors((prev: any) => ({ ...prev, [field]: '' }))
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  
+  if (!validateForm()) return
+
+  try {
+    setSaving(true)
+    
+    const currentUser = await supabase.auth.getUser()
+    
+    // Check if the foreign key is to class_schedules instead of scheduled_classes
+    const assignmentData = {
+      class_schedule_id: formData.scheduled_class_id, // Changed from scheduled_class_id
+      instructor_id: formData.instructor_id,
+      assigned_by: currentUser.data.user?.id,
+      payment_amount: formData.payment_amount,
+      payment_status: 'pending' as const,
+      notes: formData.notes || null
     }
+
+    console.log('🚀 Submitting assignment data:', assignmentData)
+
+    const { error } = await supabase
+      .from('class_assignments')
+      .insert([assignmentData])
+
+    if (error) {
+      console.error('❌ Supabase error:', error)
+      throw error
+    }
+
+    await fetchData()
+    resetForm()
+    alert('Class assigned successfully!')
+  } catch (error: any) {
+    console.error('❌ Error in handleSubmit:', error)
+    setErrors({ general: error.message })
+  } finally {
+    setSaving(false)
   }
+}
 
   const validateForm = () => {
     const newErrors: any = {}
