@@ -178,10 +178,38 @@ export function ClassAssignmentManager() {
     }
   }
 
-  const formatTime = (timeString: string) => {
-    const [hours, minutes] = timeString.split(':').map(Number)
-    const date = new Date()
-    date.setHours(hours, minutes)
+const formatTime = (timeString: string | null) => {
+  // Handle null or undefined timeString
+  if (!timeString) {
+    return '—';
+  }
+  
+  // Handle empty string
+  if (timeString.trim() === '') {
+    return '—';
+  }
+  
+  try {
+    const [hours, minutes] = timeString.split(':').map(Number);
+    
+    // Validate that we got valid numbers
+    if (isNaN(hours) || isNaN(minutes)) {
+      return '—';
+    }
+    
+    const date = new Date();
+    date.setHours(hours, minutes);
+    
+    return date.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  } catch (error) {
+    console.error('Error formatting time:', timeString, error);
+    return '—';
+  }
+}
     
     return date.toLocaleTimeString('en-US', { 
       hour: 'numeric', 
