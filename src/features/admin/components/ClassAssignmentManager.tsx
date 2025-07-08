@@ -2,14 +2,15 @@ import { Calendar, Clock, DollarSign, Filter, Plus, Save, Search, Users, X } fro
 import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
+import { ClockSelector } from '../../../shared/components/ui/ClockSelector'
 import { supabase } from '../../../shared/lib/supabase'
 
 interface ClassAssignment {
   id: string
   class_type_id: string
   date: string
-  start_time: string
-  end_time: string
+  start_time: string | null
+  end_time: string | null
   instructor_id: string
   payment_amount: number
   notes?: string
@@ -55,6 +56,7 @@ export function ClassAssignmentManager() {
     class_type_id: '',
     date: '',
     start_time: '',
+    end_time: '',
     duration: 60, // duration in minutes
     instructor_id: '',
     payment_amount: 0,
@@ -129,27 +131,78 @@ export function ClassAssignmentManager() {
     }
   }
 
+  // Helper function to convert time to minutes
+  const timeToMinutes = (timeString: string) => {
+    if (!timeString) return 0;
+    const [hours, minutes] = timeString.split(':').map(Number);
+    return hours * 60 + minutes;
+  }
+
+  // Helper function to convert minutes to time string
+  const minutesToTime = (minutes: number) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+  }
+
+  const handleStartTimeChange = (time: string) => {
+    handleInputChange('start_time', time);
+    
+    // If we have a duration, calculate end time
+    if (formData.duration > 0) {
+      const startMinutes = timeToMinutes(time);
+      const endMinutes = startMinutes + formData.duration;
+      const endTime = minutesToTime(endMinutes);
+      handleInputChange('end_time', endTime);
+    }
+  }
+
+  const handleEndTimeChange = (time: string) => {
+    handleInputChange('end_time', time);
+    
+    // Calculate duration automatically
+    if (formData.start_time) {
+      const startMinutes = timeToMinutes(formData.start_time);
+      const endMinutes = timeToMinutes(time);
+      const duration = endMinutes - startMinutes;
+      if (duration > 0) {
+        handleInputChange('duration', duration);
+      }
+    }
+  }
+
+  const handleDurationChange = (durationMinutes: number) => {
+    handleInputChange('duration', durationMinutes);
+    
+    // If we have a start time, calculate end time
+    if (formData.start_time) {
+      const startMinutes = timeToMinutes(formData.start_time);
+      const endMinutes = startMinutes + durationMinutes;
+      const endTime = minutesToTime(endMinutes);
+      handleInputChange('end_time', endTime);
+    }
+  }
+
   const validateForm = () => {
     const newErrors: any = {}
     if (!formData.class_type_id) newErrors.class_type_id = 'Class type is required'
     if (!formData.date) newErrors.date = 'Date is required'
     if (!formData.start_time) newErrors.start_time = 'Start time is required'
-    if (!formData.duration) newErrors.duration = 'Duration is required'
+    if (!formData.end_time) newErrors.end_time = 'End time is required'
     if (!formData.instructor_id) newErrors.instructor_id = 'Instructor is required'
     if (formData.payment_amount <= 0) newErrors.payment_amount = 'Amount must be greater than 0'
+    
+    // Validate that end time is after start time
+    if (formData.start_time && formData.end_time) {
+      const startMinutes = timeToMinutes(formData.start_time);
+      const endMinutes = timeToMinutes(formData.end_time);
+      if (endMinutes <= startMinutes) {
+        newErrors.end_time = 'End time must be after start time';
+      }
+    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
-  }
-
-  const calculateEndTime = (startTime: string, durationMinutes: number) => {
-    const [hours, minutes] = startTime.split(':').map(Number)
-    const startDate = new Date()
-    startDate.setHours(hours, minutes, 0, 0)
-    
-    const endDate = new Date(startDate.getTime() + durationMinutes * 60000)
-    
-    return endDate.toTimeString().slice(0, 5) // Return in HH:MM format
   }
 
   const getDurationOptions = () => [
@@ -179,37 +232,37 @@ export function ClassAssignmentManager() {
   }
 
   const formatTime = (timeString: string | null) => {
-  // Handle null or undefined timeString
-  if (!timeString) {
-    return '—';
-  }
-  
-  // Handle empty string
-  if (timeString.trim() === '') {
-    return '—';
-  }
-  
-  try {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    
-    // Validate that we got valid numbers
-    if (isNaN(hours) || isNaN(minutes)) {
+    // Handle null or undefined timeString
+    if (!timeString) {
       return '—';
     }
     
-    const date = new Date();
-    date.setHours(hours, minutes);
+    // Handle empty string
+    if (timeString.trim() === '') {
+      return '—';
+    }
     
-    return date.toLocaleTimeString('en-US', { 
-      hour: 'numeric', 
-      minute: '2-digit',
-      hour12: true 
-    });
-  } catch (error) {
-    console.error('Error formatting time:', timeString, error);
-    return '—';
+    try {
+      const [hours, minutes] = timeString.split(':').map(Number);
+      
+      // Validate that we got valid numbers
+      if (isNaN(hours) || isNaN(minutes)) {
+        return '—';
+      }
+      
+      const date = new Date();
+      date.setHours(hours, minutes);
+      
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch (error) {
+      console.error('Error formatting time:', timeString, error);
+      return '—';
+    }
   }
-}
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -223,7 +276,7 @@ export function ClassAssignmentManager() {
         class_type_id: formData.class_type_id,
         date: formData.date,
         start_time: formData.start_time,
-        end_time: calculateEndTime(formData.start_time, formData.duration),
+        end_time: formData.end_time,
         instructor_id: formData.instructor_id,
         payment_amount: formData.payment_amount,
         notes: formData.notes,
@@ -244,6 +297,7 @@ export function ClassAssignmentManager() {
         class_type_id: '', 
         date: '', 
         start_time: '', 
+        end_time: '',
         duration: 60, 
         instructor_id: '', 
         payment_amount: 0, 
@@ -270,7 +324,7 @@ export function ClassAssignmentManager() {
       </div>
 
       {showAssignForm && (
-        <div className="bg-white shadow p-6 rounded-lg max-w-xl mx-auto">
+        <div className="bg-white shadow p-6 rounded-lg max-w-2xl mx-auto">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Assign New Class</h3>
             <Button 
@@ -322,24 +376,23 @@ export function ClassAssignmentManager() {
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Clock className="w-4 h-4 inline mr-1" />
-                  Start Time
-                </label>
-                <input
-                  type="time"
+                <ClockSelector
                   value={formData.start_time}
-                  onChange={(e) => handleInputChange('start_time', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={handleStartTimeChange}
+                  label="Start Time"
+                  error={errors.start_time}
                 />
-                {errors.start_time && <p className="text-red-500 text-sm mt-1">{errors.start_time}</p>}
-                {formData.start_time && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Starts at: {formatTime(formData.start_time)}
-                  </p>
-                )}
+              </div>
+
+              <div>
+                <ClockSelector
+                  value={formData.end_time}
+                  onChange={handleEndTimeChange}
+                  label="End Time"
+                  error={errors.end_time}
+                />
               </div>
 
               <div>
@@ -348,7 +401,7 @@ export function ClassAssignmentManager() {
                 </label>
                 <select
                   value={formData.duration}
-                  onChange={(e) => handleInputChange('duration', parseInt(e.target.value))}
+                  onChange={(e) => handleDurationChange(parseInt(e.target.value))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   {getDurationOptions().map(option => (
@@ -357,10 +410,9 @@ export function ClassAssignmentManager() {
                     </option>
                   ))}
                 </select>
-                {errors.duration && <p className="text-red-500 text-sm mt-1">{errors.duration}</p>}
-                {formData.start_time && formData.duration && (
+                {formData.duration && (
                   <p className="text-sm text-gray-600 mt-1">
-                    Ends at: {formatTime(calculateEndTime(formData.start_time, formData.duration))}
+                    Duration: {formData.duration} minutes
                   </p>
                 )}
               </div>
@@ -475,7 +527,10 @@ export function ClassAssignmentManager() {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                         <div className="font-medium">{formatTime(assignment.start_time)} - {formatTime(assignment.end_time)}</div>
                         <div className="text-xs text-gray-500">
-                          {Math.round((new Date(`1970-01-01T${assignment.end_time}:00`) - new Date(`1970-01-01T${assignment.start_time}:00`)) / (1000 * 60))} minutes
+                          {assignment.start_time && assignment.end_time ? 
+                            `${timeToMinutes(assignment.end_time) - timeToMinutes(assignment.start_time)} minutes` : 
+                            '—'
+                          }
                         </div>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
