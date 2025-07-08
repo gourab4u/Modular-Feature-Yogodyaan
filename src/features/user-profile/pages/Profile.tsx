@@ -34,9 +34,19 @@ export function Profile() {
         .from('profiles')
         .select('full_name, phone, bio, email')
         .eq('user_id', user!.id)
-        .single()
+        .maybeSingle()
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching profile:', error)
+        // Initialize with user email if profile doesn't exist
+        setProfileData({
+          fullName: '',
+          email: user!.email || '',
+          phone: '',
+          bio: ''
+        })
+        return
+      }
 
       if (data) {
         setProfileData({
@@ -46,10 +56,23 @@ export function Profile() {
           bio: data.bio || ''
         })
       } else {
-        console.warn('Profile not found for user')
+        // No profile found, initialize with user email
+        setProfileData({
+          fullName: '',
+          email: user!.email || '',
+          phone: '',
+          bio: ''
+        })
       }
     } catch (error) {
       console.error('Error fetching profile data:', error)
+      // Fallback to user email
+      setProfileData({
+        fullName: '',
+        email: user!.email || '',
+        phone: '',
+        bio: ''
+      })
     }
   }
 
@@ -105,7 +128,9 @@ export function Profile() {
 
     try {
       setLoading(true)
-      const { error } = await supabase
+      
+      // Try to update first
+      const { error: updateError } = await supabase
         .from('profiles')
         .update({
           full_name: profileData.fullName,
@@ -115,11 +140,27 @@ export function Profile() {
         })
         .eq('user_id', user!.id)
 
-      if (error) throw error
+      // If update fails because no profile exists, create one
+      if (updateError && updateError.code === 'PGRST116') {
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user!.id,
+            full_name: profileData.fullName,
+            phone: profileData.phone,
+            bio: profileData.bio,
+            email: profileData.email
+          })
+        
+        if (insertError) throw insertError
+      } else if (updateError) {
+        throw updateError
+      }
 
       setEditing(false)
       alert('Profile updated successfully!')
     } catch (error: any) {
+      console.error('Error saving profile:', error)
       setErrors({ general: error.message })
     } finally {
       setLoading(false)
