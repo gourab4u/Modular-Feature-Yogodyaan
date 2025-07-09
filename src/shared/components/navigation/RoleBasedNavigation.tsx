@@ -1,20 +1,26 @@
-// RoleBasedNavigation.jsx
+// shared/components/navigation/RoleBasedNavigation.tsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { getModulesByRole, getDashboardLabel } from './roleConfig';
+import { getModulesByRole, getDashboardLabel, ModuleWithConfig } from '../../config/roleConfig';
+import { User } from '../../types/user';
 
-const RoleBasedNavigation = ({ user }) => {
+interface RoleBasedNavigationProps {
+  user: User;
+  className?: string;
+}
+
+const RoleBasedNavigation: React.FC<RoleBasedNavigationProps> = ({ user, className = '' }) => {
   const location = useLocation();
-  const userModules = getModulesByRole(user.role);
-  const dashboardLabel = getDashboardLabel(user.role);
+  const userModules: ModuleWithConfig[] = getModulesByRole(user.role);
+  const dashboardLabel: string = getDashboardLabel(user.role);
 
   return (
-    <nav className="dashboard-navigation">
+    <nav className={`dashboard-navigation ${className}`}>
       <div className="nav-header">
         <h2>{dashboardLabel}</h2>
         <div className="user-info">
           <span>{user.name}</span>
-          <span className="role-badge">{user.role}</span>
+          <span className="role-badge">{user.role.replace('_', ' ')}</span>
         </div>
       </div>
       
