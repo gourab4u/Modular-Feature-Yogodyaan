@@ -2,7 +2,7 @@ import { Calendar, Clock, DollarSign, Filter, Plus, Save, Search, Users, X, Aler
 import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
-import { ClockSelector } from '../../../shared/components/ui/ClockSelector'
+import  ClockSelector from '../../../shared/components/ui/ClockSelector'
 import { supabase } from '../../../shared/lib/supabase'
 
 interface ClassAssignment {
