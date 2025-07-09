@@ -47,13 +47,13 @@ export default function ClockSelector({ value, onChange, label, error }: ClockSe
     return `${hour}:${minute.toString().padStart(2, '0')} ${period}`;
   };
 
+  // Modified function - removed setIsOpen(false) to keep popup open
   const handleTimeSelect = (hour: number, minute: number, newPeriod: 'AM' | 'PM') => {
     setSelectedHour(hour);
     setSelectedMinute(minute);
     setPeriod(newPeriod);
-    const timeString = formatTime(hour, minute, newPeriod);
-    onChange(timeString);
-    setIsOpen(false);
+    // Removed the auto-close behavior
+    // setIsOpen(false); // <-- This was causing the issue
   };
 
   const hours = Array.from({ length: 12 }, (_, i) => i + 1);
