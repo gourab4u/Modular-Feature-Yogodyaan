@@ -1,25 +1,16 @@
 // src/features/dashboard/components/UniversalDashboard.tsx
 
-import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { User } from '../../../shared/types/user';
-import { getModulesForRole, hasModuleAccess } from '../../../shared/config/roleConfig';
+import React, { Suspense, useEffect, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Footer } from '../../../shared/components/layout/Footer';
+import { Header } from '../../../shared/components/layout/Header';
 import RoleBasedNavigation from '../../../shared/components/navigation/RoleBasedNavigation';
+import { getModulesForRole, hasModuleAccess } from '../../../shared/config/roleConfig';
+import { User } from '../../../shared/types/user';
 
-// Lazy load components
-const Overview = React.lazy(() => import('./modules/Overview'));
-const UserManagement = React.lazy(() => import('./modules/UserManagement'));
+// Lazy load components  (Modules add here)
 const InstructorManagement = React.lazy(() => import('./modules/InstructorManagement'));
-const Transactions = React.lazy(() => import('./modules/Transactions'));
-const BusinessSettings = React.lazy(() => import('./modules/BusinessSettings'));
-const ArticleEditing = React.lazy(() => import('./modules/ArticleEditing'));
-const UserProfile = React.lazy(() => import('./modules/UserProfile'));
-const Bookings = React.lazy(() => import('./modules/Bookings'));
-const AssignedBookings = React.lazy(() => import('./modules/AssignedBookings'));
-const WeeklySchedule = React.lazy(() => import('./modules/WeeklySchedule'));
-const FinancialData = React.lazy(() => import('./modules/FinancialData'));
-const Forms = React.lazy(() => import('./modules/Forms'));
-const CommentModeration = React.lazy(() => import('./modules/CommentModeration'));
+const ClassAssignmentManager = React.lazy(() => import('./modules/ClassAssignmentManager'));
 
 interface UniversalDashboardProps {
   user: User;
@@ -27,77 +18,117 @@ interface UniversalDashboardProps {
 
 const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
   const userModules = getModulesForRole(user.role);
-  
-  // Component mapping
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Debug logs
+  console.log('user.role:', user.role);
+  console.log('userModules:', userModules);
+
+  // Component mapping (Modules add here)
   const componentMap: Record<string, React.ComponentType> = {
-    Overview,
-    UserManagement,
     InstructorManagement,
-    Transactions,
-    BusinessSettings,
-    ArticleEditing,
-    UserProfile,
-    Bookings,
-    AssignedBookings,
-    WeeklySchedule,
-    FinancialData,
-    Forms,
-    CommentModeration
+    ClassAssignmentManager,
   };
 
-  // Get the first available module for redirect
+  // Get the first available module for default tab
   const defaultModule = userModules[0]?.id || 'user_profile';
 
-  // Protected Route Component
-  const ProtectedModuleRoute: React.FC<{ 
-    moduleId: string; 
-    component: React.ComponentType; 
-  }> = ({ moduleId, component: Component }) => {
-    if (!hasModuleAccess(user.role, moduleId as any)) {
-      return <Navigate to="/unauthorized" replace />;
+  // Extract current module from URL path
+  const getCurrentModuleFromPath = () => {
+    const path = location.pathname;
+    const pathSegments = path.split('/');
+    const moduleId = pathSegments[pathSegments.length - 1];
+
+    // Check if the module exists and user has access
+    const moduleExists = userModules.some(module => module.id === moduleId);
+    const hasAccess = hasModuleAccess(user.role, moduleId as any);
+
+    return (moduleExists && hasAccess) ? moduleId : defaultModule;
+  };
+
+  // State for managing active tab - sync with URL
+  const [activeTab, setActiveTab] = useState<string>(getCurrentModuleFromPath());
+
+  // Sync activeTab with URL changes
+  useEffect(() => {
+    const currentModule = getCurrentModuleFromPath();
+    if (currentModule !== activeTab) {
+      setActiveTab(currentModule);
     }
-    
+  }, [location.pathname, activeTab, userModules, user.role]);
+
+  // Handle tab change - update both state and URL
+  const handleTabChange = (tabId: string) => {
+    if (hasModuleAccess(user.role, tabId as any)) {
+      setActiveTab(tabId);
+      navigate(`/dashboard/${tabId}`);
+    }
+  };
+
+  // Get the active component
+  const getActiveComponent = () => {
+    const activeModule = userModules.find(module => module.id === activeTab);
+
+    if (!activeModule) {
+      console.warn(`Module with id ${activeTab} not found`);
+      return null;
+    }
+
+    if (!hasModuleAccess(user.role, activeTab as any)) {
+      return <div className="unauthorized">You don't have access to this module</div>;
+    }
+
+    const Component = componentMap[activeModule.component];
+    if (!Component) {
+      console.warn(`Component ${activeModule.component} not found`);
+      return <div className="error">Component not found</div>;
+    }
+
     return <Component />;
   };
 
   return (
     <div className="universal-dashboard">
-      <div className="dashboard-sidebar">
-        <RoleBasedNavigation user={user} />
-      </div>
-      
-      <div className="dashboard-content">
-        <Suspense fallback={<div className="loading">Loading...</div>}>
-          <Routes>
-            {/* Default redirect to first available module */}
-            <Route path="/" element={<Navigate to={defaultModule} replace />} />
-            
-            {/* Dynamic routes based on user role */}
-            {userModules.map(module => {
-              const Component = componentMap[module.component];
-              if (!Component) {
-                console.warn(`Component ${module.component} not found`);
-                return null;
-              }
-              
-              return (
-                <Route 
+      {/* Header */}
+      <Header user={user} />
+
+      <div className="dashboard-container">
+        <div className="dashboard-main">
+          <div className="dashboard-sidebar">
+            <RoleBasedNavigation
+              user={user}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+            />
+          </div>
+
+          <div className="dashboard-content">
+            {/* Tab Navigation */}
+            <div className="dashboard-tabs">
+              {userModules.map(module => (
+                <button
                   key={module.id}
-                  path={`/${module.id}`} 
-                  element={
-                    <ProtectedModuleRoute 
-                      moduleId={module.id} 
-                      component={Component} 
-                    />
-                  } 
-                />
-              );
-            })}
-            
-            {/* Fallback for unauthorized access */}
-            <Route path="*" element={<Navigate to={defaultModule} replace />} />
-          </Routes>
-        </Suspense>
+                  className={`tab-button ${activeTab === module.id ? 'active' : ''}`}
+                  onClick={() => handleTabChange(module.id)}
+                  disabled={!hasModuleAccess(user.role, module.id as any)}
+                >
+                  {module.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab Content */}
+            <div className="dashboard-tab-content">
+              <Suspense fallback={<div className="loading">Loading...</div>}>
+                {getActiveComponent()}
+              </Suspense>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <Footer />
       </div>
     </div>
   );

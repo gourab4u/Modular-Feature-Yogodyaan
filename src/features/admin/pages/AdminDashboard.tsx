@@ -37,7 +37,7 @@ import { UserManagement } from '../components/UserManagement'
 import { WeeklyClassScheduler } from '../components/WeeklyClassScheduler'
 import { YogaAcharyaDashboard } from '../components/YogaAcharyaDashboard'
 import { useAdmin } from '../contexts/AdminContext'
-import  TransactionManagement from '../components/TransactionManagement'
+import TransactionManagement from '../components/TransactionManagement'
 
 interface DashboardStats {
   totalBookings: number
@@ -236,11 +236,10 @@ export function AdminDashboard() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`py-4 text-sm font-medium flex items-center space-x-1 border-b-2 ${
-                activeTab === tab.id
+              className={`py-4 text-sm font-medium flex items-center space-x-1 border-b-2 ${activeTab === tab.id
                   ? 'border-emerald-600 text-emerald-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
+                }`}
             >
               {tab.icon}
               <span>{tab.label}</span>

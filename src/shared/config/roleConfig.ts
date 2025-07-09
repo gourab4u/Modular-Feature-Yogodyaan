@@ -1,15 +1,15 @@
 // src/shared/config/roleConfig.ts
 
-export type UserRole = 
-  | 'admin' 
-  | 'super_user' 
-  | 'instructor' 
-  | 'yoga_acharya' 
-  | 'energy_exchange_lead' 
-  | 'sangha_guide' 
+export type UserRole =
+  | 'admin'
+  | 'super_user'
+  | 'instructor'
+  | 'yoga_acharya'
+  | 'energy_exchange_lead'
+  | 'sangha_guide'
   | 'user';
 
-export type DashboardModule = 
+export type DashboardModule =
   | 'overview'
   | 'user_management'
   | 'instructor_management'
@@ -48,7 +48,7 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'forms', title: 'Forms', component: 'Forms', icon: 'file-text', order: 11 },
     { id: 'comment_moderation', title: 'Comment Moderation', component: 'CommentModeration', icon: 'message-square', order: 12 }
   ],
-  
+
   admin: [
     { id: 'overview', title: 'Overview', component: 'Overview', icon: 'dashboard', order: 1 },
     { id: 'user_management', title: 'User Management', component: 'UserManagement', icon: 'users', order: 2 },
@@ -67,11 +67,9 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
   ],
 
   yoga_acharya: [
-    { id: 'bookings', title: 'Bookings', component: 'Bookings', icon: 'calendar', order: 1 },
-    { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 2 },
-    { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 3 },
-    { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 4 },
-    { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 5 }
+    { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 1 },
+    { id: 'class_assignment', title: 'Class Management', component: 'ClassAssignmentManager', icon: 'edit', order: 2 }
+
   ],
 
   energy_exchange_lead: [

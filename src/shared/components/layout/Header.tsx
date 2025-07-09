@@ -1,20 +1,20 @@
-import { BookOpen, ChevronDown, ChevronUp, LayoutDashboard, LogOut, Menu, User, UserCircle, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { useAdmin as useAdminContext } from '../../../features/admin/contexts/AdminContext'
-import { useAuth } from '../../../features/auth/contexts/AuthContext'
-import { Button } from '../ui/Button'
+import { BookOpen, ChevronDown, ChevronUp, LayoutDashboard, LogOut, Menu, User, UserCircle, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useAdmin as useAdminContext } from '../../../features/admin/contexts/AdminContext';
+import { useAuth } from '../../../features/auth/contexts/AuthContext';
+import { Button } from '../ui/Button';
 
 export function Header() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const { user, isMantraCurator: authMantraCurator, signOut } = useAuth()
-  const { isAdmin, isMantraCurator: adminMantraCurator } = useAdminContext()
-  const location = useLocation()
-  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const { user, isMantraCurator: authMantraCurator, signOut } = useAuth();
+  const { isAdmin, isMantraCurator: adminMantraCurator } = useAdminContext();
+  const location = useLocation();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Combine curator status from both contexts for backward compatibility
-  const isMantraCurator = authMantraCurator || adminMantraCurator
+  const isMantraCurator = authMantraCurator || adminMantraCurator;
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -24,39 +24,39 @@ export function Header() {
     { name: 'Learning', href: '/learning' },
     { name: 'Testimonials', href: '/testimonials' },
     { name: 'Contact', href: '/contact' },
-  ]
+  ];
 
-  const isActive = (path: string) => location.pathname === path
+  const isActive = (path: string) => location.pathname === path;
 
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsDropdownOpen(false)
+        setIsDropdownOpen(false);
       }
-    }
+    };
 
-    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('mousedown', handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [])
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const getUserDisplayName = () => {
     if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name
+      return user.user_metadata.full_name;
     }
     // If no full name, extract name from email (before @)
     if (user?.email) {
-      return user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+      return user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
-    return 'User'
-  }
+    return 'User';
+  };
 
   const handleSignOut = () => {
-    signOut()
-    setIsDropdownOpen(false)
-  }
+    signOut();
+    setIsDropdownOpen(false);
+  };
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100">
@@ -76,11 +76,10 @@ export function Header() {
               <Link
                 key={item.name}
                 to={item.href}
-                className={`font-medium transition-colors duration-200 ${
-                  isActive(item.href)
-                    ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
-                    : 'text-gray-700 hover:text-blue-600'
-                }`}
+                className={`font-medium transition-colors duration-200 ${isActive(item.href)
+                  ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
+                  : 'text-gray-700 hover:text-blue-600'
+                  }`}
               >
                 {item.name}
               </Link>
@@ -122,6 +121,15 @@ export function Header() {
                       Profile
                     </Link>
 
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setIsDropdownOpen(false)}
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                    >
+                      <LayoutDashboard size={16} className="mr-2" />
+                      Dashboard
+                    </Link>
+
                     {isMantraCurator && (
                       <Link
                         to="/admin/dashboard"
@@ -132,7 +140,7 @@ export function Header() {
                         Manage Articles
                       </Link>
                     )}
-                    
+
                     {isAdmin && (
                       <Link
                         to="/admin/dashboard"
@@ -143,9 +151,9 @@ export function Header() {
                         Admin Dashboard
                       </Link>
                     )}
-                    
+
                     <hr className="my-1" />
-                    
+
                     <button
                       onClick={handleSignOut}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -180,11 +188,10 @@ export function Header() {
                 <Link
                   key={item.name}
                   to={item.href}
-                  className={`font-medium transition-colors duration-200 ${
-                    isActive(item.href)
-                      ? 'text-blue-600'
-                      : 'text-gray-700 hover:text-blue-600'
-                  }`}
+                  className={`font-medium transition-colors duration-200 ${isActive(item.href)
+                    ? 'text-blue-600'
+                    : 'text-gray-700 hover:text-blue-600'
+                    }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
@@ -201,7 +208,7 @@ export function Header() {
                         {isMantraCurator && !isAdmin && <span className="text-emerald-600 ml-1">(Curator)</span>}
                       </span>
                     </div>
-                    
+
                     <Link
                       to="/profile"
                       onClick={() => setIsMenuOpen(false)}
@@ -209,6 +216,15 @@ export function Header() {
                     >
                       <UserCircle size={16} />
                       <span>Profile</span>
+                    </Link>
+
+                    <Link
+                      to="/dashboard"
+                      onClick={() => setIsMenuOpen(false)}
+                      className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors py-2"
+                    >
+                      <LayoutDashboard size={16} />
+                      <span>Dashboard</span>
                     </Link>
 
                     {isMantraCurator && (
@@ -221,7 +237,7 @@ export function Header() {
                         <span>Manage Articles</span>
                       </Link>
                     )}
-                    
+
                     {isAdmin && (
                       <Link
                         to="/admin/dashboard"
@@ -232,13 +248,13 @@ export function Header() {
                         <span>Admin Dashboard</span>
                       </Link>
                     )}
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        signOut()
-                        setIsMenuOpen(false)
+                        signOut();
+                        setIsMenuOpen(false);
                       }}
                       className="flex items-center space-x-1 w-full justify-center"
                     >
@@ -257,5 +273,5 @@ export function Header() {
         )}
       </div>
     </header>
-  )
+  );
 }
