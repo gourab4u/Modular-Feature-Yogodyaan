@@ -37,6 +37,7 @@ import { UserManagement } from '../components/UserManagement'
 import { WeeklyClassScheduler } from '../components/WeeklyClassScheduler'
 import { YogaAcharyaDashboard } from '../components/YogaAcharyaDashboard'
 import { useAdmin } from '../contexts/AdminContext'
+import { TransactionManagement } from '../components/TransactionManagement'
 
 interface DashboardStats {
   totalBookings: number
@@ -266,7 +267,7 @@ export function AdminDashboard() {
         {activeTab === 'bookings' && <BookingManagement />}
         {activeTab === 'articles' && <ArticleManagement />}
         {activeTab === 'subscriptions' && <BusinessSettings />}
-        {activeTab === 'transactions' && <BusinessSettings />}
+        {activeTab === 'transactions' && <TransactionManagement />}
         {activeTab === 'queries' && <BusinessSettings />}
         {activeTab === 'contacts' && <BusinessSettings />}
         {activeTab === 'submissions' && <FormSubmissions />}
