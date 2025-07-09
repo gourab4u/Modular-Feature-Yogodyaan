@@ -1,118 +1,104 @@
-// features/dashboard/components/UniversalDashboard.tsx
+// src/features/dashboard/components/UniversalDashboard.tsx
+
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { hasModuleAccess, getUserModules, ModuleKey } from '../../../shared/config/roleConfig';
 import { User } from '../../../shared/types/user';
+import { getModulesForRole, hasModuleAccess } from '../../../shared/config/roleConfig';
 import RoleBasedNavigation from '../../../shared/components/navigation/RoleBasedNavigation';
 
-// Import your existing components
-import Overview from './modules/Overview';
-import UserManagement from './modules/UserManagement';
-import InstructorManagement from './modules/InstructorManagement';
-import Transactions from './modules/Transactions';
-import BusinessSettings from './modules/BusinessSettings';
-import UserProfile from './modules/UserProfile';
-
-// Import new components (create these as needed)
-import ArticleEditor from './modules/ArticleEditor';
-import AssignedBookings from './modules/AssignedBookings';
-import BookingManagement from './modules/BookingManagement';
-import UserData from './modules/UserData';
-import WeeklySchedule from './modules/WeeklySchedule';
-import FinancialData from './modules/FinancialData';
-import CommentModeration from './modules/CommentModeration';
-import ArticleReview from './modules/ArticleReview';
-import Forms from './modules/Forms';
+// Lazy load components
+const Overview = React.lazy(() => import('./modules/Overview'));
+const UserManagement = React.lazy(() => import('./modules/UserManagement'));
+const InstructorManagement = React.lazy(() => import('./modules/InstructorManagement'));
+const Transactions = React.lazy(() => import('./modules/Transactions'));
+const BusinessSettings = React.lazy(() => import('./modules/BusinessSettings'));
+const ArticleEditing = React.lazy(() => import('./modules/ArticleEditing'));
+const UserProfile = React.lazy(() => import('./modules/UserProfile'));
+const Bookings = React.lazy(() => import('./modules/Bookings'));
+const AssignedBookings = React.lazy(() => import('./modules/AssignedBookings'));
+const WeeklySchedule = React.lazy(() => import('./modules/WeeklySchedule'));
+const FinancialData = React.lazy(() => import('./modules/FinancialData'));
+const Forms = React.lazy(() => import('./modules/Forms'));
+const CommentModeration = React.lazy(() => import('./modules/CommentModeration'));
 
 interface UniversalDashboardProps {
   user: User;
 }
 
-interface ModuleComponentProps {
-  user: User;
-}
-
 const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
-  const userModules: ModuleKey[] = getUserModules(user.role);
+  const userModules = getModulesForRole(user.role);
   
-  // Get the first available module as default route
-  const defaultModule: ModuleKey | undefined = userModules[0];
-  const defaultPath: string = defaultModule ? `/dashboard/${defaultModule.replace('_', '-')}` : '/dashboard/profile';
-
-  // Component mapping with proper typing
-  const componentMap: Record<ModuleKey, React.ComponentType<ModuleComponentProps>> = {
-    overview: Overview,
-    user_management: UserManagement,
-    instructor_management: InstructorManagement,
-    transactions: Transactions,
-    business_settings: BusinessSettings,
-    forms: Forms,
-    article_editor: ArticleEditor,
-    assigned_bookings: AssignedBookings,
-    booking_management: BookingManagement,
-    user_data: UserData,
-    weekly_schedule: WeeklySchedule,
-    financial_data: FinancialData,
-    comment_moderation: CommentModeration,
-    article_review: ArticleReview,
-    profile: UserProfile
+  // Component mapping
+  const componentMap: Record<string, React.ComponentType> = {
+    Overview,
+    UserManagement,
+    InstructorManagement,
+    Transactions,
+    BusinessSettings,
+    ArticleEditing,
+    UserProfile,
+    Bookings,
+    AssignedBookings,
+    WeeklySchedule,
+    FinancialData,
+    Forms,
+    CommentModeration
   };
 
-  // Protected Route Component
-  interface ProtectedModuleRouteProps {
-    moduleKey: ModuleKey;
-    component: React.ComponentType<ModuleComponentProps>;
-  }
+  // Get the first available module for redirect
+  const defaultModule = userModules[0]?.id || 'user_profile';
 
-  const ProtectedModuleRoute: React.FC<ProtectedModuleRouteProps> = ({ 
-    moduleKey, 
-    component: Component 
-  }) => {
-    if (!hasModuleAccess(user.role, moduleKey)) {
-      return (
-        <div className="unauthorized">
-          <h2>Access Denied</h2>
-          <p>You don't have permission to access this module.</p>
-        </div>
-      );
+  // Protected Route Component
+  const ProtectedModuleRoute: React.FC<{ 
+    moduleId: string; 
+    component: React.ComponentType; 
+  }> = ({ moduleId, component: Component }) => {
+    if (!hasModuleAccess(user.role, moduleId as any)) {
+      return <Navigate to="/unauthorized" replace />;
     }
-    return <Component user={user} />;
+    
+    return <Component />;
   };
 
   return (
-    <div className="dashboard-container">
-      <aside className="dashboard-sidebar">
+    <div className="universal-dashboard">
+      <div className="dashboard-sidebar">
         <RoleBasedNavigation user={user} />
-      </aside>
+      </div>
       
-      <main className="dashboard-content">
+      <div className="dashboard-content">
         <Suspense fallback={<div className="loading">Loading...</div>}>
           <Routes>
-            {/* Default redirect */}
-            <Route path="/dashboard" element={<Navigate to={defaultPath} replace />} />
+            {/* Default redirect to first available module */}
+            <Route path="/" element={<Navigate to={defaultModule} replace />} />
             
             {/* Dynamic routes based on user role */}
-            {Object.entries(componentMap).map(([moduleKey, Component]) => {
-              const path: string = `/dashboard/${moduleKey.replace('_', '-')}`;
+            {userModules.map(module => {
+              const Component = componentMap[module.component];
+              if (!Component) {
+                console.warn(`Component ${module.component} not found`);
+                return null;
+              }
+              
               return (
                 <Route 
-                  key={moduleKey}
-                  path={path}
+                  key={module.id}
+                  path={`/${module.id}`} 
                   element={
                     <ProtectedModuleRoute 
-                      moduleKey={moduleKey as ModuleKey} 
+                      moduleId={module.id} 
                       component={Component} 
                     />
-                  }
+                  } 
                 />
               );
             })}
             
-            {/* Fallback route */}
-            <Route path="*" element={<div>Module not found</div>} />
+            {/* Fallback for unauthorized access */}
+            <Route path="*" element={<Navigate to={defaultModule} replace />} />
           </Routes>
         </Suspense>
-      </main>
+      </div>
     </div>
   );
 };
