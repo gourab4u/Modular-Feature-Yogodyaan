@@ -37,7 +37,7 @@ import { UserManagement } from '../components/UserManagement'
 import { WeeklyClassScheduler } from '../components/WeeklyClassScheduler'
 import { YogaAcharyaDashboard } from '../components/YogaAcharyaDashboard'
 import { useAdmin } from '../contexts/AdminContext'
-import { TransactionManagement } from '../components/TransactionManagement'
+import  TransactionManagement from '../components/TransactionManagement'
 
 interface DashboardStats {
   totalBookings: number
