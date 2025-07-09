@@ -1,35 +1,27 @@
-// shared/types/user.ts
+// src/shared/types/user.ts
+
 import { UserRole } from '../config/roleConfig';
 
 export interface User {
   id: string;
-  name: string;
   email: string;
+  name: string;
   role: UserRole;
-  avatar?: string;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+  // Add other user properties as needed
 }
 
-export interface AuthUser extends User {
-  token: string;
-  permissions?: string[];
-}
-
-export interface UserContextType {
+export interface AuthContextType {
   user: User | null;
-  isAuthenticated: boolean;
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => void;
-  updateUser: (updates: Partial<User>) => void;
+  isLoading: boolean;
+  isAuthenticated: boolean;
 }
 
 export interface LoginCredentials {
   email: string;
   password: string;
-}
-
-export interface RegisterData extends LoginCredentials {
-  name: string;
-  role?: UserRole;
 }
