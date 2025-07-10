@@ -8,9 +8,21 @@ import RoleBasedNavigation from '../../../shared/components/navigation/RoleBased
 import { getModulesForRole, hasModuleAccess } from '../../../shared/config/roleConfig';
 import { User } from '../../../shared/types/user';
 
+
 // Lazy load components  (Modules add here)
 const InstructorManagement = React.lazy(() => import('./modules/InstructorManagement'));
 const ClassAssignmentManager = React.lazy(() => import('./modules/ClassAssignmentManager'));
+const ArticleManagement = React.lazy(() => import('./modules/ArticleManagement'));
+const UserManagement = React.lazy(() => import('./modules/UserManagement'));
+const UserRoleManagement = React.lazy(() => import('./modules/UserRoleManagement'));
+const TransactionManagement = React.lazy(() => import('./modules/TransactionManagement'));
+const BusinessSettings = React.lazy(() => import('./modules/BusinessSettings'));
+const BookingManagement = React.lazy(() => import('./modules/BookingManagement'));
+const WeeklySchedule = React.lazy(() => import('./modules/WeeklyClassScheduler'));
+const FormSubmissions = React.lazy(() => import('./modules/FormSubmissions'));
+const ContentReview = React.lazy(() => import('./modules/ContentReview'));
+
+
 
 interface UniversalDashboardProps {
   user: User;
@@ -29,6 +41,15 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
   const componentMap: Record<string, React.ComponentType> = {
     InstructorManagement,
     ClassAssignmentManager,
+    ArticleManagement,
+    UserManagement,
+    UserRoleManagement,
+    TransactionManagement,
+    BusinessSettings,
+    BookingManagement,
+    WeeklySchedule,
+    FormSubmissions,
+    ContentReview,
   };
 
   // Get the first available module for default tab

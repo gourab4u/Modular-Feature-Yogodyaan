@@ -1,19 +1,25 @@
+// In your Article type definition
 export interface Article {
-  id: string
-  title: string
-  content: string
-  preview_text: string
-  image_url?: string
-  video_url?: string
-  category: string
-  tags: string[]
-  status: 'draft' | 'published'
-  view_count: number
-  created_at: string
-  updated_at: string
-  published_at?: string
-  average_rating?: number
-  total_ratings?: number
+  id: string;
+  title: string;
+  content: string;
+  preview_text: string;
+  image_url: string;
+  video_url: string;
+  category: string;
+  tags: string[];
+  status: string;
+  view_count: number;
+  created_at: string;
+  updated_at: string;
+  published_at: string | null;
+  author_id: string;
+  author?: {
+    id: string;
+    full_name: string;
+    email: string;
+    avatar_url: string;
+  };
 }
 
 export interface Rating {
