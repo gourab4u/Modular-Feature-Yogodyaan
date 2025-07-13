@@ -83,13 +83,13 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
   sangha_guide: [
     { id: 'comment_moderation', title: 'Comment Moderation', component: 'CommentModeration', icon: 'message-square', order: 1 },
     { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 2 },
-    { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 3 },
+    { id: 'article_workflow', title: 'Article Workflow', component: 'ArticleWorkflow', icon: 'edit', order: 3 },
     { id: 'content_review', title: 'Content Review', component: 'ContentReview', icon: 'check-circle', order: 4 }
   ],
 
   user: [
     { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 1 },
-    { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 2 }
+    { id: 'article_workflow', title: 'My Articles', component: 'ArticleWorkflow', icon: 'edit', order: 2 }
   ]
 };
 

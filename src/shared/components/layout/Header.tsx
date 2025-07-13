@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAdmin as useAdminContext } from '../../../features/admin/contexts/AdminContext';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
+import { NotificationCenter } from '../../../features/learning/components/NotificationCenter';
 import { Button } from '../ui/Button';
 
 export function Header() {
@@ -88,6 +89,7 @@ export function Header() {
 
           {/* User Menu */}
           <div className="hidden md:flex items-center space-x-4">
+            {user && <NotificationCenter />}
             {user ? (
               <div className="relative" ref={dropdownRef}>
                 <button

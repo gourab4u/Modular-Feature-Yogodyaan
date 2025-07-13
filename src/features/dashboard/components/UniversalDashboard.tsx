@@ -21,6 +21,7 @@ const BookingManagement = React.lazy(() => import('./Modules/BookingManagement')
 const WeeklySchedule = React.lazy(() => import('./Modules/WeeklyClassScheduler'));
 const FormSubmissions = React.lazy(() => import('./Modules/FormSubmissions'));
 const ContentReview = React.lazy(() => import('./Modules/ContentReview'));
+const ArticleWorkflow = React.lazy(() => import('./Modules/ArticleWorkflow'));
 
 
 
@@ -50,6 +51,7 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
     WeeklySchedule,
     FormSubmissions,
     ContentReview,
+    ArticleWorkflow,
   };
 
   // Get the first available module for default tab
