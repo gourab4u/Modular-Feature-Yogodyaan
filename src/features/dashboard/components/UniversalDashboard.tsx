@@ -10,17 +10,17 @@ import { User } from '../../../shared/types/user';
 
 
 // Lazy load components  (Modules add here)
-const InstructorManagement = React.lazy(() => import('./modules/InstructorManagement'));
-const ClassAssignmentManager = React.lazy(() => import('./modules/ClassAssignmentManager'));
-const ArticleManagement = React.lazy(() => import('./modules/ArticleManagement'));
-const UserManagement = React.lazy(() => import('./modules/UserManagement'));
-const UserRoleManagement = React.lazy(() => import('./modules/UserRoleManagement'));
-const TransactionManagement = React.lazy(() => import('./modules/TransactionManagement'));
-const BusinessSettings = React.lazy(() => import('./modules/BusinessSettings'));
-const BookingManagement = React.lazy(() => import('./modules/BookingManagement'));
-const WeeklySchedule = React.lazy(() => import('./modules/WeeklyClassScheduler'));
-const FormSubmissions = React.lazy(() => import('./modules/FormSubmissions'));
-const ContentReview = React.lazy(() => import('./modules/ContentReview'));
+const InstructorManagement = React.lazy(() => import('./Modules/InstructorManagement'));
+const ClassAssignmentManager = React.lazy(() => import('./Modules/ClassAssignmentManager'));
+const ArticleManagement = React.lazy(() => import('./Modules/ArticleManagement'));
+const UserManagement = React.lazy(() => import('./Modules/UserManagement'));
+const UserRoleManagement = React.lazy(() => import('./Modules/UserRoleManagement'));
+const TransactionManagement = React.lazy(() => import('./Modules/TransactionManagement'));
+const BusinessSettings = React.lazy(() => import('./Modules/BusinessSettings'));
+const BookingManagement = React.lazy(() => import('./Modules/BookingManagement'));
+const WeeklySchedule = React.lazy(() => import('./Modules/WeeklyClassScheduler'));
+const FormSubmissions = React.lazy(() => import('./Modules/FormSubmissions'));
+const ContentReview = React.lazy(() => import('./Modules/ContentReview'));
 
 
 
