@@ -1,8 +1,9 @@
-import { Image, Save, Tag, Video, X } from 'lucide-react'
+import { Image, Save, Send, Tag, Video, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import ReactQuill from 'react-quill'
 import 'react-quill/dist/quill.snow.css'
 import { Button } from '../../../../shared/components/ui/Button'
+import { useAuth } from '../../../auth/contexts/AuthContext'
 import { Article } from '../../../learning/types/article'
 
 interface ArticleEditorProps {
@@ -13,6 +14,7 @@ interface ArticleEditorProps {
 }
 
 export function ArticleEditor({ article, onSave, onCancel, loading = false }: ArticleEditorProps) {
+  const { user, isAdmin, isSanghaGuide } = useAuth()
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -25,6 +27,7 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
   })
   const [newTag, setNewTag] = useState('')
   const [errors, setErrors] = useState<any>({})
+  const [submitAction, setSubmitAction] = useState<'draft' | 'review' | 'publish'>('draft')
 
   useEffect(() => {
     if (article) {
@@ -36,10 +39,13 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
         video_url: article.video_url || '',
         category: article.category,
         tags: article.tags || [],
-        status: article.status === 'pending_review' ? 'published' : article.status
+        // Don't allow changing from pending_review back to published for regular users
+        status: article.status === 'pending_review' && !isAdmin && !isSanghaGuide
+          ? 'draft'
+          : article.status
       })
     }
-  }, [article])
+  }, [article, isAdmin, isSanghaGuide])
 
   const categories = [
     'general',
@@ -124,13 +130,26 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
     return youtubeRegex.test(url) || vimeoRegex.test(url)
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleSubmit = async (action: 'draft' | 'review' | 'publish') => {
     if (!validateForm()) return
 
+    // Determine the final status based on action and user role
+    let finalStatus: string
+    if (action === 'publish' && (isAdmin || isSanghaGuide)) {
+      finalStatus = 'published'
+    } else if (action === 'review') {
+      finalStatus = 'pending_review'
+    } else {
+      finalStatus = 'draft'
+    }
+
     try {
-      await onSave(formData)
+      const finalFormData = {
+        ...formData,
+        status: finalStatus
+      }
+
+      await onSave(finalFormData)
     } catch (error) {
       console.error('Failed to save article:', error)
     }
@@ -142,9 +161,14 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
         <h2 className="text-2xl font-bold text-gray-900">
           {article ? 'Edit Article' : 'Create New Article'}
         </h2>
+        <p className="text-sm text-gray-600 mt-1">
+          {isAdmin || isSanghaGuide
+            ? 'You can save as draft, submit for review, or publish directly.'
+            : 'Save as draft or submit for review by sangha_guide.'}
+        </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+      <div className="p-6 space-y-6">
         {/* Title */}
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
@@ -187,40 +211,23 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
           </div>
         </div>
 
-        {/* Category and Status */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
-              Category
-            </label>
-            <select
-              id="category"
-              value={formData.category}
-              onChange={(e) => handleInputChange('category', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {categories.map(category => (
-                <option key={category} value={category}>
-                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              id="status"
-              value={formData.status}
-              onChange={(e) => handleInputChange('status', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-            </select>
-          </div>
+        {/* Category */}
+        <div>
+          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">
+            Category
+          </label>
+          <select
+            id="category"
+            value={formData.category}
+            onChange={(e) => handleInputChange('category', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            {categories.map(category => (
+              <option key={category} value={category}>
+                {category.charAt(0).toUpperCase() + category.slice(1)}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Image URL */}
@@ -332,7 +339,7 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+        <div className="flex justify-between pt-6 border-t border-gray-200">
           <Button
             type="button"
             variant="outline"
@@ -340,16 +347,71 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
           >
             Cancel
           </Button>
-          <Button
-            type="submit"
-            loading={loading}
-            className="flex items-center"
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {loading ? 'Saving...' : 'Save Article'}
-          </Button>
+
+          <div className="flex space-x-3">
+            {/* Save as Draft Button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleSubmit('draft')}
+              loading={loading && submitAction === 'draft'}
+              className="flex items-center"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {loading && submitAction === 'draft' ? 'Saving...' : 'Save Draft'}
+            </Button>
+
+            {/* Submit for Review Button (for regular users) */}
+            {!isAdmin && !isSanghaGuide && (
+              <Button
+                type="button"
+                onClick={() => {
+                  setSubmitAction('review')
+                  handleSubmit('review')
+                }}
+                loading={loading && submitAction === 'review'}
+                className="flex items-center bg-blue-600 hover:bg-blue-700"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {loading && submitAction === 'review' ? 'Submitting...' : 'Submit for Review'}
+              </Button>
+            )}
+
+            {/* Publish Button (for admins and sangha_guides) */}
+            {(isAdmin || isSanghaGuide) && (
+              <Button
+                type="button"
+                onClick={() => {
+                  setSubmitAction('publish')
+                  handleSubmit('publish')
+                }}
+                loading={loading && submitAction === 'publish'}
+                className="flex items-center bg-green-600 hover:bg-green-700"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                {loading && submitAction === 'publish' ? 'Publishing...' : 'Publish Now'}
+              </Button>
+            )}
+          </div>
         </div>
-      </form>
+
+        {/* Workflow Info */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 className="text-sm font-medium text-blue-900 mb-2">Article Workflow</h4>
+          {isAdmin || isSanghaGuide ? (
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• <strong>Save Draft:</strong> Keep working on your article</li>
+              <li>• <strong>Publish Now:</strong> Make article immediately available to users</li>
+            </ul>
+          ) : (
+            <ul className="text-sm text-blue-800 space-y-1">
+              <li>• <strong>Save Draft:</strong> Keep working on your article</li>
+              <li>• <strong>Submit for Review:</strong> Send to sangha_guide for approval</li>
+              <li>• Once approved, your article will be automatically published</li>
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

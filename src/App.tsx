@@ -2,6 +2,7 @@ import { Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 // Context imports - updated paths
 import { AdminProvider } from './features/admin/contexts/AdminContext'
 import { AuthProvider, useAuth } from './features/auth/contexts/AuthContext'
+import { NotificationProvider } from './features/notifications/contexts/NotificationContext'
 import { ThemeProvider } from './shared/contexts/ThemeContext'
 // Layout components - updated paths
 import { Footer } from './shared/components/layout/Footer'
@@ -30,13 +31,15 @@ import { NotFound } from './pages/NotFound'
 function App() {
   return (
     <ThemeProvider>
-      <AuthProvider>
-        <AdminProvider>
-          <Router>
-            <AppRoutes />
-          </Router>
-        </AdminProvider>
-      </AuthProvider>
+      <Router>
+        <AuthProvider>
+          <NotificationProvider>
+            <AdminProvider>
+              <AppRoutes />
+            </AdminProvider>
+          </NotificationProvider>
+        </AuthProvider>
+      </Router>
     </ThemeProvider>
   )
 }

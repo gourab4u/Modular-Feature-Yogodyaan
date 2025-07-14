@@ -10,7 +10,7 @@ export function NotFound() {
           <div className="text-9xl font-bold text-emerald-600 mb-4">404</div>
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Page Not Found</h1>
           <p className="text-gray-600 mb-8">
-            The page you're looking for doesn't exist. It might have been moved, 
+            The page you're looking for doesn't exist. It might have been moved,
             deleted, or you entered the wrong URL.
           </p>
         </div>
@@ -22,7 +22,7 @@ export function NotFound() {
               Go to Homepage
             </Button>
           </Link>
-          
+
           <button
             onClick={() => window.history.back()}
             className="w-full flex items-center justify-center text-emerald-600 hover:text-emerald-700 font-medium py-2"

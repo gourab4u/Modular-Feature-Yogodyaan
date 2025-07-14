@@ -1,11 +1,44 @@
-import { BarChart3, Edit, Eye, Plus, Trash2 } from 'lucide-react'
+import { AlertCircle, Edit, Eye, MessageSquare, Plus, Send, Trash2, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../../shared/lib/supabase'
 import { useAuth } from '../../../auth/contexts/AuthContext'
-import { Article } from '../../../learning/types/article'
 import { ArticleEditor } from './ArticleEditor'
+
+interface Article {
+  id: string
+  title: string
+  content: string
+  preview_text: string
+  image_url?: string
+  video_url?: string
+  category: string
+  tags: string[]
+  status: string
+  view_count: number
+  created_at: string
+  updated_at: string
+  published_at?: string
+  author_id?: string
+  moderation_status?: string
+  moderated_at?: string
+  moderated_by?: string
+}
+
+interface ModerationLog {
+  id: string
+  action: string
+  comment: string
+  moderated_at: string
+  moderated_by: string
+  moderator?: {
+    id: string
+    full_name: string
+    email: string
+    user_id: string
+  }
+}
 
 interface ArticleManagementProps {
   authorId?: string; // Optional prop for filtering by author
@@ -17,7 +50,11 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
   const [showEditor, setShowEditor] = useState(false)
   const [editingArticle, setEditingArticle] = useState<Article | null>(null)
   const [saving, setSaving] = useState(false)
-  const { user } = useAuth()
+  const [selectedArticleForFeedback, setSelectedArticleForFeedback] = useState<Article | null>(null)
+  const [moderationLogs, setModerationLogs] = useState<ModerationLog[]>([])
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false)
+  const [loadingFeedback, setLoadingFeedback] = useState(false)
+  const { user, isMantraCurator } = useAuth()
 
   useEffect(() => {
     fetchArticles()
@@ -26,21 +63,16 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
   const fetchArticles = async () => {
     try {
       setLoading(true)
+      let query = supabase
+        .from('articles')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-      // Build query based on whether we're filtering by author
-      let query = supabase.from('articles').select('*')
-
-      // If authorId is provided, filter by that author
-      // Otherwise, filter by current user's articles (users can only manage their own articles)
-      if (authorId) {
-        query = query.eq('author_id', authorId)
-      } else if (user) {
-        // All users can only see their own articles
-        query = query.eq('author_id', user.id)
+      // Filter by author if specified or if user is mantra curator
+      if (authorId || (isMantraCurator && user)) {
+        const filterAuthorId = authorId || user?.id
+        query = query.eq('author_id', filterAuthorId)
       }
-
-      // Sort by created date
-      query = query.order('created_at', { ascending: false })
 
       const { data, error } = await query
 
@@ -53,58 +85,135 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
     }
   }
 
+  const fetchModerationLogs = async (articleId: string) => {
+    try {
+      setLoadingFeedback(true)
+      const { data, error } = await supabase
+        .from('article_moderation_logs')
+        .select(`
+          id,
+          action,
+          comment,
+          moderated_at,
+          moderated_by,
+          moderator:profiles!article_moderation_logs_moderated_by_fkey(
+            id,
+            full_name,
+            email,
+            user_id
+          )
+        `)
+        .eq('article_id', articleId)
+        .order('moderated_at', { ascending: false })
+
+      if (error) throw error
+
+      console.log('Moderation logs fetched:', data) // Debug log
+      setModerationLogs(data || [])
+    } catch (error) {
+      console.error('Error fetching moderation logs:', error)
+      setModerationLogs([])
+    } finally {
+      setLoadingFeedback(false)
+    }
+  }
+
   const handleSaveArticle = async (articleData: Partial<Article>) => {
     try {
-      setSaving(true);
-
-      // If the user selects "Published", set status to "pending_review"
-      const newArticleData = {
-        ...articleData,
-        status: articleData.status === 'published' ? 'pending_review' : articleData.status,
-        author_id: user?.id || null,
-      };
+      setSaving(true)
 
       if (editingArticle) {
         // Update existing article
-        const { error } = await supabase
+        let query = supabase
           .from('articles')
-          .update(newArticleData)
+          .update({
+            ...articleData,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', editingArticle.id)
-          .eq('author_id', user?.id);
 
-        if (error) throw error;
+        // Add author check for mantra curators
+        if (isMantraCurator && user) {
+          query = query.eq('author_id', user.id)
+        }
+
+        const { error } = await query
+
+        if (error) throw error
       } else {
         // Create new article
-        const { error } = await supabase.from('articles').insert([newArticleData]);
+        const newArticleData = {
+          ...articleData,
+          author_id: user?.id || null,
+          status: articleData.status || 'draft',
+          view_count: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
 
-        if (error) throw error;
+        const { error } = await supabase
+          .from('articles')
+          .insert([newArticleData])
+
+        if (error) throw error
       }
 
-      await fetchArticles();
-      setShowEditor(false);
-      setEditingArticle(null);
+      await fetchArticles()
+      setEditingArticle(null)
+      setShowEditor(false)
+      alert('Article saved successfully!')
     } catch (error) {
-      console.error('Error saving article:', error);
+      console.error('Error saving article:', error)
+      alert('Failed to save article')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   const handleDeleteArticle = async (id: string) => {
     if (!confirm('Are you sure you want to delete this article?')) return
 
     try {
-      // Security check: only allow deleting own articles
-      const { error } = await supabase
+      let query = supabase
         .from('articles')
         .delete()
         .eq('id', id)
+
+      // Add author check for mantra curators
+      if (isMantraCurator && user) {
+        query = query.eq('author_id', user.id)
+      }
+
+      const { error } = await query
+
+      if (error) throw error
+
+      await fetchArticles()
+      alert('Article deleted successfully!')
+    } catch (error) {
+      console.error('Error deleting article:', error)
+      alert('Failed to delete article')
+    }
+  }
+
+  const handleSubmitForReview = async (articleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('articles')
+        .update({
+          status: 'pending_review',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', articleId)
         .eq('author_id', user?.id)
 
       if (error) throw error
+
       await fetchArticles()
+      alert('Article submitted for review!')
     } catch (error) {
-      console.error('Error deleting article:', error)
+      console.error('Error submitting article for review:', error)
+      alert('Failed to submit article for review')
     }
   }
 
@@ -118,21 +227,50 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
     setShowEditor(true)
   }
 
+  const handleViewFeedback = async (article: Article) => {
+    setSelectedArticleForFeedback(article)
+    setShowFeedbackModal(true)
+    await fetchModerationLogs(article.id)
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
-      day: 'numeric'
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
     })
   }
 
-  // Don't render anything if user is not authenticated
-  if (!user) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-600">Please log in to manage articles.</p>
-      </div>
-    )
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'published':
+        return 'bg-green-100 text-green-800'
+      case 'draft':
+        return 'bg-gray-100 text-gray-800'
+      case 'pending_review':
+        return 'bg-yellow-100 text-yellow-800'
+      case 'rejected':
+        return 'bg-red-100 text-red-800'
+      default:
+        return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const hasModeratorFeedback = (article: Article) => {
+    return article.moderation_status === 'rejected' || article.moderated_at
+  }
+
+  const getActionColor = (action: string) => {
+    switch (action) {
+      case 'approved':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'rejected':
+        return 'bg-red-100 text-red-800 border-red-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
   }
 
   if (showEditor) {
@@ -141,8 +279,8 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
         article={editingArticle || undefined}
         onSave={handleSaveArticle}
         onCancel={() => {
-          setShowEditor(false)
           setEditingArticle(null)
+          setShowEditor(false)
         }}
         loading={saving}
       />
@@ -170,7 +308,7 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Article
+                    Title
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Category
@@ -192,39 +330,29 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
               <tbody className="bg-white divide-y divide-gray-200">
                 {articles.map((article) => (
                   <tr key={article.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        {article.image_url && (
-                          <img
-                            src={article.image_url}
-                            alt=""
-                            className="w-12 h-12 rounded object-cover mr-4"
-                          />
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {article.title}
+                        {hasModeratorFeedback(article) && (
+                          <MessageSquare className="w-4 h-4 text-blue-500 inline ml-2" title="Has feedback" />
                         )}
-                        <div>
-                          <div className="text-sm font-medium text-gray-900 line-clamp-1">
-                            {article.title}
-                          </div>
-                          <div className="text-sm text-gray-500 line-clamp-2">
-                            {article.preview_text}
-                          </div>
-                        </div>
+                      </div>
+                      <div className="text-sm text-gray-500 truncate max-w-xs">
+                        {article.preview_text}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium capitalize">
-                        {article.category}
-                      </span>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {article.category}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${article.status === 'published' ? 'bg-green-100 text-green-800' :
-                        article.status === 'pending_review' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                        {article.status === 'pending_review' ? 'Under Review' :
-                          article.status === 'published' ? 'Published' :
-                            'Draft'}
-                      </span>
+                      <div className="flex items-center">
+                        <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(article.status)}`}>
+                          {article.status.replace('_', ' ')}
+                        </span>
+                        {article.status === 'draft' && article.moderation_status === 'rejected' && (
+                          <AlertCircle className="w-4 h-4 text-red-500 ml-2" title="Rejected - needs revision" />
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       <div className="flex items-center">
@@ -243,25 +371,44 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 hover:text-blue-900"
+                            title="View Published Article"
                           >
                             <Eye className="w-4 h-4" />
                           </a>
                         )}
+
+                        {hasModeratorFeedback(article) && (
+                          <button
+                            onClick={() => handleViewFeedback(article)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="View Moderator Feedback"
+                          >
+                            <MessageSquare className="w-4 h-4" />
+                          </button>
+                        )}
+
                         <button
                           onClick={() => handleEditArticle(article)}
-                          className={`text-indigo-600 hover:text-indigo-900 ${article.status === 'pending_review' ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                          disabled={article.status === 'pending_review'}
-                          title={article.status === 'pending_review' ? 'Cannot edit while under review' : 'Edit article'}
+                          className="text-indigo-600 hover:text-indigo-900"
+                          title="Edit Article"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
+
+                        {article.status === 'draft' && (
+                          <button
+                            onClick={() => handleSubmitForReview(article.id)}
+                            className="text-blue-600 hover:text-blue-900"
+                            title="Submit for Review"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        )}
+
                         <button
                           onClick={() => handleDeleteArticle(article.id)}
-                          className={`text-red-600 hover:text-red-900 ${article.status === 'pending_review' ? 'opacity-50 cursor-not-allowed' : ''
-                            }`}
-                          disabled={article.status === 'pending_review'}
-                          title={article.status === 'pending_review' ? 'Cannot delete while under review' : 'Delete article'}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete Article"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -275,20 +422,136 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
 
           {articles.length === 0 && (
             <div className="text-center py-12">
-              <BarChart3 className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No articles yet</h3>
-              <p className="text-gray-600 mb-4">Create your first article to get started.</p>
-              <Button onClick={handleCreateNew}>
-                <Plus className="w-4 h-4 mr-2" />
-                Create Article
-              </Button>
+              <p className="text-gray-500">No articles found. Create your first article!</p>
             </div>
           )}
         </div>
-      )
-      }
-    </div >
+      )}
+
+      {/* Enhanced Feedback Modal */}
+      {showFeedbackModal && selectedArticleForFeedback && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-900">
+                  Review History
+                </h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedArticleForFeedback.title}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowFeedbackModal(false)
+                  setSelectedArticleForFeedback(null)
+                  setModerationLogs([])
+                }}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {loadingFeedback ? (
+                <div className="flex justify-center py-8">
+                  <LoadingSpinner size="md" />
+                </div>
+              ) : moderationLogs.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500">No review history available yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {moderationLogs.map((log, index) => (
+                    <div key={log.id} className={`border rounded-lg p-4 ${getActionColor(log.action)}`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-3 py-1 text-xs rounded-full font-medium ${getActionColor(log.action)}`}>
+                            {log.action.charAt(0).toUpperCase() + log.action.slice(1)}
+                          </span>
+                          {index === 0 && (
+                            <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                              Latest
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm text-gray-600">
+                          {formatDate(log.moderated_at)}
+                        </span>
+                      </div>
+
+                      {log.moderator && (
+                        <div className="flex items-center mb-3">
+                          <User className="w-4 h-4 text-gray-500 mr-2" />
+                          <div>
+                            <span className="text-sm font-medium text-gray-900">
+                              Reviewed by: {log.moderator.full_name}
+                            </span>
+                            <span className="text-sm text-gray-500 ml-2">
+                              ({log.moderator.email})
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {log.comment && (
+                        <div className="bg-white bg-opacity-70 p-3 rounded border">
+                          <div className="text-sm font-medium text-gray-700 mb-1">
+                            Feedback:
+                          </div>
+                          <p className="text-sm text-gray-800">
+                            {log.comment}
+                          </p>
+                        </div>
+                      )}
+
+                      {!log.comment && (
+                        <div className="text-sm text-gray-600 italic">
+                          No additional comments provided.
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              {selectedArticleForFeedback.status === 'draft' &&
+                selectedArticleForFeedback.moderation_status === 'rejected' && (
+                  <Button
+                    onClick={() => {
+                      setShowFeedbackModal(false)
+                      setSelectedArticleForFeedback(null)
+                      setModerationLogs([])
+                      handleEditArticle(selectedArticleForFeedback)
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit & Resubmit
+                  </Button>
+                )}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowFeedbackModal(false)
+                  setSelectedArticleForFeedback(null)
+                  setModerationLogs([])
+                }}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
-export default ArticleManagement;
+// Add default export for lazy loading compatibility
+export default ArticleManagement

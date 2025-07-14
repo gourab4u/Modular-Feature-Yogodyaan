@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAdmin as useAdminContext } from '../../../features/admin/contexts/AdminContext';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
+import { NotificationDropdown } from '../../../features/notifications/components/NotificationDropdown';
 import { Button } from '../ui/Button';
 
 export function Header() {
@@ -89,81 +90,86 @@ export function Header() {
           {/* User Menu */}
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
-              <div className="relative" ref={dropdownRef}>
-                <button
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-gray-50"
-                >
-                  <User size={20} />
-                  <div className="flex flex-col items-start">
-                    <span className="text-sm font-medium">
-                      {getUserDisplayName()}
-                      {isAdmin && <span className="text-blue-600 ml-1">(Admin)</span>}
-                      {isMantraCurator && !isAdmin && <span className="text-emerald-600 ml-1">(Curator)</span>}
-                    </span>
-                  </div>
-                  {isDropdownOpen ? (
-                    <ChevronUp size={16} className="text-gray-400" />
-                  ) : (
-                    <ChevronDown size={16} className="text-gray-400" />
-                  )}
-                </button>
+              <>
+                {/* 🔔 Notification Bell - Added here */}
+                <NotificationDropdown />
 
-                {/* Dropdown Menu */}
-                {isDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                    <Link
-                      to="/profile"
-                      onClick={() => setIsDropdownOpen(false)}
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      <UserCircle size={16} className="mr-2" />
-                      Profile
-                    </Link>
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-gray-50"
+                  >
+                    <User size={20} />
+                    <div className="flex flex-col items-start">
+                      <span className="text-sm font-medium">
+                        {getUserDisplayName()}
+                        {isAdmin && <span className="text-blue-600 ml-1">(Admin)</span>}
+                        {isMantraCurator && !isAdmin && <span className="text-emerald-600 ml-1">(Curator)</span>}
+                      </span>
+                    </div>
+                    {isDropdownOpen ? (
+                      <ChevronUp size={16} className="text-gray-400" />
+                    ) : (
+                      <ChevronDown size={16} className="text-gray-400" />
+                    )}
+                  </button>
 
-                    <Link
-                      to="/dashboard"
-                      onClick={() => setIsDropdownOpen(false)}
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      <LayoutDashboard size={16} className="mr-2" />
-                      Dashboard
-                    </Link>
-
-                    {isMantraCurator && (
+                  {/* Dropdown Menu */}
+                  {isDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
                       <Link
-                        to="/admin/dashboard"
+                        to="/profile"
                         onClick={() => setIsDropdownOpen(false)}
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                       >
-                        <BookOpen size={16} className="mr-2" />
-                        Manage Articles
+                        <UserCircle size={16} className="mr-2" />
+                        Profile
                       </Link>
-                    )}
 
-                    {isAdmin && (
                       <Link
-                        to="/admin/dashboard"
+                        to="/dashboard"
                         onClick={() => setIsDropdownOpen(false)}
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                       >
                         <LayoutDashboard size={16} className="mr-2" />
-                        Admin Dashboard
+                        Dashboard
                       </Link>
-                    )}
 
-                    <hr className="my-1" />
+                      {isMantraCurator && (
+                        <Link
+                          to="/admin/dashboard"
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <BookOpen size={16} className="mr-2" />
+                          Manage Articles
+                        </Link>
+                      )}
 
-                    <button
-                      onClick={handleSignOut}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                    >
-                      <LogOut size={16} className="mr-2" />
-                      Sign Out
-                    </button>
-                  </div>
-                )}
-              </div>
+                      {isAdmin && (
+                        <Link
+                          to="/admin/dashboard"
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <LayoutDashboard size={16} className="mr-2" />
+                          Admin Dashboard
+                        </Link>
+                      )}
+
+                      <hr className="my-1" />
+
+                      <button
+                        onClick={handleSignOut}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <LogOut size={16} className="mr-2" />
+                        Sign Out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
             ) : (
               <Link to="/login">
                 <Button variant="outline" size="sm">Sign In</Button>
@@ -200,6 +206,12 @@ export function Header() {
               <div className="pt-4 border-t">
                 {user ? (
                   <div className="space-y-3">
+                    {/* 🔔 Mobile Notification Section */}
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+                      <span className="text-sm font-medium text-gray-700">Notifications</span>
+                      <NotificationDropdown />
+                    </div>
+
                     <div className="flex items-center space-x-2 text-gray-700 mb-3">
                       <User size={20} />
                       <span className="text-sm font-medium">

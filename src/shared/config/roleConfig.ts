@@ -24,6 +24,9 @@ export type DashboardModule =
   | 'booking_management'
   | 'assigned_bookings'
   | 'weekly_schedule'
+  | 'class_schedule_manager'
+  | 'class_type_manager'
+  | 'article_workflow'
   | 'forms';
 
 export interface ModuleConfig {
@@ -47,7 +50,8 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'booking_management', title: 'Class Bookings', component: 'BookingManagement', icon: 'calendar', order: 8 },
     { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 9 },
     { id: 'financial_data', title: 'Financial Data', component: 'FinancialData', icon: 'bar-chart', order: 10 },
-    { id: 'form_submission', title: 'Form Submissions & Messages', component: 'FormSubmissions', icon: 'file-text', order: 11 }
+    { id: 'form_submission', title: 'Form Submissions & Messages', component: 'FormSubmissions', icon: 'file-text', order: 11 },
+    { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 99 }
   ],
 
   admin: [
@@ -58,7 +62,8 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'business_settings', title: 'Business Settings', component: 'BusinessSettings', icon: 'settings', order: 5 },
     { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 6 },
     { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 7 },
-    { id: 'forms', title: 'Forms', component: 'Forms', icon: 'file-text', order: 8 }
+    { id: 'forms', title: 'Forms', component: 'Forms', icon: 'file-text', order: 8 },
+    { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 99 }
   ],
 
   instructor: [
@@ -84,7 +89,8 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'comment_moderation', title: 'Comment Moderation', component: 'CommentModeration', icon: 'message-square', order: 1 },
     { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 2 },
     { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 3 },
-    { id: 'content_review', title: 'Content Review', component: 'ContentReview', icon: 'check-circle', order: 4 }
+    { id: 'content_review', title: 'Content Review', component: 'ContentReview', icon: 'check-circle', order: 4 },
+    { id: 'article_workflow', title: 'Article Workflow', component: 'ArticleWorkflow', icon: 'CheckCircle', order: 5 }
   ],
 
   user: [
