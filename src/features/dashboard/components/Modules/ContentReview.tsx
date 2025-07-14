@@ -23,7 +23,7 @@ export function ContentReview() {
 
             const { data, error } = await supabase
                 .from('articles')
-                .select('*, author:profiles!articles_author_id_fkey(full_name, email)')
+                .select('*, author:profiles(full_name, email)')
                 .eq('status', 'pending_review')
                 .order('created_at', { ascending: false });
 

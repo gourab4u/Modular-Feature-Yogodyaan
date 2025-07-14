@@ -21,7 +21,7 @@ export function useArticleWorkflow() {
         .from('articles')
         .select(`
           *,
-          author:profiles!articles_author_id_fkey(id, full_name, email)
+          author:profiles(id, full_name, email)
         `);
 
       // Sangha guides can see all articles, users only see their own
