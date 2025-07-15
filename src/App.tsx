@@ -28,6 +28,8 @@ import InstructorProfile from './features/scheduling/pages/InstructorProfile'
 import { Schedule } from './features/scheduling/pages/Schedule'
 import { Profile } from './features/user-profile/pages/Profile'
 import { NotFound } from './pages/NotFound'
+import { BookOneOnOne } from './features/scheduling/pages/BookOneOnOne'
+import { BookCorporate } from './features/scheduling/pages/BookCorporate'
 
 
 function App() {
@@ -122,6 +124,8 @@ function AppRoutes() {
               />
               <Route path="/instructor/:instructorId" element={<InstructorProfile />} />
               <Route path="*" element={<NotFound />} />
+              <Route path="/book/individual" element={<BookOneOnOne />} />
+              <Route path="/book/corporate" element={<BookCorporate />} />
             </Routes>
           </main>
           <Footer />

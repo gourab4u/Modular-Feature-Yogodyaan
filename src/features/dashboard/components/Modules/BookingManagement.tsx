@@ -191,10 +191,11 @@ export function BookingManagement() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'pending': return 'bg-orange-100 text-orange-800'
       case 'confirmed': return 'bg-green-100 text-green-800'
       case 'cancelled': return 'bg-red-100 text-red-800'
-      case 'attended': return 'bg-blue-100 text-blue-800'
-      case 'no_show': return 'bg-yellow-100 text-yellow-800'
+      case 'completed': return 'bg-blue-100 text-blue-800'
+      case 'rescheduled': return 'bg-yellow-100 text-yellow-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -278,10 +279,11 @@ export function BookingManagement() {
                 className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
               >
                 <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
                 <option value="cancelled">Cancelled</option>
-                <option value="attended">Attended</option>
-                <option value="no_show">No Show</option>
+                <option value="completed">Completed</option>
+                <option value="rescheduled">Rescheduled</option>
               </select>
             </div>
           </div>
@@ -376,7 +378,31 @@ export function BookingManagement() {
                         >
                           <Edit className="w-4 h-4" />
                         </button>
-                        {booking.status !== 'cancelled' && (
+
+                        {/* Confirm button for pending bookings */}
+                        {booking.status === 'pending' && (
+                          <button
+                            onClick={() => handleUpdateBookingStatus(booking.id, 'confirmed')}
+                            className="text-green-600 hover:text-green-900 p-1"
+                            title="Confirm Booking"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Mark completed for confirmed bookings */}
+                        {booking.status === 'confirmed' && (
+                          <button
+                            onClick={() => handleUpdateBookingStatus(booking.id, 'completed')}
+                            className="text-blue-600 hover:text-blue-900 p-1"
+                            title="Mark as Completed"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                          </button>
+                        )}
+
+                        {/* Cancel button for pending and confirmed */}
+                        {(booking.status === 'pending' || booking.status === 'confirmed') && (
                           <button
                             onClick={() => handleUpdateBookingStatus(booking.id, 'cancelled')}
                             className="text-red-600 hover:text-red-900 p-1"
@@ -385,15 +411,7 @@ export function BookingManagement() {
                             <X className="w-4 h-4" />
                           </button>
                         )}
-                        {booking.status === 'confirmed' && (
-                          <button
-                            onClick={() => handleUpdateBookingStatus(booking.id, 'attended')}
-                            className="text-green-600 hover:text-green-900 p-1"
-                            title="Mark as Attended"
-                          >
-                            <CheckCircle className="w-4 h-4" />
-                          </button>
-                        )}
+
                         <button
                           onClick={() => setShowConfirmDelete(booking.id)}
                           className="text-red-600 hover:text-red-900 p-1"
@@ -521,10 +539,11 @@ export function BookingManagement() {
                       onChange={(e) => setUpdatedBooking({ ...updatedBooking, status: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
+                      <option value="pending">Pending</option>
                       <option value="confirmed">Confirmed</option>
                       <option value="cancelled">Cancelled</option>
-                      <option value="attended">Attended</option>
-                      <option value="no_show">No Show</option>
+                      <option value="completed">Completed</option>
+                      <option value="rescheduled">Rescheduled</option>
                     </select>
                   </div>
 
@@ -623,8 +642,8 @@ export function BookingManagement() {
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Emergency Contact</p>
-                        <p className="font-medium">{selectedBooking.emergency_contact}</p>
-                        <p className="text-sm text-gray-700">{selectedBooking.emergency_phone}</p>
+                        <p className="font-medium">{selectedBooking.emergency_contact || 'Not provided'}</p>
+                        <p className="text-sm text-gray-700">{selectedBooking.emergency_phone || 'Not provided'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-500">Booking Date</p>
@@ -645,36 +664,51 @@ export function BookingManagement() {
                       Edit
                     </Button>
 
+                    {/* Show confirm button for pending bookings */}
+                    {selectedBooking.status === 'pending' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUpdateBookingStatus(selectedBooking.id, 'confirmed')}
+                        className="flex items-center bg-green-50 text-green-700 hover:bg-green-100"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Confirm Booking
+                      </Button>
+                    )}
+
+                    {/* Show completed/reschedule buttons for confirmed bookings */}
                     {selectedBooking.status === 'confirmed' && (
                       <>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleUpdateBookingStatus(selectedBooking.id, 'attended')}
-                          className="flex items-center"
+                          onClick={() => handleUpdateBookingStatus(selectedBooking.id, 'completed')}
+                          className="flex items-center text-blue-700 hover:bg-blue-50"
                         >
                           <CheckCircle className="w-4 h-4 mr-1" />
-                          Mark Attended
+                          Mark Completed
                         </Button>
 
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleUpdateBookingStatus(selectedBooking.id, 'no_show')}
-                          className="flex items-center"
+                          onClick={() => handleUpdateBookingStatus(selectedBooking.id, 'rescheduled')}
+                          className="flex items-center text-yellow-700 hover:bg-yellow-50"
                         >
                           <AlertTriangle className="w-4 h-4 mr-1" />
-                          Mark No-Show
+                          Mark Rescheduled
                         </Button>
                       </>
                     )}
 
-                    {selectedBooking.status !== 'cancelled' && (
+                    {/* Show cancel button for pending and confirmed bookings */}
+                    {(selectedBooking.status === 'pending' || selectedBooking.status === 'confirmed') && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleUpdateBookingStatus(selectedBooking.id, 'cancelled')}
-                        className="flex items-center"
+                        className="flex items-center text-red-700 hover:bg-red-50"
                       >
                         <X className="w-4 h-4 mr-1" />
                         Cancel Booking

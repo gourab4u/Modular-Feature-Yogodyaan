@@ -82,26 +82,51 @@ export function WeeklyClassScheduler() {
     try {
       setLoading(true)
 
+      // ✅ First check if is_archived column exists
+      let classTypesQuery = supabase
+        .from('class_types')
+        .select('*')
+        .eq('is_active', true)
+
+      // Try to add is_archived filter, but handle gracefully if column doesn't exist
+      try {
+        const { data: testData, error: testError } = await supabase
+          .from('class_types')
+          .select('is_archived')
+          .limit(1)
+
+        // If no error, column exists - add the filter
+        if (!testError) {
+          classTypesQuery = classTypesQuery.or('is_archived.is.null,is_archived.eq.false')
+          console.log('✅ is_archived column found - filtering out archived classes')
+        } else if (testError.code === '42703') {
+          console.log('ℹ️ is_archived column not found - only filtering by is_active')
+        }
+      } catch (error) {
+        console.log('ℹ️ Column check failed - using basic filter')
+      }
+
       // Fetch schedules and class types first (these should work fine)
       const [schedulesRes, classTypesRes] = await Promise.all([
         supabase
           .from('class_schedules')
           .select(`
-          *,
-          class_type:class_types(*)
-        `)
+        *,
+        class_type:class_types(*)
+      `)
           .order('day_of_week')
           .order('start_time'),
 
-        supabase
-          .from('class_types')
-          .select('*')
-          .eq('is_active', true)
-          .order('name')
+        // ✅ Updated query to exclude archived class types
+        classTypesQuery.order('name')
       ])
 
       if (schedulesRes.error) throw schedulesRes.error
       if (classTypesRes.error) throw classTypesRes.error
+
+      // ✅ Log filtered class types for debugging
+      console.log('📚 Available class types (active & non-archived):', classTypesRes.data)
+      console.log(`📊 Total class types loaded: ${classTypesRes.data?.length || 0}`)
 
       // Try multiple approaches to get instructor data
       let instructorsRes
@@ -112,16 +137,16 @@ export function WeeklyClassScheduler() {
         instructorsRes = await supabase
           .from('user_roles')
           .select(`
+        user_id,
+        profiles!inner(
           user_id,
-          profiles!inner(
-            user_id,
-            full_name,
-            email,
-            bio,
-            specialties
-          ),
-          roles!inner(name)
-        `)
+          full_name,
+          email,
+          bio,
+          specialties
+        ),
+        roles!inner(name)
+      `)
           .in('roles.name', ['instructor', 'yoga_acharya'])
           .order('profiles.full_name')
 
@@ -147,9 +172,9 @@ export function WeeklyClassScheduler() {
           const rolesRes = await supabase
             .from('user_roles')
             .select(`
-            user_id,
-            roles!inner(name)
-          `)
+          user_id,
+          roles!inner(name)
+        `)
             .in('roles.name', ['instructor', 'yoga_acharya'])
 
           if (!rolesRes.error && rolesRes.data) {
@@ -159,12 +184,12 @@ export function WeeklyClassScheduler() {
             const profilesRes = await supabase
               .from('profiles')
               .select(`
-              user_id,
-              full_name,
-              email,
-              bio,
-              specialties
-            `)
+            user_id,
+            full_name,
+            email,
+            bio,
+            specialties
+          `)
               .in('user_id', instructorUserIds)
               .order('full_name')
 
@@ -186,20 +211,20 @@ export function WeeklyClassScheduler() {
           const allProfilesRes = await supabase
             .from('profiles')
             .select(`
-            user_id,
-            full_name,
-            email,
-            bio,
-            specialties
-          `)
+          user_id,
+          full_name,
+          email,
+          bio,
+          specialties
+        `)
             .order('full_name')
 
           const allRolesRes = await supabase
             .from('user_roles')
             .select(`
-            user_id,
-            roles!inner(name)
-          `)
+          user_id,
+          roles!inner(name)
+        `)
             .in('roles.name', ['instructor', 'yoga_acharya'])
 
           if (!allProfilesRes.error && !allRolesRes.error && allProfilesRes.data && allRolesRes.data) {
@@ -261,13 +286,13 @@ export function WeeklyClassScheduler() {
       setInstructors(validInstructors)
 
       console.log('✅ Data fetching completed successfully')
+      console.log(`📚 Final class types count: ${classTypesRes.data?.length || 0}`)
     } catch (error) {
       console.error('❌ Error fetching data:', error)
     } finally {
       setLoading(false)
     }
   }
-
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -381,21 +406,59 @@ export function WeeklyClassScheduler() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this class schedule?')) return
+    if (!confirm('Are you sure you want to delete this class schedule? This will also remove all related class assignments.')) return
+
+    try {
+      // ✅ First delete all related class_assignments
+      const { error: assignmentsError } = await supabase
+        .from('class_assignments')
+        .delete()
+        .eq('scheduled_class_id', id)
+
+      if (assignmentsError) {
+        console.error('Error deleting class assignments:', assignmentsError)
+        throw assignmentsError
+      }
+
+      // ✅ Then delete the schedule
+      const { error: scheduleError } = await supabase
+        .from('class_schedules')
+        .delete()
+        .eq('id', id)
+
+      if (scheduleError) {
+        console.error('Error deleting schedule:', scheduleError)
+        throw scheduleError
+      }
+
+      await fetchData()
+      alert('Schedule and all related assignments deleted successfully!')
+    } catch (error: any) {
+      console.error('Error deleting schedule:', error)
+      alert('Failed to delete schedule: ' + (error.message || 'Unknown error'))
+    }
+  }
+
+  // ✅ Alternative: Soft delete instead of hard delete
+  const handleSoftDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to deactivate this class schedule?')) return
 
     try {
       const { error } = await supabase
         .from('class_schedules')
-        .delete()
+        .update({
+          is_active: false,
+          effective_until: new Date().toISOString().split('T')[0]
+        })
         .eq('id', id)
 
       if (error) throw error
 
       await fetchData()
-      alert('Schedule deleted successfully!')
-    } catch (error) {
-      console.error('Error deleting schedule:', error)
-      alert('Failed to delete schedule')
+      alert('Schedule deactivated successfully!')
+    } catch (error: any) {
+      console.error('Error deactivating schedule:', error)
+      alert('Failed to deactivate schedule: ' + (error.message || 'Unknown error'))
     }
   }
 
@@ -687,8 +750,8 @@ export function WeeklyClassScheduler() {
                   <div
                     key={schedule.id}
                     className={`rounded-lg p-3 border-l-4 ${schedule.is_active
-                        ? 'bg-blue-50 border-blue-500'
-                        : 'bg-gray-50 border-gray-400'
+                      ? 'bg-blue-50 border-blue-500'
+                      : 'bg-gray-50 border-gray-400'
                       }`}
                   >
                     <div className="flex justify-between items-start mb-2">
@@ -703,10 +766,21 @@ export function WeeklyClassScheduler() {
                         >
                           <Calendar className="w-3 h-3" />
                         </button>
+
+                        {/* Soft delete option */}
+                        <button
+                          onClick={() => handleSoftDelete(schedule.id!)}
+                          className="text-yellow-600 hover:text-yellow-800 p-1"
+                          title="Deactivate"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+
+                        {/* Hard delete option */}
                         <button
                           onClick={() => handleDelete(schedule.id!)}
                           className="text-red-600 hover:text-red-800 p-1"
-                          title="Delete"
+                          title="Permanently Delete (includes assignments)"
                         >
                           <Trash2 className="w-3 h-3" />
                         </button>
