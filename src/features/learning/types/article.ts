@@ -8,12 +8,13 @@ export interface Article {
   video_url: string;
   category: string;
   tags: string[];
-  status: string;
+  status: 'draft' | 'published' | 'pending_review' | 'rejected';
   view_count: number;
   created_at: string;
   updated_at: string;
   published_at: string | null;
   author_id: string;
+  moderation_status?: 'pending' | 'approved' | 'rejected';
   author?: {
     id: string;
     full_name: string;
