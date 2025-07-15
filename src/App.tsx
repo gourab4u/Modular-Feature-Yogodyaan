@@ -24,9 +24,11 @@ import { Home } from './features/marketing/pages/Home'
 import { Services } from './features/marketing/pages/Services'
 import { Testimonials } from './features/marketing/pages/Testimonials'
 import { BookClass } from './features/scheduling/pages/BookClass'
+import InstructorProfile from './features/scheduling/pages/InstructorProfile'
 import { Schedule } from './features/scheduling/pages/Schedule'
 import { Profile } from './features/user-profile/pages/Profile'
 import { NotFound } from './pages/NotFound'
+
 
 function App() {
   return (
@@ -118,6 +120,7 @@ function AppRoutes() {
                   </ProtectedRoute>
                 }
               />
+              <Route path="/instructor/:instructorId" element={<InstructorProfile />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>

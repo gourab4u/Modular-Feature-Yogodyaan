@@ -6,8 +6,11 @@ import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
 import { useAuth } from '../../auth/contexts/AuthContext'
 import { useClassSchedule } from '../hooks/useClassSchedule'
+import InstructorLink from './InstructorLink'
+import { InstructorProvider } from './InstructorProvider'
 
-export function WeeklySchedule() {
+// Internal component that uses the instructor context
+function WeeklyScheduleContent() {
   const { schedules, loading, error, getDayName, formatTime } = useClassSchedule()
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -27,7 +30,7 @@ export function WeeklySchedule() {
       const daysUntilTarget = (targetDay - today.getDay() + 7) % 7
       const nextClassDate = new Date(today)
       nextClassDate.setDate(today.getDate() + (daysUntilTarget === 0 ? 7 : daysUntilTarget))
-      
+
       const classDate = nextClassDate.toISOString().split('T')[0]
 
       const { data: existingBooking, error: checkError } = await supabase
@@ -121,7 +124,7 @@ export function WeeklySchedule() {
             <h3 className="font-semibold text-gray-900 mb-4 text-center">
               {getDayName(day)}
             </h3>
-            
+
             <div className="space-y-3">
               {schedulesByDay[day]?.map(schedule => (
                 <div
@@ -132,33 +135,44 @@ export function WeeklySchedule() {
                     <h4 className="font-medium text-gray-900 text-sm leading-tight">
                       {schedule.class_type.name}
                     </h4>
-                    <span className={`px-2 py-1 text-xs rounded-full ${
-                      schedule.class_type.difficulty_level === 'beginner' 
-                        ? 'bg-green-100 text-green-800'
-                        : schedule.class_type.difficulty_level === 'intermediate'
+                    <span className={`px-2 py-1 text-xs rounded-full ${schedule.class_type.difficulty_level === 'beginner'
+                      ? 'bg-green-100 text-green-800'
+                      : schedule.class_type.difficulty_level === 'intermediate'
                         ? 'bg-yellow-100 text-yellow-800'
                         : 'bg-red-100 text-red-800'
-                    }`}>
+                      }`}>
                       {schedule.class_type.difficulty_level}
                     </span>
                   </div>
-                  
+
                   <div className="space-y-2 text-xs text-gray-600 mb-3">
                     <div className="flex items-center">
                       <Clock className="w-3 h-3 mr-1" />
                       {formatTime(schedule.start_time)} ({schedule.duration_minutes}min)
                     </div>
-                    
+
                     <div className="flex items-center">
                       <Users className="w-3 h-3 mr-1" />
                       Max {schedule.max_participants} students
                     </div>
-                    
+
                     <div className="flex items-center">
                       <Award className="w-3 h-3 mr-1" />
-                      {schedule.instructor.full_name}
+                      <InstructorLink
+                        instructor={{
+                          id: schedule.instructor_id || '',
+                          fullName: schedule.instructor?.full_name || 'Unknown Instructor',
+                          email: schedule.instructor?.email || '',
+                          bio: '',
+                          specialization: '',
+                          experience: 0,
+                          joinDate: '',
+                          profileImage: ''
+                        }}
+                        className="text-xs font-medium hover:text-blue-600 hover:underline transition-colors"
+                      />
                     </div>
-                    
+
                     {schedule.class_type.price && (
                       <div className="text-blue-600 font-semibold">
                         ${schedule.class_type.price}
@@ -176,10 +190,10 @@ export function WeeklySchedule() {
                   </Button>
                 </div>
               )) || (
-                <div className="text-center text-gray-500 text-sm py-8">
-                  No classes scheduled
-                </div>
-              )}
+                  <div className="text-center text-gray-500 text-sm py-8">
+                    No classes scheduled
+                  </div>
+                )}
             </div>
           </div>
         ))}
@@ -214,5 +228,14 @@ export function WeeklySchedule() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Main component wrapped with InstructorProvider
+export function WeeklySchedule() {
+  return (
+    <InstructorProvider>
+      <WeeklyScheduleContent />
+    </InstructorProvider>
   )
 }

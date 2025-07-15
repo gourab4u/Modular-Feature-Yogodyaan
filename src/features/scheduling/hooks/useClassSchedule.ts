@@ -20,6 +20,8 @@ interface ClassSchedule {
   }
   instructor: {
     full_name: string
+    email?: string
+    user_id?: string
   }
 }
 
@@ -32,7 +34,7 @@ export function useClassSchedule() {
     try {
       setLoading(true)
       setError(null)
-      
+
       console.log('🔍 Fetching class schedules...')
 
       const { data, error: fetchError } = await supabase
@@ -40,36 +42,36 @@ export function useClassSchedule() {
         .select(`
           *,
           class_type:class_types(name, description, difficulty_level, price),
-          instructor:profiles(full_name, email)
+          instructor:profiles!class_schedules_instructor_id_fkey(full_name, email, user_id)
         `)
         .eq('is_active', true)
         .order('day_of_week')
         .order('start_time')
 
       if (fetchError) throw fetchError
-      
+
       console.log('📊 Raw schedule data:', data)
-      
+
       // Filter out schedules with invalid instructor data
       const validSchedules = (data || []).filter(schedule => {
-        const hasValidInstructor = schedule.instructor?.full_name?.trim() || 
-                                  schedule.instructor?.email?.trim()
-        
+        const hasValidInstructor = schedule.instructor?.full_name?.trim() ||
+          schedule.instructor?.email?.trim()
+
         if (!hasValidInstructor) {
           console.warn('⚠️ Filtering out schedule with invalid instructor:', schedule)
         }
-        
+
         return hasValidInstructor
       }).map(schedule => ({
         ...schedule,
         instructor: {
           ...schedule.instructor,
-          full_name: schedule.instructor.full_name?.trim() || 
-                    schedule.instructor.email?.split('@')[0]?.replace(/[._]/g, ' ') || 
-                    'Unknown Instructor'
+          full_name: schedule.instructor.full_name?.trim() ||
+            schedule.instructor.email?.split('@')[0]?.replace(/[._]/g, ' ') ||
+            'Unknown Instructor'
         }
       }))
-      
+
       console.log('✅ Valid schedules after filtering:', validSchedules)
 
       setSchedules(validSchedules)

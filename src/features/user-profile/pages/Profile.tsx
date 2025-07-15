@@ -1,5 +1,6 @@
-import { Calendar, Edit2, Mail, Save, Shield, User, X } from 'lucide-react'
+import { AlertCircle, Award, Calendar, Camera, CheckCircle, Clock, Edit2, Facebook, FileText, Globe, Instagram, Mail, Phone, Save, Shield, User, X, XCircle, Youtube } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
@@ -9,17 +10,66 @@ import { useAuth } from '../../auth/contexts/AuthContext'
 export function Profile() {
   const { user } = useAuth()
   const { isAdmin } = useAdmin()
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
   const [userBookings, setUserBookings] = useState<any[]>([])
   const [userQueries, setUserQueries] = useState<any[]>([])
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+
+  // ✅ Updated state to match actual schema
   const [profileData, setProfileData] = useState({
-    fullName: '',
+    full_name: '',
     email: '',
     phone: '',
-    bio: ''
+    bio: '',
+    avatar_url: '',
+    date_of_birth: '',
+    address: '',
+    location: '',
+    gender: '',
+    nationality: '',
+    time_zone: '',
+    website_url: '',
+    instagram_handle: '',
+    facebook_profile: '',
+    linkedin_profile: '',
+    youtube_channel: '',
+    preferred_contact_method: 'email',
+    profile_visibility: 'public',
+    // Arrays
+    specialties: [] as string[],
+    certifications: [] as string[],
+    languages: [] as string[],
+    achievements: [] as string[],
+    education: [] as string[],
+    // Numbers
+    experience_years: 0,
+    years_of_experience: 0,
+    hourly_rate: 0,
+    // Text fields
+    certification: '',
+    teaching_philosophy: '',
+    // JSONB fields
+    emergency_contact: {} as any,
+    social_media: {} as any,
+    badges: {} as any,
+    availability_schedule: {} as any,
+    // Booleans
+    is_active: true,
+    profile_completed: false
   })
+
   const [errors, setErrors] = useState<any>({})
+  const [activeTab, setActiveTab] = useState('overview')
+
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: User },
+    { id: 'bookings', label: 'My Bookings', icon: Calendar },
+    { id: 'queries', label: 'My Queries', icon: FileText },
+    { id: 'settings', label: 'Settings', icon: Edit2 }
+  ]
 
   useEffect(() => {
     if (user) {
@@ -32,47 +82,73 @@ export function Profile() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('full_name, phone, bio, email')
+        .select('*')
         .eq('user_id', user!.id)
         .maybeSingle()
 
       if (error) {
         console.error('Error fetching profile:', error)
-        // Initialize with user email if profile doesn't exist
-        setProfileData({
-          fullName: '',
-          email: user!.email || '',
-          phone: '',
-          bio: ''
-        })
+        setProfileData(prev => ({
+          ...prev,
+          email: user!.email || ''
+        }))
         return
       }
 
       if (data) {
         setProfileData({
-          fullName: data.full_name || '',
-          email: data.email || '',
+          full_name: data.full_name || '',
+          email: data.email || user!.email || '',
           phone: data.phone || '',
-          bio: data.bio || ''
+          bio: data.bio || '',
+          avatar_url: data.avatar_url || '',
+          date_of_birth: data.date_of_birth || '',
+          address: data.address || '',
+          location: data.location || '',
+          gender: data.gender || '',
+          nationality: data.nationality || '',
+          time_zone: data.time_zone || '',
+          website_url: data.website_url || '',
+          instagram_handle: data.instagram_handle || '',
+          facebook_profile: data.facebook_profile || '',
+          linkedin_profile: data.linkedin_profile || '',
+          youtube_channel: data.youtube_channel || '',
+          preferred_contact_method: data.preferred_contact_method || 'email',
+          profile_visibility: data.profile_visibility || 'public',
+          // ✅ Handle arrays safely
+          specialties: Array.isArray(data.specialties) ? data.specialties : [],
+          certifications: Array.isArray(data.certifications) ? data.certifications : [],
+          languages: Array.isArray(data.languages) ? data.languages : [],
+          achievements: Array.isArray(data.achievements) ? data.achievements : [],
+          education: Array.isArray(data.education) ? data.education : [],
+          // Numbers
+          experience_years: data.experience_years || 0,
+          years_of_experience: data.years_of_experience || 0,
+          hourly_rate: data.hourly_rate || 0,
+          // Text
+          certification: data.certification || '',
+          teaching_philosophy: data.teaching_philosophy || '',
+          // ✅ Handle JSONB fields safely
+          emergency_contact: data.emergency_contact || {},
+          social_media: data.social_media || {},
+          badges: data.badges || {},
+          availability_schedule: data.availability_schedule || {},
+          // Booleans
+          is_active: data.is_active ?? true,
+          profile_completed: data.profile_completed ?? false
         })
       } else {
-        // No profile found, initialize with user email
-        setProfileData({
-          fullName: '',
-          email: user!.email || '',
-          phone: '',
-          bio: ''
-        })
+        setProfileData(prev => ({
+          ...prev,
+          email: user!.email || ''
+        }))
       }
     } catch (error) {
       console.error('Error fetching profile data:', error)
-      // Fallback to user email
-      setProfileData({
-        fullName: '',
-        email: user!.email || '',
-        phone: '',
-        bio: ''
-      })
+      setProfileData(prev => ({
+        ...prev,
+        email: user!.email || ''
+      }))
     }
   }
 
@@ -81,34 +157,265 @@ export function Profile() {
     try {
       setLoading(true)
 
-      const { data: bookings, error: bookingsError } = await supabase
-        .from('bookings')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+      // ✅ Enhanced debugging and error handling
+      console.log('🔍 Fetching data for user:', user.email)
 
-      if (bookingsError) throw bookingsError
+      const [bookingsResult, queriesResult] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false }),
 
-      const { data: queries, error: queriesError } = await supabase
-        .from('yoga_queries')
-        .select('*')
-        .eq('email', user.email)
-        .order('created_at', { ascending: false })
+        supabase
+          .from('contact_messages')
+          .select('*')
+          .eq('email', user.email)
+          .order('created_at', { ascending: false })
+      ])
 
-      if (queriesError) throw queriesError
+      // Handle bookings
+      if (bookingsResult.error) {
+        console.error('❌ Bookings error:', bookingsResult.error)
+        setUserBookings([])
+      } else {
+        console.log('✅ Bookings found:', bookingsResult.data?.length || 0)
+        setUserBookings(bookingsResult.data || [])
+      }
 
-      setUserBookings(bookings || [])
-      setUserQueries(queries || [])
+      // Handle contact messages with detailed error checking
+      if (queriesResult.error) {
+        console.error('❌ Contact messages error:', queriesResult.error)
+        console.log('Error details:', {
+          code: queriesResult.error.code,
+          message: queriesResult.error.message,
+          details: queriesResult.error.details,
+          hint: queriesResult.error.hint
+        })
+
+        // If it's an RLS error, try a different approach
+        if (queriesResult.error.code === '42501' || queriesResult.error.message?.includes('RLS')) {
+          console.log('🔐 RLS policy might be blocking access, trying alternative...')
+          // You might need to add RLS policies or use a different approach
+        }
+
+        setUserQueries([])
+      } else {
+        console.log('✅ Contact messages found:', queriesResult.data?.length || 0)
+        console.log('📧 Messages:', queriesResult.data)
+        setUserQueries(queriesResult.data || [])
+      }
+
     } catch (error) {
-      console.error('Error fetching user data:', error)
+      console.error('❌ General error fetching user data:', error)
+      setUserBookings([])
+      setUserQueries([])
     } finally {
       setLoading(false)
     }
   }
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setProfileData(prev => ({ ...prev, [name]: value }))
+  // ✅ Enhanced debug function with RLS checking
+  const debugQueries = async () => {
+    if (!user) return
+
+    console.log('=== 🔧 ENHANCED DEBUGGING ===')
+    console.log('👤 User email:', user.email)
+    console.log('🆔 User ID:', user.id)
+
+    try {
+      // Test 1: Check if we can read the table at all
+      console.log('\n📋 Test 1: Basic table access...')
+      const { data: basicTest, error: basicError } = await supabase
+        .from('contact_messages')
+        .select('count', { count: 'exact', head: true })
+
+      if (basicError) {
+        console.error('❌ Cannot access contact_messages table:', basicError)
+        console.log('💡 This suggests RLS is blocking ALL access')
+        return
+      } else {
+        console.log(`✅ Table accessible. Total messages: ${basicTest}`)
+      }
+
+      // Test 2: Try to read any messages (admin-like access)
+      console.log('\n📋 Test 2: Reading sample messages...')
+      const { data: sampleMessages, error: sampleError } = await supabase
+        .from('contact_messages')
+        .select('*')
+        .limit(3)
+
+      if (sampleError) {
+        console.error('❌ Cannot read messages:', sampleError)
+      } else {
+        console.log('✅ Sample messages accessible:', sampleMessages?.length || 0)
+        if (sampleMessages && sampleMessages.length > 0) {
+          console.log('📧 Sample message emails:', sampleMessages.map(m => m.email))
+        }
+      }
+
+      // Test 3: Check for messages with our email specifically
+      console.log('\n📋 Test 3: Searching for our email...')
+      const { data: userMessages, error: userError } = await supabase
+        .from('contact_messages')
+        .select('*')
+        .eq('email', user.email)
+
+      if (userError) {
+        console.error('❌ Cannot find user messages:', userError)
+        console.log('🔐 This is likely an RLS policy issue')
+      } else {
+        console.log('✅ User messages found:', userMessages?.length || 0)
+        if (userMessages && userMessages.length > 0) {
+          console.log('📧 Your messages:', userMessages)
+        }
+      }
+
+      // Test 4: Check current user authentication
+      console.log('\n📋 Test 4: Current user context...')
+      const { data: authUser, error: authError } = await supabase.auth.getUser()
+      if (authError) {
+        console.error('❌ Auth error:', authError)
+      } else {
+        console.log('✅ Current auth user:', authUser.user?.email)
+        console.log('🔑 User role:', authUser.user?.user_metadata?.role || 'No role set')
+      }
+
+    } catch (error) {
+      console.error('❌ Debug error:', error)
+    }
+  }
+
+
+  const testInsertMessage = async () => {
+    if (!user) {
+      console.error('❌ No user found for test insert')
+      return
+    }
+
+    console.log('🧪 Testing message insertion...')
+
+    const testMessage = {
+      name: 'Test User',
+      email: user.email,
+      subject: 'Test Message from Profile Debug',
+      message: 'This is a test message to verify the contact form works.',
+      status: 'new',
+      phone: '123-456-7890'
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .insert(testMessage)
+        .select()
+
+      if (error) {
+        console.error('❌ Test insert failed:', error)
+        console.log('💡 Possible issues:')
+        console.log('1. RLS policy blocks inserts')
+        console.log('2. Required fields missing')
+        console.log('3. Data type mismatch')
+        console.log('4. Table permissions issue')
+        alert('Test insert failed: ' + error.message)
+      } else {
+        console.log('✅ Test message inserted successfully:', data)
+        alert('✅ Test message inserted! Check your messages tab.')
+        // Refresh the queries
+        fetchUserData()
+      }
+    } catch (error: any) {
+      console.error('❌ Test insert error:', error)
+      alert('Test insert error: ' + error.message)
+    }
+  }
+
+  // ✅ Function to check and suggest RLS policy fixes
+  const suggestRLSFix = () => {
+    console.log('\n🔧 RLS POLICY SUGGESTIONS:')
+    console.log('You may need to add these RLS policies to your contact_messages table:')
+    console.log(`
+-- 1. Allow anyone to insert contact messages
+CREATE POLICY "Anyone can insert contact messages" ON contact_messages
+FOR INSERT WITH CHECK (true);
+
+-- 2. Allow users to read their own contact messages  
+CREATE POLICY "Users can read own contact messages" ON contact_messages
+FOR SELECT USING (email = auth.jwt() ->> 'email');
+
+-- 3. Alternative: Allow users to read messages if they have a profile with matching email
+CREATE POLICY "Users can read messages via profile" ON contact_messages
+FOR SELECT USING (
+  email IN (
+    SELECT email FROM profiles WHERE user_id = auth.uid()
+  )
+);
+
+-- To apply these policies, run them in your Supabase SQL editor
+  `)
+
+    // Also show in alert for easy copying
+    alert(`🔧 RLS Policy needed! Check console for SQL commands.
+
+Quick fix: Go to Supabase Dashboard > SQL Editor and run:
+
+CREATE POLICY "Anyone can insert contact messages" ON contact_messages
+FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Users can read own contact messages" ON contact_messages  
+FOR SELECT USING (email = auth.jwt() ->> 'email');`)
+  }
+
+
+
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAvatarFile(file)
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setAvatarPreview(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const uploadAvatar = async (): Promise<string | null> => {
+    if (!avatarFile || !user) return null
+
+    const fileExt = avatarFile.name.split('.').pop()
+    const fileName = `${user.id}-${Math.random()}.${fileExt}`
+    const filePath = `avatars/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, avatarFile)
+
+    if (uploadError) {
+      console.error('Error uploading avatar:', uploadError)
+      return null
+    }
+
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath)
+
+    return data.publicUrl
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target
+
+    // Handle different input types
+    let processedValue: any = value
+    if (type === 'number') {
+      processedValue = value === '' ? 0 : Number(value)
+    } else if (type === 'checkbox') {
+      processedValue = (e.target as HTMLInputElement).checked
+    }
+
+    setProfileData(prev => ({ ...prev, [name]: processedValue }))
     if (errors[name]) {
       setErrors((prev: any) => ({ ...prev, [name]: '' }))
     }
@@ -116,9 +423,12 @@ export function Profile() {
 
   const validateForm = () => {
     const newErrors: any = {}
-    if (!profileData.fullName.trim()) newErrors.fullName = 'Full name is required'
+    if (!profileData.full_name.trim()) newErrors.full_name = 'Full name is required'
     if (!profileData.email.trim()) newErrors.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(profileData.email)) newErrors.email = 'Email is invalid'
+    if (profileData.phone && !/^\+?[\d\s\-\(\)]+$/.test(profileData.phone)) {
+      newErrors.phone = 'Please enter a valid phone number'
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -128,36 +438,81 @@ export function Profile() {
 
     try {
       setLoading(true)
-      
-      // Try to update first
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          full_name: profileData.fullName,
-          phone: profileData.phone,
-          bio: profileData.bio,
-          email: profileData.email
-        })
-        .eq('user_id', user!.id)
 
-      // If update fails because no profile exists, create one
-      if (updateError && updateError.code === 'PGRST116') {
-        const { error: insertError } = await supabase
-          .from('profiles')
-          .insert({
-            user_id: user!.id,
-            full_name: profileData.fullName,
-            phone: profileData.phone,
-            bio: profileData.bio,
-            email: profileData.email
-          })
-        
-        if (insertError) throw insertError
-      } else if (updateError) {
-        throw updateError
+      let avatarUrl = profileData.avatar_url
+      if (avatarFile) {
+        const uploadedUrl = await uploadAvatar()
+        if (uploadedUrl) {
+          avatarUrl = uploadedUrl
+        }
       }
 
+      // ✅ Fixed: Check if profile exists first, then update or insert accordingly
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user!.id)
+        .maybeSingle()
+
+      const profilePayload = {
+        user_id: user!.id,
+        full_name: profileData.full_name,
+        email: profileData.email,
+        phone: profileData.phone,
+        bio: profileData.bio,
+        avatar_url: avatarUrl,
+        date_of_birth: profileData.date_of_birth || null,
+        address: profileData.address,
+        location: profileData.location,
+        gender: profileData.gender,
+        nationality: profileData.nationality,
+        time_zone: profileData.time_zone,
+        website_url: profileData.website_url,
+        instagram_handle: profileData.instagram_handle,
+        facebook_profile: profileData.facebook_profile,
+        linkedin_profile: profileData.linkedin_profile,
+        youtube_channel: profileData.youtube_channel,
+        preferred_contact_method: profileData.preferred_contact_method,
+        profile_visibility: profileData.profile_visibility,
+        specialties: profileData.specialties,
+        certifications: profileData.certifications,
+        languages: profileData.languages,
+        achievements: profileData.achievements,
+        education: profileData.education,
+        experience_years: profileData.experience_years,
+        years_of_experience: profileData.years_of_experience,
+        hourly_rate: profileData.hourly_rate,
+        certification: profileData.certification,
+        teaching_philosophy: profileData.teaching_philosophy,
+        emergency_contact: profileData.emergency_contact,
+        social_media: profileData.social_media,
+        badges: profileData.badges,
+        availability_schedule: profileData.availability_schedule,
+        is_active: profileData.is_active,
+        profile_completed: profileData.profile_completed,
+        updated_at: new Date().toISOString()
+      }
+
+      let result
+      if (existingProfile) {
+        // ✅ Update existing profile
+        result = await supabase
+          .from('profiles')
+          .update(profilePayload)
+          .eq('user_id', user!.id)
+      } else {
+        // ✅ Insert new profile
+        result = await supabase
+          .from('profiles')
+          .insert(profilePayload)
+      }
+
+      if (result.error) throw result.error
+
+      setProfileData(prev => ({ ...prev, avatar_url: avatarUrl }))
       setEditing(false)
+      setAvatarFile(null)
+      setAvatarPreview(null)
       alert('Profile updated successfully!')
     } catch (error: any) {
       console.error('Error saving profile:', error)
@@ -179,17 +534,49 @@ export function Profile() {
       case 'confirmed': return 'bg-green-100 text-green-800'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
       case 'responded': return 'bg-blue-100 text-blue-800'
+      case 'cancelled': return 'bg-red-100 text-red-800'
       default: return 'bg-gray-100 text-gray-800'
     }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed': return <CheckCircle className="w-4 h-4" />
+      case 'cancelled': return <XCircle className="w-4 h-4" />
+      default: return <AlertCircle className="w-4 h-4" />
+    }
+  }
+
+  const getExperienceColor = (years: number) => {
+    if (years === 0) return 'bg-gray-100 text-gray-800'
+    if (years <= 2) return 'bg-green-100 text-green-800'
+    if (years <= 5) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-red-100 text-red-800'
+  }
+
+  const renderArray = (arr: any[], emptyText: string = 'None') => {
+    if (!Array.isArray(arr) || arr.length === 0) {
+      return <span className="text-gray-500">{emptyText}</span>
+    }
+    return arr.join(', ')
+  }
+
+  // ✅ Helper to safely render JSONB fields
+  const renderJsonField = (field: any, key: string) => {
+    if (!field || typeof field !== 'object') return 'Not provided'
+    return field[key] || 'Not provided'
   }
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-red-600" />
+          </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
           <p className="text-gray-600 mb-6">Please sign in to view your profile.</p>
-          <a href="/login" className="btn-primary">Sign In</a>
+          <Button onClick={() => navigate('/login')}>Sign In</Button>
         </div>
       </div>
     )
@@ -197,44 +584,103 @@ export function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center">
-                <User className="w-8 h-8 text-white" />
+      {/* Enhanced Header with Gradient */}
+      <div className="bg-gradient-to-r from-blue-600 to-green-600 shadow-lg">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
+            <div className="flex items-center space-x-6">
+              {/* Enhanced Avatar with Upload */}
+              <div className="relative">
+                {avatarPreview || profileData.avatar_url ? (
+                  <img
+                    src={avatarPreview || profileData.avatar_url}
+                    alt="Profile"
+                    className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
+                  />
+                ) : (
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                    <User className="w-10 h-10 text-gray-400" />
+                  </div>
+                )}
+                {editing && (
+                  <label className="absolute bottom-0 right-0 bg-blue-600 hover:bg-blue-700 text-white rounded-full p-2 cursor-pointer transition-colors shadow-lg">
+                    <Camera className="w-4 h-4" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  {profileData.fullName || 'Your Profile'}
+
+              <div className="text-white">
+                <h1 className="text-3xl font-bold">
+                  {profileData.full_name || 'Your Profile'}
                 </h1>
-                <div className="flex items-center space-x-4 mt-2">
-                  <p className="text-gray-600 flex items-center">
-                    <Mail className="w-4 h-4 mr-1" />
+                <div className="flex flex-wrap items-center gap-4 mt-2">
+                  <p className="flex items-center opacity-90">
+                    <Mail className="w-4 h-4 mr-2" />
                     {profileData.email}
                   </p>
+                  {profileData.phone && (
+                    <p className="flex items-center opacity-90">
+                      <Phone className="w-4 h-4 mr-2" />
+                      {profileData.phone}
+                    </p>
+                  )}
                   {isAdmin && (
-                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                    <span className="bg-white bg-opacity-20 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center">
                       <Shield className="w-3 h-3 mr-1" />
                       Admin
                     </span>
                   )}
                 </div>
+                {profileData.years_of_experience > 0 && (
+                  <div className="mt-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getExperienceColor(profileData.years_of_experience)}`}>
+                      <Award className="w-3 h-3 mr-1 inline" />
+                      {profileData.years_of_experience} {profileData.years_of_experience === 1 ? 'Year' : 'Years'} Experience
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
+
             <div className="flex space-x-3">
               {editing ? (
                 <>
-                  <Button onClick={() => setEditing(false)} variant="outline" size="sm" className="flex items-center">
-                    <X className="w-4 h-4 mr-1" /> Cancel
+                  <Button
+                    onClick={() => {
+                      setEditing(false)
+                      setAvatarFile(null)
+                      setAvatarPreview(null)
+                      fetchProfileData() // Reset form
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="bg-white text-gray-700 border-white hover:bg-gray-50"
+                  >
+                    <X className="w-4 h-4 mr-2" /> Cancel
                   </Button>
-                  <Button onClick={handleSaveProfile} loading={loading} size="sm" className="flex items-center">
-                    <Save className="w-4 h-4 mr-1" /> Save
+                  <Button
+                    onClick={handleSaveProfile}
+                    loading={loading}
+                    size="sm"
+                    className="bg-white text-blue-600 hover:bg-gray-50"
+                  >
+                    <Save className="w-4 h-4 mr-2" /> Save Changes
                   </Button>
                 </>
               ) : (
-                <Button onClick={() => setEditing(true)} variant="outline" size="sm" className="flex items-center">
-                  <Edit2 className="w-4 h-4 mr-1" /> Edit Profile
+                <Button
+                  onClick={() => setEditing(true)}
+                  variant="outline"
+                  size="sm"
+                  className="bg-white text-gray-700 border-white hover:bg-gray-50"
+                >
+                  <Edit2 className="w-4 h-4 mr-2" /> Edit Profile
                 </Button>
               )}
             </div>
@@ -242,58 +688,613 @@ export function Profile() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Profile Information</h2>
-              {errors.general && <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4"><p className="text-red-600 text-sm">{errors.general}</p></div>}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                  {editing ? (
-                    <input type="text" name="fullName" value={profileData.fullName} onChange={handleInputChange} className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : 'border-gray-300'}`} placeholder="Enter your full name" />
-                  ) : (
-                    <p className="text-gray-900">{profileData.fullName || 'Not provided'}</p>
+      {/* Tab Navigation */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav className="flex space-x-8">
+            {tabs.map((tab) => {
+              const Icon = tab.icon
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Profile Information Card */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Profile Information</h2>
+                {errors.general && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                    <p className="text-red-600 text-sm">{errors.general}</p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    {editing ? (
+                      <input
+                        type="text"
+                        name="full_name"
+                        value={profileData.full_name}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.full_name ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        placeholder="Enter your full name"
+                      />
+                    ) : (
+                      <p className="text-gray-900 py-2">{profileData.full_name || 'Not provided'}</p>
+                    )}
+                    {errors.full_name && <p className="text-red-500 text-sm mt-1">{errors.full_name}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                    <p className="text-gray-900 py-2">{profileData.email}</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    {editing ? (
+                      <input
+                        type="tel"
+                        name="phone"
+                        value={profileData.phone}
+                        onChange={handleInputChange}
+                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.phone ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                        placeholder="Enter your phone number"
+                      />
+                    ) : (
+                      <p className="text-gray-900 py-2">{profileData.phone || 'Not provided'}</p>
+                    )}
+                    {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                    {editing ? (
+                      <input
+                        type="date"
+                        name="date_of_birth"
+                        value={profileData.date_of_birth}
+                        onChange={handleInputChange}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                      />
+                    ) : (
+                      <p className="text-gray-900 py-2">
+                        {profileData.date_of_birth ? formatDate(profileData.date_of_birth) : 'Not provided'}
+                      </p>
+                    )}
+                  </div>
+
+                  {editing && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                        <select
+                          name="gender"
+                          value={profileData.gender}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                        >
+                          <option value="">Select Gender</option>
+                          <option value="male">Male</option>
+                          <option value="female">Female</option>
+                          <option value="other">Other</option>
+                          <option value="prefer_not_to_say">Prefer not to say</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label>
+                        <input
+                          type="number"
+                          name="years_of_experience"
+                          value={profileData.years_of_experience}
+                          onChange={handleInputChange}
+                          min="0"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="Years of yoga experience"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                        <input
+                          type="text"
+                          name="location"
+                          value={profileData.location}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="Your location"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
+                        <input
+                          type="text"
+                          name="nationality"
+                          value={profileData.nationality}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="Your nationality"
+                        />
+                      </div>
+                    </>
                   )}
-                  {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
-                  <p className="text-gray-900">{profileData.email}</p>
-                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
                   {editing ? (
-                    <input type="tel" name="phone" value={profileData.phone} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your phone number" />
+                    <textarea
+                      name="bio"
+                      rows={4}
+                      value={profileData.bio}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
+                      placeholder="Tell us about yourself..."
+                    />
                   ) : (
-                    <p className="text-gray-900">{profileData.phone || 'Not provided'}</p>
+                    <p className="text-gray-900 py-2">{profileData.bio || 'No bio provided'}</p>
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                  {editing ? (
-                    <textarea name="bio" rows={3} value={profileData.bio} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tell us about yourself..." />
-                  ) : (
-                    <p className="text-gray-900">{profileData.bio || 'No bio provided'}</p>
-                  )}
-                </div>
+                {/* ✅ Display specialties safely */}
+                {!editing && profileData.specialties.length > 0 && (
+                  <div className="mt-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Specialties</label>
+                    <div className="flex flex-wrap gap-2">
+                      {profileData.specialties.map((specialty, index) => (
+                        <span
+                          key={index}
+                          className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
+                        >
+                          {specialty}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                <div className="pt-4 border-t border-gray-200">
+                <div className="pt-6 border-t border-gray-200 mt-6">
                   <div className="flex items-center text-sm text-gray-600">
-                    <Calendar className="w-4 h-4 mr-2" /> Member since {formatDate(user.created_at)}
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Member since {formatDate(user.created_at)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Stats Sidebar */}
+            <div className="space-y-6">
+              {/* Stats Card */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Total Bookings</span>
+                    <span className="font-semibold text-blue-600">{userBookings.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Queries Sent</span>
+                    <span className="font-semibold text-green-600">{userQueries.length}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Experience</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getExperienceColor(profileData.years_of_experience)}`}>
+                      {profileData.years_of_experience} {profileData.years_of_experience === 1 ? 'Year' : 'Years'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Profile Status</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${profileData.profile_completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {profileData.profile_completed ? 'Complete' : 'Incomplete'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Activity */}
+              <div className="bg-white rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                <div className="space-y-3">
+                  {userBookings.slice(0, 3).map((booking, index) => (
+                    <div key={index} className="flex items-center space-x-3 text-sm">
+                      <div className={`w-2 h-2 rounded-full ${getStatusColor(booking.status).replace('text-', 'bg-').replace('100', '500')}`}></div>
+                      <div className="flex-1">
+                        <p className="font-medium">{booking.class_name}</p>
+                        <p className="text-gray-500">{formatDate(booking.class_date)}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {userBookings.length === 0 && (
+                    <p className="text-gray-500 text-sm">No recent activity</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Rest of the tabs remain the same - Bookings and Queries */}
+        {/* Bookings Tab */}
+        {activeTab === 'bookings' && (
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">My Bookings</h2>
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {userBookings.length} Total
+                </span>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : userBookings.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
+                <p className="text-gray-600 mb-6">Start your yoga journey by booking your first class!</p>
+                <Button onClick={() => navigate('/schedule')}>Browse Classes</Button>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {userBookings.map((booking, index) => (
+                  <div key={index} className="p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">{booking.class_name}</h3>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center ${getStatusColor(booking.status)}`}>
+                            {getStatusIcon(booking.status)}
+                            <span className="ml-1">{booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}</span>
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                          <div className="flex items-center">
+                            <Calendar className="w-4 h-4 mr-2" />
+                            {formatDate(booking.class_date)}
+                          </div>
+                          <div className="flex items-center">
+                            <Clock className="w-4 h-4 mr-2" />
+                            {booking.class_time}
+                          </div>
+                          <div className="flex items-center">
+                            <User className="w-4 h-4 mr-2" />
+                            {booking.instructor}
+                          </div>
+                        </div>
+                        {booking.special_requests && (
+                          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                              <FileText className="w-4 h-4 mr-1 inline" />
+                              <strong>Special Requests:</strong> {booking.special_requests}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ✅ Queries Tab*/}
+        {/* ✅ Clean Queries Tab - Remove debug buttons */}
+        {activeTab === 'queries' && (
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900">My Messages</h2>
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {userQueries.length} Total
+                </span>
+              </div>
+              <p className="text-sm text-gray-500 mt-2">
+                Messages sent from: <span className="font-mono">{user.email}</span>
+              </p>
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <LoadingSpinner size="lg" />
+              </div>
+            ) : userQueries.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No messages found</h3>
+                <p className="text-gray-600 mb-6">
+                  No contact messages were sent from <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{user.email}</span>
+                </p>
+                <div className="space-x-3">
+                  <Button onClick={() => navigate('/contact')}>
+                    Send Your First Message
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-200">
+                {userQueries.map((message, index) => (
+                  <div key={index} className="p-6 hover:bg-gray-50 transition-colors">
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-gray-900">{message.subject}</h3>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(message.status)}`}>
+                        {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
+                      </span>
+                    </div>
+                    <p className="text-gray-700 mb-3">{message.message}</p>
+                    <div className="flex items-center justify-between text-sm text-gray-500">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-1" />
+                        Sent on {formatDate(message.created_at)}
+                      </div>
+                      <div className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                        From: {message.email}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+
+        {/* ✅ Updated Settings Tab with actual schema fields */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Account Settings</h2>
+              <div className="space-y-6">
+
+                {/* Emergency Contact */}
+                <div className="border-b border-gray-200 pb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Name</label>
+                      {editing ? (
+                        <input
+                          type="text"
+                          value={renderJsonField(profileData.emergency_contact, 'name')}
+                          onChange={(e) => {
+                            setProfileData(prev => ({
+                              ...prev,
+                              emergency_contact: { ...prev.emergency_contact, name: e.target.value }
+                            }))
+                          }}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="Emergency contact name"
+                        />
+                      ) : (
+                        <p className="text-gray-900 py-2">{renderJsonField(profileData.emergency_contact, 'name')}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Phone</label>
+                      {editing ? (
+                        <input
+                          type="tel"
+                          value={renderJsonField(profileData.emergency_contact, 'phone')}
+                          onChange={(e) => {
+                            setProfileData(prev => ({
+                              ...prev,
+                              emergency_contact: { ...prev.emergency_contact, phone: e.target.value }
+                            }))
+                          }}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="Emergency contact phone"
+                        />
+                      ) : (
+                        <p className="text-gray-900 py-2">{renderJsonField(profileData.emergency_contact, 'phone')}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Social Media Links */}
+                <div className="border-b border-gray-200 pb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Social Media & Online Presence</h3>
+                  {editing ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Globe className="w-4 h-4 inline mr-1" />
+                          Website URL
+                        </label>
+                        <input
+                          type="url"
+                          name="website_url"
+                          value={profileData.website_url}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="https://your-website.com"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Instagram className="w-4 h-4 inline mr-1" />
+                          Instagram Handle
+                        </label>
+                        <input
+                          type="text"
+                          name="instagram_handle"
+                          value={profileData.instagram_handle}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="@your_handle"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Facebook className="w-4 h-4 inline mr-1" />
+                          Facebook Profile
+                        </label>
+                        <input
+                          type="url"
+                          name="facebook_profile"
+                          value={profileData.facebook_profile}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="https://facebook.com/your-profile"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <Youtube className="w-4 h-4 inline mr-1" />
+                          YouTube Channel
+                        </label>
+                        <input
+                          type="url"
+                          name="youtube_channel"
+                          value={profileData.youtube_channel}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          placeholder="https://youtube.com/your-channel"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {profileData.website_url && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
+                          <a href={profileData.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            {profileData.website_url}
+                          </a>
+                        </div>
+                      )}
+                      {profileData.instagram_handle && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
+                          <p className="text-gray-900">{profileData.instagram_handle}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Specialties */}
+                <div className="border-b border-gray-200 pb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Yoga Specialties</h3>
+                  {editing ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Select Your Specialties</label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {['Hatha Yoga', 'Vinyasa', 'Ashtanga', 'Yin Yoga', 'Hot Yoga', 'Meditation', 'Prenatal Yoga', 'Restorative Yoga'].map((specialty) => (
+                          <label key={specialty} className="flex items-center space-x-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={profileData.specialties.includes(specialty)}
+                              onChange={(e) => {
+                                const currentSpecialties = profileData.specialties
+                                if (e.target.checked) {
+                                  setProfileData(prev => ({
+                                    ...prev,
+                                    specialties: [...currentSpecialties, specialty]
+                                  }))
+                                } else {
+                                  setProfileData(prev => ({
+                                    ...prev,
+                                    specialties: currentSpecialties.filter(s => s !== specialty)
+                                  }))
+                                }
+                              }}
+                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            />
+                            <span className="text-sm text-gray-700">{specialty}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="text-gray-900 py-2">
+                        {renderArray(profileData.specialties, 'No specialties selected')}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Privacy Settings */}
+                <div className="border-b border-gray-200 pb-6">
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Privacy Settings</h3>
+                  {editing && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Profile Visibility</label>
+                        <select
+                          name="profile_visibility"
+                          value={profileData.profile_visibility}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                        >
+                          <option value="public">Public</option>
+                          <option value="private">Private</option>
+                          <option value="friends">Friends Only</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Contact Method</label>
+                        <select
+                          name="preferred_contact_method"
+                          value={profileData.preferred_contact_method}
+                          onChange={handleInputChange}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                        >
+                          <option value="email">Email</option>
+                          <option value="phone">Phone</option>
+                          <option value="sms">SMS</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-4">Danger Zone</h3>
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                      <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
+                      <div className="flex-1">
+                        <h4 className="text-red-900 font-medium">Delete Account</h4>
+                        <p className="text-red-700 text-sm">Once you delete your account, there is no going back. Please be certain.</p>
+                      </div>
+                      <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
+                        Delete Account
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Bookings and Queries sections stay unchanged */}
-        </div>
+        )}
       </div>
     </div>
   )
