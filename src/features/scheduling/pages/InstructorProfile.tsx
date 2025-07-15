@@ -377,7 +377,7 @@ export default function InstructorProfile() {
       }
 
       // ✅ Enhanced duplicate booking check
-      const { data: existingBookings, error: checkError } = await supabase
+      const { data: existingBookings } = await supabase
         .from('bookings')
         .select('*')
         .eq('user_id', user.id)

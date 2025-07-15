@@ -1,4 +1,6 @@
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom'
+import { UserRole } from './shared/config/roleConfig'
+import { User as CustomUserType } from './shared/types/user'
 // Context imports - updated paths
 import { AdminProvider } from './features/admin/contexts/AdminContext'
 import { AuthProvider, useAuth } from './features/auth/contexts/AuthContext'
@@ -52,8 +54,16 @@ function AppRoutes() {
   const { user, userRoles } = useAuth() // Get current user from auth context
 
   // Compose a dashboardUser with a role property for UniversalDashboard
-  const dashboardUser = user && userRoles.length > 0
-    ? { ...user, role: userRoles[0] }
+  const dashboardUser: CustomUserType | null = user && userRoles.length > 0
+    ? {
+        id: user.id,
+        email: user.email || '',
+        name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+        role: userRoles[0] as UserRole,
+        isActive: !!user.email_confirmed_at,
+        createdAt: new Date(user.created_at),
+        updatedAt: new Date(user.updated_at || user.created_at)
+      }
     : null
 
   return (

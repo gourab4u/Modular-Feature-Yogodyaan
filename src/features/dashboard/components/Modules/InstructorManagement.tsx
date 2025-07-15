@@ -219,7 +219,7 @@ export function InstructorManagement() {
                 if (!authData.user) throw new Error('Failed to create user')
 
                 // Create profile for the new user
-                const { data: profileData, error: profileError } = await supabase
+                const { error: profileError } = await supabase
                     .from('profiles')
                     .insert([{
                         user_id: authData.user.id,

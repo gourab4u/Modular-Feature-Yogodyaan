@@ -90,7 +90,7 @@ export function WeeklyClassScheduler() {
 
       // Try to add is_archived filter, but handle gracefully if column doesn't exist
       try {
-        const { data: testData, error: testError } = await supabase
+        const { error: testError } = await supabase
           .from('class_types')
           .select('is_archived')
           .limit(1)
