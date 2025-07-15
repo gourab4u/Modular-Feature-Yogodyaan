@@ -1,0 +1,89 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { Star, Quote, Globe, Building, User } from 'lucide-react';
+export function Testimonials() {
+    const testimonials = [
+        {
+            name: "Sarah Johnson",
+            position: "Marketing Director",
+            company: "TechCorp Inc.",
+            location: "New York, USA",
+            content: "Yogodyaan has completely transformed how our team approaches wellness. The corporate sessions have not only reduced stress levels but also improved our overall productivity and team cohesion. The instructor's ability to adapt sessions for our busy schedules is remarkable.",
+            image: "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+            rating: 5,
+            type: "Corporate"
+        },
+        {
+            name: "Raj Patel",
+            position: "Software Engineer",
+            company: "StartupXYZ",
+            location: "Mumbai, India",
+            content: "The personalized coaching sessions fit perfectly into my busy schedule. Working across different time zones has never been easier. I've never felt more balanced and focused in my career. The flexibility and personal attention are unmatched.",
+            image: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+            rating: 5,
+            type: "1-on-1"
+        },
+        {
+            name: "Emily Chen",
+            position: "Project Manager",
+            company: "Global Solutions Ltd.",
+            location: "Singapore",
+            content: "The group sessions create such a supportive community. It's amazing how we can connect with people from around the world while improving our wellness together. The energy and motivation from the group keep me consistent with my practice.",
+            image: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+            rating: 5,
+            type: "Group"
+        },
+        {
+            name: "Michael Rodriguez",
+            position: "CEO",
+            company: "InnovateCorp",
+            location: "Mexico City, Mexico",
+            content: "As a CEO, stress management is crucial. The corporate wellness program has been a game-changer for our entire leadership team. We've seen improved decision-making, better work-life balance, and enhanced team dynamics.",
+            image: "https://images.pexels.com/photos/697509/pexels-photo-697509.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+            rating: 5,
+            type: "Corporate"
+        },
+        {
+            name: "Aisha Okonkwo",
+            position: "Data Scientist",
+            company: "AI Innovations",
+            location: "Lagos, Nigeria",
+            content: "The personalized approach helped me address specific posture issues from long hours of coding. The instructor's expertise in adapting yoga for tech professionals is evident in every session. My back pain is gone, and my focus has improved dramatically.",
+            image: "https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+            rating: 5,
+            type: "1-on-1"
+        },
+        {
+            name: "James Thompson",
+            position: "Operations Manager",
+            company: "LogisticsPro",
+            location: "London, UK",
+            content: "The group classes have become the highlight of my week. The community aspect keeps me motivated, and the professional guidance ensures I'm practicing safely and effectively. It's the perfect balance of social connection and personal wellness.",
+            image: "https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+            rating: 5,
+            type: "Group"
+        }
+    ];
+    const stats = [
+        { number: "500+", label: "Global Students", icon: _jsx(Globe, { className: "w-8 h-8 text-blue-600" }) },
+        { number: "50+", label: "Corporate Programs", icon: _jsx(Building, { className: "w-8 h-8 text-green-600" }) },
+        { number: "98%", label: "Satisfaction Rate", icon: _jsx(Star, { className: "w-8 h-8 text-yellow-500" }) },
+        { number: "25+", label: "Countries Served", icon: _jsx(User, { className: "w-8 h-8 text-purple-600" }) }
+    ];
+    const getTypeColor = (type) => {
+        switch (type) {
+            case 'Corporate': return 'bg-purple-100 text-purple-800';
+            case '1-on-1': return 'bg-blue-100 text-blue-800';
+            case 'Group': return 'bg-green-100 text-green-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+    const getTypeIcon = (type) => {
+        switch (type) {
+            case 'Corporate': return _jsx(Building, { className: "w-4 h-4" });
+            case '1-on-1': return _jsx(User, { className: "w-4 h-4" });
+            case 'Group': return _jsx(Globe, { className: "w-4 h-4" });
+            default: return null;
+        }
+    };
+    return (_jsxs("div", { className: "min-h-screen", children: [_jsx("section", { className: "bg-gradient-to-br from-blue-50 via-white to-green-50 py-20", children: _jsxs("div", { className: "max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8", children: [_jsx("h1", { className: "text-5xl font-bold text-gray-900 mb-6", children: "What Our Global Community Says" }), _jsx("p", { className: "text-xl text-gray-600 leading-relaxed", children: "Real stories from professionals around the world who have transformed their lives with Yogodyaan's personalized wellness programs." })] }) }), _jsx("section", { className: "py-16 bg-white", children: _jsx("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", children: _jsx("div", { className: "grid grid-cols-1 md:grid-cols-4 gap-8", children: stats.map((stat, index) => (_jsxs("div", { className: "text-center p-6 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all duration-300", children: [_jsx("div", { className: "flex justify-center mb-4", children: stat.icon }), _jsx("div", { className: "text-3xl font-bold text-gray-900 mb-2", children: stat.number }), _jsx("div", { className: "text-gray-600", children: stat.label })] }, index))) }) }) }), _jsx("section", { className: "py-20 bg-gradient-to-br from-gray-50 to-blue-50", children: _jsxs("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", children: [_jsxs("div", { className: "text-center mb-16", children: [_jsx("h2", { className: "text-4xl font-bold text-gray-900 mb-4", children: "Success Stories" }), _jsx("p", { className: "text-xl text-gray-600", children: "Discover how professionals from different industries and locations have benefited from our programs" })] }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8", children: testimonials.map((testimonial, index) => (_jsxs("div", { className: "bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 relative", children: [_jsx(Quote, { className: "absolute top-4 right-4 w-8 h-8 text-blue-200" }), _jsxs("div", { className: "flex items-center mb-6", children: [_jsx("img", { src: testimonial.image, alt: testimonial.name, className: "w-16 h-16 rounded-full mr-4 object-cover" }), _jsxs("div", { className: "flex-1", children: [_jsx("h4", { className: "font-semibold text-gray-900", children: testimonial.name }), _jsx("p", { className: "text-sm text-gray-600", children: testimonial.position }), _jsx("p", { className: "text-sm text-gray-500", children: testimonial.company }), _jsxs("p", { className: "text-xs text-blue-600 flex items-center mt-1", children: [_jsx(Globe, { className: "w-3 h-3 mr-1" }), testimonial.location] })] })] }), _jsxs("div", { className: "flex items-center justify-between mb-4", children: [_jsx("div", { className: "flex text-yellow-400", children: [...Array(testimonial.rating)].map((_, i) => (_jsx(Star, { className: "w-5 h-5 fill-current" }, i))) }), _jsxs("span", { className: `px-3 py-1 rounded-full text-xs font-medium flex items-center space-x-1 ${getTypeColor(testimonial.type)}`, children: [getTypeIcon(testimonial.type), _jsx("span", { children: testimonial.type })] })] }), _jsxs("p", { className: "text-gray-700 italic leading-relaxed", children: ["\"", testimonial.content, "\""] })] }, index))) })] }) }), _jsx("section", { className: "py-20 bg-white", children: _jsxs("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", children: [_jsxs("div", { className: "text-center mb-16", children: [_jsx("h2", { className: "text-4xl font-bold text-gray-900 mb-4", children: "Video Testimonials" }), _jsx("p", { className: "text-xl text-gray-600", children: "Hear directly from our students about their transformation journey" })] }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8", children: [1, 2, 3].map((index) => (_jsx("div", { className: "bg-gray-100 rounded-2xl aspect-video flex items-center justify-center hover:bg-gray-200 transition-all duration-300 cursor-pointer", children: _jsxs("div", { className: "text-center", children: [_jsx("div", { className: "w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4", children: _jsx("svg", { className: "w-8 h-8 text-white", fill: "currentColor", viewBox: "0 0 20 20", children: _jsx("path", { fillRule: "evenodd", d: "M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z", clipRule: "evenodd" }) }) }), _jsxs("p", { className: "text-gray-600 font-medium", children: ["Video Testimonial ", index] }), _jsx("p", { className: "text-sm text-gray-500", children: "Coming Soon" })] }) }, index))) })] }) }), _jsx("section", { className: "py-20 bg-gradient-to-r from-blue-600 to-green-600 text-white", children: _jsxs("div", { className: "max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8", children: [_jsx("h2", { className: "text-4xl font-bold mb-6", children: "Ready to Write Your Success Story?" }), _jsx("p", { className: "text-xl mb-8 text-blue-100", children: "Join our global community of professionals who have transformed their lives through yoga. Your wellness journey starts with a single session." }), _jsxs("div", { className: "flex flex-col sm:flex-row gap-4 justify-center", children: [_jsx("a", { href: "/book-class", className: "bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 hover:scale-105 inline-block", children: "Start Your Journey" }), _jsx("a", { href: "/contact", className: "border-2 border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 inline-block", children: "Learn More" })] })] }) })] }));
+}
