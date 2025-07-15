@@ -74,7 +74,7 @@ const fetchInstructors = async () => {
     }
 
     // Then fetch profiles for these users
-    const { data: profileData, error: profileError } = await supabase
+    const { data, error: profileError } = await supabase
       .from('profiles')
       .select(`
         id, 
@@ -94,10 +94,10 @@ const fetchInstructors = async () => {
 
     if (profileError) throw profileError
     
-    console.log('📊 Raw instructor profiles:', profileData)
+    console.log('📊 Raw instructor profiles:', data)
     
     // Filter and validate instructor profiles
-    const validProfiles = (profileData || []).filter(profile => {
+    const validProfiles = (data || []).filter(profile => {
       const hasValidName = profile.full_name?.trim()
       const hasValidEmail = profile.email?.trim()
       

@@ -1,4 +1,4 @@
-import { Calendar, Clock, DollarSign, Filter, Plus, Save, Search, Users, X, AlertTriangle } from 'lucide-react'
+import { Calendar, Clock, DollarSign, Plus, Save, Users, X, AlertTriangle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'

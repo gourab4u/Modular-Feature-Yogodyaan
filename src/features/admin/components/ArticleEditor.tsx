@@ -21,7 +21,7 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
     video_url: '',
     category: 'general',
     tags: [] as string[],
-    status: 'draft' as 'draft' | 'published'
+    status: 'draft' as 'draft' | 'published' | 'pending_review' | 'rejected'
   })
   const [newTag, setNewTag] = useState('')
   const [errors, setErrors] = useState<any>({})
@@ -221,6 +221,8 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }: Ar
             >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
+              <option value="pending_review">Pending Review</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
         </div>
