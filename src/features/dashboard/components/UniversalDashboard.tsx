@@ -1,15 +1,11 @@
-// src/features/dashboard/components/UniversalDashboard.tsx
-
 import React, { Suspense, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Footer } from '../../../shared/components/layout/Footer';
 import { Header } from '../../../shared/components/layout/Header';
 import RoleBasedNavigation from '../../../shared/components/navigation/RoleBasedNavigation';
-import { getModulesForRole, hasModuleAccess } from '../../../shared/config/roleConfig';
-import { User } from '../../../shared/types/user';
+import { getModulesForRole, hasModuleAccess, UserRole, DashboardModule } from '../../../shared/config/roleConfig';
 
-
-// Lazy load components  (Modules add here)
+// Lazy load components (Modules add here)
 const InstructorManagement = React.lazy(() => import('./Modules/InstructorManagement'));
 const ClassAssignmentManager = React.lazy(() => import('./Modules/ClassAssignmentManager'));
 const ArticleManagement = React.lazy(() => import('./Modules/ArticleManagement'));
@@ -23,8 +19,17 @@ const FormSubmissions = React.lazy(() => import('./Modules/FormSubmissions'));
 const ContentReview = React.lazy(() => import('./Modules/ContentReview'));
 const ClassTypeManager = React.lazy(() => import('./Modules/ClassTypeManager'));
 const ArticleWorkflow = React.lazy(() => import('./Modules/ArticleWorkflow'));
+const UserProfile = React.lazy(() => import('./Modules/UserProfile'));
 
-
+interface User {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 interface UniversalDashboardProps {
   user: User;
@@ -40,7 +45,7 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
   console.log('userModules:', userModules);
 
   // Component mapping (Modules add here)
-  const componentMap: Record<string, React.ComponentType> = {
+  const componentMap = {
     InstructorManagement,
     ClassAssignmentManager,
     ArticleManagement,
@@ -54,6 +59,7 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
     ContentReview,
     ClassTypeManager,
     ArticleWorkflow,
+    UserProfile,
   };
 
   // Get the first available module for default tab
@@ -63,17 +69,15 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
   const getCurrentModuleFromPath = () => {
     const path = location.pathname;
     const pathSegments = path.split('/');
-    const moduleId = pathSegments[pathSegments.length - 1];
-
+    const moduleId = pathSegments[pathSegments.length - 1] as DashboardModule;
     // Check if the module exists and user has access
     const moduleExists = userModules.some(module => module.id === moduleId);
-    const hasAccess = hasModuleAccess(user.role, moduleId as any);
-
+    const hasAccess = hasModuleAccess(user.role, moduleId);
     return (moduleExists && hasAccess) ? moduleId : defaultModule;
   };
 
   // State for managing active tab - sync with URL
-  const [activeTab, setActiveTab] = useState<string>(getCurrentModuleFromPath());
+  const [activeTab, setActiveTab] = useState(getCurrentModuleFromPath());
 
   // Sync activeTab with URL changes
   useEffect(() => {
@@ -85,7 +89,7 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
 
   // Handle tab change - update both state and URL
   const handleTabChange = (tabId: string) => {
-    if (hasModuleAccess(user.role, tabId as any)) {
+    if (hasModuleAccess(user.role, tabId as DashboardModule)) {
       setActiveTab(tabId);
       navigate(`/dashboard/${tabId}`);
     }
@@ -94,54 +98,42 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
   // Get the active component
   const getActiveComponent = () => {
     const activeModule = userModules.find(module => module.id === activeTab);
-
     if (!activeModule) {
       console.warn(`Module with id ${activeTab} not found`);
       return null;
     }
-
-    if (!hasModuleAccess(user.role, activeTab as any)) {
+    if (!hasModuleAccess(user.role, activeTab as DashboardModule)) {
       return <div className="unauthorized">You don't have access to this module</div>;
     }
-
     const Component = componentMap[activeModule.component];
     if (!Component) {
       console.warn(`Component ${activeModule.component} not found`);
       return <div className="error">Component not found</div>;
     }
-
     return <Component />;
   };
 
   return (
     <div className="universal-dashboard">
-      {/* Header */}
       <Header />
-
       <div className="dashboard-container">
         <div className="dashboard-main">
           <div className="dashboard-sidebar">
-            <RoleBasedNavigation
-              user={user}
-            />
+            <RoleBasedNavigation user={user} />
           </div>
-
           <div className="dashboard-content">
-            {/* Tab Navigation */}
             <div className="dashboard-tabs">
               {userModules.map(module => (
                 <button
                   key={module.id}
                   className={`tab-button ${activeTab === module.id ? 'active' : ''}`}
                   onClick={() => handleTabChange(module.id)}
-                  disabled={!hasModuleAccess(user.role, module.id as any)}
+                  disabled={!hasModuleAccess(user.role, module.id as DashboardModule)}
                 >
-                  {(module as any).name}
+                  {module.title}
                 </button>
               ))}
             </div>
-
-            {/* Tab Content */}
             <div className="dashboard-tab-content">
               <Suspense fallback={<div className="loading">Loading...</div>}>
                 {getActiveComponent()}
@@ -149,8 +141,6 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
             </div>
           </div>
         </div>
-
-        {/* Footer */}
         <Footer />
       </div>
     </div>

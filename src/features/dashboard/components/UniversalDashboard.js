@@ -1,12 +1,11 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-// src/features/dashboard/components/UniversalDashboard.tsx
 import React, { Suspense, useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Footer } from '../../../shared/components/layout/Footer';
 import { Header } from '../../../shared/components/layout/Header';
 import RoleBasedNavigation from '../../../shared/components/navigation/RoleBasedNavigation';
 import { getModulesForRole, hasModuleAccess } from '../../../shared/config/roleConfig';
-// Lazy load components  (Modules add here)
+// Lazy load components (Modules add here)
 const InstructorManagement = React.lazy(() => import('./Modules/InstructorManagement'));
 const ClassAssignmentManager = React.lazy(() => import('./Modules/ClassAssignmentManager'));
 const ArticleManagement = React.lazy(() => import('./Modules/ArticleManagement'));
@@ -20,6 +19,7 @@ const FormSubmissions = React.lazy(() => import('./Modules/FormSubmissions'));
 const ContentReview = React.lazy(() => import('./Modules/ContentReview'));
 const ClassTypeManager = React.lazy(() => import('./Modules/ClassTypeManager'));
 const ArticleWorkflow = React.lazy(() => import('./Modules/ArticleWorkflow'));
+const UserProfile = React.lazy(() => import('./Modules/UserProfile'));
 const UniversalDashboard = ({ user }) => {
     const userModules = getModulesForRole(user.role);
     const navigate = useNavigate();
@@ -42,6 +42,7 @@ const UniversalDashboard = ({ user }) => {
         ContentReview,
         ClassTypeManager,
         ArticleWorkflow,
+        UserProfile,
     };
     // Get the first available module for default tab
     const defaultModule = userModules[0]?.id || 'user_profile';
@@ -88,6 +89,6 @@ const UniversalDashboard = ({ user }) => {
         }
         return _jsx(Component, {});
     };
-    return (_jsxs("div", { className: "universal-dashboard", children: [_jsx(Header, {}), _jsxs("div", { className: "dashboard-container", children: [_jsxs("div", { className: "dashboard-main", children: [_jsx("div", { className: "dashboard-sidebar", children: _jsx(RoleBasedNavigation, { user: user }) }), _jsxs("div", { className: "dashboard-content", children: [_jsx("div", { className: "dashboard-tabs", children: userModules.map(module => (_jsx("button", { className: `tab-button ${activeTab === module.id ? 'active' : ''}`, onClick: () => handleTabChange(module.id), disabled: !hasModuleAccess(user.role, module.id), children: module.name }, module.id))) }), _jsx("div", { className: "dashboard-tab-content", children: _jsx(Suspense, { fallback: _jsx("div", { className: "loading", children: "Loading..." }), children: getActiveComponent() }) })] })] }), _jsx(Footer, {})] })] }));
+    return (_jsxs("div", { className: "universal-dashboard", children: [_jsx(Header, {}), _jsxs("div", { className: "dashboard-container", children: [_jsxs("div", { className: "dashboard-main", children: [_jsx("div", { className: "dashboard-sidebar", children: _jsx(RoleBasedNavigation, { user: user }) }), _jsxs("div", { className: "dashboard-content", children: [_jsx("div", { className: "dashboard-tabs", children: userModules.map(module => (_jsx("button", { className: `tab-button ${activeTab === module.id ? 'active' : ''}`, onClick: () => handleTabChange(module.id), disabled: !hasModuleAccess(user.role, module.id), children: module.title }, module.id))) }), _jsx("div", { className: "dashboard-tab-content", children: _jsx(Suspense, { fallback: _jsx("div", { className: "loading", children: "Loading..." }), children: getActiveComponent() }) })] })] }), _jsx(Footer, {})] })] }));
 };
 export default UniversalDashboard;
