@@ -25,8 +25,6 @@ const UniversalDashboard = ({ user }) => {
     const navigate = useNavigate();
     const location = useLocation();
     // Debug logs
-    console.log('user.role:', user.role);
-    console.log('userModules:', userModules);
     // Component mapping (Modules add here)
     const componentMap = {
         InstructorManagement,
