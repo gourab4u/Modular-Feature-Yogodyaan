@@ -7,7 +7,7 @@ import { supabase } from '../../../../shared/lib/supabase';
 import { useUserProfiles } from '../../../user-profile/hooks/useUserProfiles';
 import { UserRoleManagement } from './UserRoleManagement';
 export function UserManagement() {
-    const { profiles, loading: profilesLoading, refetch } = useUserProfiles();
+    const { loading: profilesLoading } = useUserProfiles();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');

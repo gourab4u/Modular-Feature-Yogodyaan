@@ -1,19 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  TrendingDown, 
-  Users, 
-  Calendar, 
-  Filter, 
-  Search, 
+import { useState, useEffect } from 'react';
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Search,
   Plus,
   Eye,
   Edit3,
   Download,
-  RefreshCw,
   AlertCircle,
-  CheckCircle,
   Clock,
   X
 } from 'lucide-react';
@@ -26,7 +21,7 @@ const TransactionManagement = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [dateRange, setDateRange] = useState('all');
-  const [showAddTransaction, setShowAddTransaction] = useState(false);
+  const [, setShowAddTransaction] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -119,7 +114,7 @@ const TransactionManagement = () => {
     let filtered = transactions;
 
     if (searchTerm) {
-      filtered = filtered.filter(t => 
+      filtered = filtered.filter(t =>
         t.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         t.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
@@ -213,7 +208,7 @@ const TransactionManagement = () => {
                 <span>Export</span>
               </button>
               {canEdit && (
-                <button 
+                <button
                   onClick={() => setShowAddTransaction(true)}
                   className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
                 >
@@ -238,7 +233,7 @@ const TransactionManagement = () => {
               <TrendingUp className="h-8 w-8 text-green-500" />
             </div>
           </div>
-          
+
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -248,7 +243,7 @@ const TransactionManagement = () => {
               <TrendingDown className="h-8 w-8 text-red-500" />
             </div>
           </div>
-          
+
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -260,7 +255,7 @@ const TransactionManagement = () => {
               <DollarSign className="h-8 w-8 text-blue-500" />
             </div>
           </div>
-          
+
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -288,7 +283,7 @@ const TransactionManagement = () => {
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
@@ -302,7 +297,7 @@ const TransactionManagement = () => {
                 <option value="failed">Failed</option>
               </select>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
               <select
@@ -315,7 +310,7 @@ const TransactionManagement = () => {
                 <option value="expense">Expense</option>
               </select>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
               <select
@@ -412,7 +407,7 @@ const TransactionManagement = () => {
               </tbody>
             </table>
           </div>
-          
+
           {/* Pagination */}
           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
             <div className="flex-1 flex justify-between sm:hidden">
@@ -445,11 +440,10 @@ const TransactionManagement = () => {
                     <button
                       key={i + 1}
                       onClick={() => setCurrentPage(i + 1)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        currentPage === i + 1
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === i + 1
                           ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
                           : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {i + 1}
                     </button>
@@ -475,55 +469,55 @@ const TransactionManagement = () => {
                   <X className="h-6 w-6" />
                 </button>
               </div>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Transaction ID</label>
                   <p className="text-sm text-gray-900">{selectedTransaction.id}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">User/Vendor</label>
                   <p className="text-sm text-gray-900">{selectedTransaction.user_name}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
                   <p className={`text-sm font-medium ${selectedTransaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                     {selectedTransaction.type === 'income' ? '+' : '-'}{formatCurrency(selectedTransaction.amount, selectedTransaction.currency)}
                   </p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTransaction.status)}`}>
                     {selectedTransaction.status}
                   </span>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(selectedTransaction.category)}`}>
                     {selectedTransaction.category.replace('_', ' ')}
                   </span>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                   <p className="text-sm text-gray-900">{selectedTransaction.payment_method.replace('_', ' ')}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
                   <p className="text-sm text-gray-900">{formatDate(selectedTransaction.created_at)}</p>
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Updated Date</label>
                   <p className="text-sm text-gray-900">{formatDate(selectedTransaction.updated_at)}</p>
                 </div>
               </div>
-              
+
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <p className="text-sm text-gray-900">{selectedTransaction.description}</p>

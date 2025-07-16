@@ -1,6 +1,6 @@
 // src/shared/config/roleConfig.ts
 export const ROLE_MODULES = {
-    super_admin: [
+    super_user: [
         { id: 'overview', title: 'Overview', component: 'Overview', icon: 'dashboard', order: 1 },
         { id: 'user_management', title: 'User Management', component: 'UserManagement', icon: 'users', order: 2 },
         { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 3 },

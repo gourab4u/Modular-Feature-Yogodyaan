@@ -116,15 +116,13 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
   return (
     <div className="universal-dashboard">
       {/* Header */}
-      <Header user={user} />
+      <Header />
 
       <div className="dashboard-container">
         <div className="dashboard-main">
           <div className="dashboard-sidebar">
             <RoleBasedNavigation
               user={user}
-              activeTab={activeTab}
-              onTabChange={handleTabChange}
             />
           </div>
 
@@ -138,7 +136,7 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
                   onClick={() => handleTabChange(module.id)}
                   disabled={!hasModuleAccess(user.role, module.id as any)}
                 >
-                  {module.name}
+                  {(module as any).name}
                 </button>
               ))}
             </div>

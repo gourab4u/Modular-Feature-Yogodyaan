@@ -50,33 +50,33 @@ export function InstructorManagement() {
     fetchInstructors()
   }, [])
 
-const fetchInstructors = async () => {
-  try {
-    setLoading(true)
-    
-    // First, get all user IDs with instructor or yoga_acharya roles
-    const { data: userRoles, error: userRolesError } = await supabase
-      .from('user_roles')
-      .select(`
+  const fetchInstructors = async () => {
+    try {
+      setLoading(true)
+
+      // First, get all user IDs with instructor or yoga_acharya roles
+      const { data: userRoles, error: userRolesError } = await supabase
+        .from('user_roles')
+        .select(`
         user_id,
         roles!inner(name)
       `)
-      .in('roles.name', ['instructor', 'yoga_acharya'])
+        .in('roles.name', ['instructor', 'yoga_acharya'])
 
-    if (userRolesError) throw userRolesError
+      if (userRolesError) throw userRolesError
 
-    // Extract unique user IDs
-    const instructorUserIds = [...new Set(userRoles?.map(ur => ur.user_id) || [])]
-    
-    if (instructorUserIds.length === 0) {
-      setInstructors([])
-      return
-    }
+      // Extract unique user IDs
+      const instructorUserIds = [...new Set(userRoles?.map(ur => ur.user_id) || [])]
 
-    // Then fetch profiles for these users
-    const { data, error: profileError } = await supabase
-      .from('profiles')
-      .select(`
+      if (instructorUserIds.length === 0) {
+        setInstructors([])
+        return
+      }
+
+      // Then fetch profiles for these users
+      const { data, error: profileError } = await supabase
+        .from('profiles')
+        .select(`
         id, 
         user_id, 
         full_name, 
@@ -89,54 +89,54 @@ const fetchInstructors = async () => {
         avatar_url, 
         is_active
       `)
-      .in('user_id', instructorUserIds)
-      .order('full_name')
+        .in('user_id', instructorUserIds)
+        .order('full_name')
 
-    if (profileError) throw profileError
-    
-    console.log('📊 Raw instructor profiles:', data)
-    
-    // Filter and validate instructor profiles
-    const validProfiles = (data || []).filter(profile => {
-      const hasValidName = profile.full_name?.trim()
-      const hasValidEmail = profile.email?.trim()
-      
-      const isValid = profile.user_id && 
-                     (hasValidName || hasValidEmail)
-      
-      if (!isValid) {
-        console.warn('⚠️ Filtering out invalid instructor profile:', profile)
-      }
-      
-      return isValid
-    })
-    
-    console.log('✅ Valid instructor profiles after filtering:', validProfiles)
-    
-    // Transform to Instructor interface
-    const instructorData = validProfiles.map(profile => ({
-      id: profile.id,
-      user_id: profile.user_id,
-      full_name: profile.full_name?.trim() || profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 'Unknown Instructor',
-      email: profile.email?.trim() || '',
-      phone: profile.phone || '',
-      bio: profile.bio || '',
-      specialties: profile.specialties || [],
-      experience_years: profile.experience_years || 0,
-      certification: profile.certification || '',
-      avatar_url: profile.avatar_url || '',
-      is_active: profile.is_active ?? true
-    }))
-    
-    console.log('📋 Final instructor data:', instructorData)
+      if (profileError) throw profileError
 
-    setInstructors(instructorData)
-  } catch (error) {
-    console.error('❌ Error fetching instructors:', error)
-  } finally {
-    setLoading(false)
+      console.log('📊 Raw instructor profiles:', data)
+
+      // Filter and validate instructor profiles
+      const validProfiles = (data || []).filter(profile => {
+        const hasValidName = profile.full_name?.trim()
+        const hasValidEmail = profile.email?.trim()
+
+        const isValid = profile.user_id &&
+          (hasValidName || hasValidEmail)
+
+        if (!isValid) {
+          console.warn('⚠️ Filtering out invalid instructor profile:', profile)
+        }
+
+        return isValid
+      })
+
+      console.log('✅ Valid instructor profiles after filtering:', validProfiles)
+
+      // Transform to Instructor interface
+      const instructorData = validProfiles.map(profile => ({
+        id: profile.id,
+        user_id: profile.user_id,
+        full_name: profile.full_name?.trim() || profile.email?.split('@')[0]?.replace(/[._]/g, ' ') || 'Unknown Instructor',
+        email: profile.email?.trim() || '',
+        phone: profile.phone || '',
+        bio: profile.bio || '',
+        specialties: profile.specialties || [],
+        experience_years: profile.experience_years || 0,
+        certification: profile.certification || '',
+        avatar_url: profile.avatar_url || '',
+        is_active: profile.is_active ?? true
+      }))
+
+      console.log('📋 Final instructor data:', instructorData)
+
+      setInstructors(instructorData)
+    } catch (error) {
+      console.error('❌ Error fetching instructors:', error)
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -178,7 +178,7 @@ const fetchInstructors = async () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
 
     try {
@@ -204,7 +204,7 @@ const fetchInstructors = async () => {
         if (error) throw error
       } else {
         // Create new instructor: need to create user, profile, and assign role
-        
+
         // First, create a new user account
         const { data: authData, error: authError } = await supabase.auth.admin.createUser({
           email: formData.email,
@@ -219,7 +219,7 @@ const fetchInstructors = async () => {
         if (!authData.user) throw new Error('Failed to create user')
 
         // Create profile for the new user
-        const { data: profileData, error: profileError } = await supabase
+        const { error: profileError } = await supabase
           .from('profiles')
           .insert([{
             user_id: authData.user.id,
@@ -381,9 +381,8 @@ const fetchInstructors = async () => {
                     type="text"
                     value={formData.full_name}
                     onChange={(e) => handleInputChange('full_name', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.full_name ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.full_name ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     placeholder="Enter instructor's full name"
                   />
                   {errors.full_name && <p className="text-red-500 text-sm mt-1">{errors.full_name}</p>}
@@ -397,9 +396,8 @@ const fetchInstructors = async () => {
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     placeholder="instructor@example.com"
                     disabled={!!editingInstructor} // Disable email editing for existing instructors
                   />
@@ -430,9 +428,8 @@ const fetchInstructors = async () => {
                     value={formData.experience_years}
                     onChange={(e) => handleInputChange('experience_years', parseInt(e.target.value) || 0)}
                     min="0"
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.experience_years ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.experience_years ? 'border-red-500' : 'border-gray-300'
+                      }`}
                   />
                   {errors.experience_years && <p className="text-red-500 text-sm mt-1">{errors.experience_years}</p>}
                 </div>
@@ -446,9 +443,8 @@ const fetchInstructors = async () => {
                   value={formData.bio}
                   onChange={(e) => handleInputChange('bio', e.target.value)}
                   rows={4}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.bio ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.bio ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Tell us about the instructor's background, teaching style, and philosophy"
                 />
                 {errors.bio && <p className="text-red-500 text-sm mt-1">{errors.bio}</p>}
@@ -484,7 +480,7 @@ const fetchInstructors = async () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Specialties *
                 </label>
-                
+
                 {/* Current Specialties */}
                 <div className="flex flex-wrap gap-2 mb-3">
                   {formData.specialties.map((specialty, index) => (
@@ -539,11 +535,10 @@ const fetchInstructors = async () => {
                           }))
                         }
                       }}
-                      className={`px-2 py-1 text-xs rounded border transition-colors ${
-                        formData.specialties.includes(specialty)
+                      className={`px-2 py-1 text-xs rounded border transition-colors ${formData.specialties.includes(specialty)
                           ? 'bg-blue-100 text-blue-800 border-blue-300'
                           : 'bg-gray-50 text-gray-700 border-gray-300 hover:bg-gray-100'
-                      }`}
+                        }`}
                       disabled={formData.specialties.includes(specialty)}
                     >
                       {specialty}
@@ -605,9 +600,8 @@ const fetchInstructors = async () => {
             {instructors.map((instructor) => (
               <div
                 key={instructor.id}
-                className={`border rounded-lg p-6 hover:shadow-md transition-shadow ${
-                  instructor.is_active ? 'border-gray-200' : 'border-gray-300 bg-gray-50'
-                }`}
+                className={`border rounded-lg p-6 hover:shadow-md transition-shadow ${instructor.is_active ? 'border-gray-200' : 'border-gray-300 bg-gray-50'
+                  }`}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center space-x-3">
@@ -675,11 +669,10 @@ const fetchInstructors = async () => {
 
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">Status:</span>
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      instructor.is_active 
-                        ? 'bg-green-100 text-green-800' 
+                    <span className={`px-2 py-1 rounded text-xs ${instructor.is_active
+                        ? 'bg-green-100 text-green-800'
                         : 'bg-gray-100 text-gray-800'
-                    }`}>
+                      }`}>
                       {instructor.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>

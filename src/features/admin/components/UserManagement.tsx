@@ -1,4 +1,4 @@
-import { Edit, Filter, Search, Shield, User, Users } from 'lucide-react'
+import { Filter, Search, Shield, User, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
@@ -18,7 +18,7 @@ interface UserProfile {
 }
 
 export function UserManagement() {
-  const { profiles, loading: profilesLoading, refetch } = useUserProfiles()
+  const { loading: profilesLoading } = useUserProfiles()
   const [users, setUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -35,17 +35,17 @@ export function UserManagement() {
     try {
       setLoading(true)
       setError(null)
-      
+
       // Get the current session
       const { data: { session } } = await supabase.auth.getSession()
-      
+
       if (!session) {
         throw new Error('No active session')
       }
 
       // Call the secure Edge Function instead of direct admin API
       const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-users`
-      
+
       const response = await fetch(apiUrl, {
         method: 'GET',
         headers: {
@@ -72,12 +72,12 @@ export function UserManagement() {
 
   const handleRoleUpdate = async (userId: string, newRoles: string[]) => {
     // Update the local state
-    setUsers(prev => prev.map(user => 
-      user.user_id === userId 
+    setUsers(prev => prev.map(user =>
+      user.user_id === userId
         ? { ...user, user_roles: newRoles }
         : user
     ))
-    
+
     // Refresh the data
     await fetchUsers()
     setShowRoleManagement(false)
@@ -89,10 +89,10 @@ export function UserManagement() {
       const matchesSearch = searchTerm === '' ||
         user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.email.toLowerCase().includes(searchTerm.toLowerCase())
-      
-      const matchesRole = roleFilter === 'all' || 
+
+      const matchesRole = roleFilter === 'all' ||
         (user.user_roles && user.user_roles.includes(roleFilter))
-      
+
       return matchesSearch && matchesRole
     })
   }
@@ -134,7 +134,7 @@ export function UserManagement() {
       <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
         <div className="text-red-600 font-semibold mb-2">Error Loading Users</div>
         <div className="text-red-500 text-sm mb-4">{error}</div>
-        <Button 
+        <Button
           onClick={fetchUsers}
           variant="outline"
           className="border-red-300 text-red-600 hover:bg-red-50"
@@ -303,21 +303,21 @@ export function UserManagement() {
           </div>
           <div className="text-gray-600">Total Users</div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-lg p-6 text-center">
           <div className="text-3xl font-bold text-green-600 mb-2">
             {users.filter(u => u.user_roles?.includes('instructor')).length}
           </div>
           <div className="text-gray-600">Instructors</div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-lg p-6 text-center">
           <div className="text-3xl font-bold text-purple-600 mb-2">
             {users.filter(u => u.user_roles?.includes('yoga_acharya')).length}
           </div>
           <div className="text-gray-600">Yoga Acharyas</div>
         </div>
-        
+
         <div className="bg-white rounded-xl shadow-lg p-6 text-center">
           <div className="text-3xl font-bold text-red-600 mb-2">
             {users.filter(u => u.user_roles?.some(role => ['admin', 'super_admin'].includes(role))).length}

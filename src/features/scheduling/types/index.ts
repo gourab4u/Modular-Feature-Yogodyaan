@@ -1,7 +1,11 @@
 // Export all instructor-related types
-export type {
-    Instructor, InstructorProfile, ScheduleInstructor
+import type {
+    Instructor,
+    InstructorProfile,
+    ScheduleInstructor
 } from './instructor';
+
+export type { Instructor, InstructorProfile, ScheduleInstructor };
 
 // Class and Schedule related types
 export interface ClassType {

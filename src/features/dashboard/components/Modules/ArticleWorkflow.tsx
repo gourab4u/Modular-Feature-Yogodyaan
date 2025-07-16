@@ -53,7 +53,7 @@ export function ArticleWorkflow() {
     useEffect(() => {
         const getCurrentUserProfile = async () => {
             if (user?.id) {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('user_id', user.id)

@@ -97,7 +97,10 @@ function InstructorProfile() {
             if (scheduleError) {
                 console.error('Error fetching schedules:', scheduleError)
             } else {
-                setSchedules(scheduleData || [])
+                setSchedules((scheduleData || []).map((s: any) => ({
+                    ...s,
+                    class_type: Array.isArray(s.class_type) ? s.class_type[0] : s.class_type
+                })))
             }
 
         } catch (err: any) {

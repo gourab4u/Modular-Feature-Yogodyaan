@@ -1,4 +1,4 @@
-import { Calendar, Clock, DollarSign, Filter, Plus, Search, Users } from 'lucide-react'
+import { Calendar, Clock, DollarSign, Filter, Search, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
@@ -51,7 +51,7 @@ export function YogaAcharyaDashboard() {
 
     try {
       setLoading(true)
-      
+
       const { data, error } = await supabase
         .from('class_assignments')
         .select(`
@@ -80,13 +80,13 @@ export function YogaAcharyaDashboard() {
 
   const getFilteredAssignments = () => {
     const now = new Date()
-    
+
     return assignments.filter(assignment => {
       const classTime = new Date(assignment.scheduled_class.start_time)
-      
+
       // Status filter
       const matchesStatus = statusFilter === 'all' || assignment.payment_status === statusFilter
-      
+
       // Time filter
       let matchesTime = true
       if (timeFilter === 'upcoming') {
@@ -94,11 +94,11 @@ export function YogaAcharyaDashboard() {
       } else if (timeFilter === 'completed') {
         matchesTime = classTime < now || assignment.scheduled_class.status === 'completed'
       }
-      
+
       // Search filter
       const matchesSearch = searchTerm === '' ||
         assignment.scheduled_class.class_type.name.toLowerCase().includes(searchTerm.toLowerCase())
-      
+
       return matchesStatus && matchesTime && matchesSearch
     })
   }
@@ -156,7 +156,7 @@ export function YogaAcharyaDashboard() {
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Yoga Acharya Dashboard</h2>
           <p className="text-gray-600">Manage your classes and assignments</p>
         </div>
-        
+
         {canAssignClasses && (
           <div className="flex space-x-2">
             <Button
@@ -279,7 +279,7 @@ export function YogaAcharyaDashboard() {
                 <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">No assignments found</h3>
                 <p className="text-gray-600">
-                  {assignments.length === 0 
+                  {assignments.length === 0
                     ? "You don't have any class assignments yet."
                     : "No assignments match your current filters."
                   }

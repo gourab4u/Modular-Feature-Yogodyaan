@@ -11,7 +11,7 @@ interface UserProfile {
   created_at: string
   updated_at: string
   email: string
-  user_created_at: string  
+  user_created_at: string
   user_roles?: string[]
   total_bookings?: number
   attended_classes?: number
@@ -59,13 +59,13 @@ export function useUserProfiles() {
       const transformedData = (profilesData || []).map(profile => {
         // Find roles for this user
         const userRoleEntries = (userRolesData || []).filter(ur => ur.user_id === profile.user_id)
-        const userRoles = userRoleEntries.map(ur => ur.roles?.name).filter(Boolean)
-        
+        const userRoles = userRoleEntries.map((ur: any) => ur.roles?.name).filter(Boolean)
+
         // If no roles found, default to 'user'
         if (userRoles.length === 0) {
           userRoles.push('user')
         }
-        
+
         return {
           ...profile,
           user_id: profile.user_id || profile.id,

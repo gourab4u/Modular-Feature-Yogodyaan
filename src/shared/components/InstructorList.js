@@ -1,8 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useInstructorModal } from '../hooks/useInstructorModal';
-import InstructorProfileModal from './InstructorProfileModal';
 const InstructorContext = createContext(undefined);
 export const useInstructorContext = () => {
     const context = useContext(InstructorContext);
@@ -13,10 +11,19 @@ export const useInstructorContext = () => {
 };
 export const InstructorProvider = ({ children }) => {
     const navigate = useNavigate();
-    const { selectedInstructor, isModalOpen, openModal, closeModal } = useInstructorModal();
+    const [selectedInstructor, setSelectedInstructor] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const openModal = (instructor) => {
+        setSelectedInstructor(instructor);
+        setIsModalOpen(true);
+    };
+    const closeModal = () => {
+        setSelectedInstructor(null);
+        setIsModalOpen(false);
+    };
     const handleViewFullProfile = (instructorId) => {
         closeModal();
         navigate(`/instructor/${instructorId}`);
     };
-    return (_jsxs(InstructorContext.Provider, { value: { openInstructorModal: openModal }, children: [children, _jsx(InstructorProfileModal, { instructor: selectedInstructor, isOpen: isModalOpen, onClose: closeModal, onViewFullProfile: handleViewFullProfile })] }));
+    return (_jsxs(InstructorContext.Provider, { value: { openInstructorModal: openModal }, children: [children, isModalOpen && selectedInstructor && (_jsx("div", { className: "modal-backdrop", onClick: closeModal, children: _jsxs("div", { className: "modal-content", onClick: (e) => e.stopPropagation(), children: [_jsx("h3", { children: selectedInstructor.full_name }), _jsx("p", { children: selectedInstructor.bio }), _jsx("button", { onClick: () => handleViewFullProfile(selectedInstructor.id), children: "View Full Profile" }), _jsx("button", { onClick: closeModal, children: "Close" })] }) }))] }));
 };

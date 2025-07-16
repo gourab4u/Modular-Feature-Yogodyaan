@@ -72,7 +72,7 @@ export function AdminDashboard() {
             const subscriptions = safeData(subscriptionsRes);
             const transactions = safeData(transactionsRes);
             // ✅ NEW: Filter instructors from profiles by role
-            const instructors = profiles.filter(profile => profile.user_roles?.some(r => ['instructor', 'yoga_acharya'].includes(r.roles?.name)));
+            const instructors = profiles.filter(profile => profile.user_roles?.some((r) => ['instructor', 'yoga_acharya'].includes(r.roles?.name)));
             const monthlyRevenue = transactions
                 .filter(t => t?.status === 'completed' && new Date(t.created_at) >= new Date(new Date().getFullYear(), new Date().getMonth(), 1))
                 .reduce((sum, t) => sum + parseFloat(t?.amount || '0'), 0);

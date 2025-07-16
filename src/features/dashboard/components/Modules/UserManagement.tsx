@@ -18,7 +18,7 @@ interface UserProfile {
 }
 
 export function UserManagement() {
-  const { profiles, loading: profilesLoading, refetch } = useUserProfiles()
+  const { loading: profilesLoading } = useUserProfiles()
   const [users, setUsers] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')

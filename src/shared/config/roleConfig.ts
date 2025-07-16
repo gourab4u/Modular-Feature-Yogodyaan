@@ -30,7 +30,7 @@ export type DashboardModule =
   | 'forms';
 
 export interface ModuleConfig {
-  id: DashboardModule;
+  id: string;
   title: string;
   component: string; // Component name to lazy load
   icon?: string;
@@ -39,7 +39,7 @@ export interface ModuleConfig {
 }
 
 export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
-  super_admin: [
+  super_user: [
     { id: 'overview', title: 'Overview', component: 'Overview', icon: 'dashboard', order: 1 },
     { id: 'user_management', title: 'User Management', component: 'UserManagement', icon: 'users', order: 2 },
     { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 3 },

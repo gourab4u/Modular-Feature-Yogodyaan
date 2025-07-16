@@ -9,7 +9,7 @@ const TransactionManagement = () => {
     const [filterStatus, setFilterStatus] = useState('all');
     const [filterType, setFilterType] = useState('all');
     const [dateRange, setDateRange] = useState('all');
-    const [showAddTransaction, setShowAddTransaction] = useState(false);
+    const [, setShowAddTransaction] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);

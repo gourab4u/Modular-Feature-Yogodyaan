@@ -244,12 +244,12 @@ export default function InstructorProfile() {
             let currentBookings = 0
 
             try {
-              if (schedule.class_type?.name) {
+              if ((schedule.class_type as any)?.name) {
                 const { count } = await supabase
                   .from('bookings')
                   .select('*', { count: 'exact', head: true })
                   .eq('instructor', profileData.full_name)
-                  .eq('class_name', schedule.class_type.name)
+                  .eq('class_name', (schedule.class_type as any)?.name)
                   .eq('status', 'confirmed')
 
                 currentBookings = count || 0
@@ -264,15 +264,15 @@ export default function InstructorProfile() {
               day_of_week: schedule.day_of_week,
               start_time: schedule.start_time,
               end_time: null,
-              duration_minutes: schedule.duration_minutes || schedule.class_type?.duration_minutes || 60,
-              max_participants: schedule.max_participants || schedule.class_type?.max_participants || 20,
+              duration_minutes: schedule.duration_minutes || (schedule.class_type as any)?.duration_minutes || 60,
+              max_participants: schedule.max_participants || (schedule.class_type as any)?.max_participants || 20,
               current_bookings: currentBookings,
               location: 'Studio A',
               class_type: {
-                name: schedule.class_type?.name || 'Yoga Class',
-                difficulty_level: schedule.class_type?.difficulty_level || 'beginner',
-                description: schedule.class_type?.description || 'A wonderful yoga class',
-                price: schedule.class_type?.price || 25
+                name: (schedule.class_type as any)?.name || 'Yoga Class',
+                difficulty_level: (schedule.class_type as any)?.difficulty_level || 'beginner',
+                description: (schedule.class_type as any)?.description || 'A wonderful yoga class',
+                price: (schedule.class_type as any)?.price || 25
               }
             }
           })
@@ -848,10 +848,10 @@ export default function InstructorProfile() {
                       <div
                         key={schedule.id}
                         className={`border rounded-xl p-6 hover:shadow-lg transition-all duration-200 ${userHasBooked
-                            ? 'border-green-300 bg-green-50'
-                            : isFullyBooked
-                              ? 'border-red-200 bg-red-50'
-                              : 'border-gray-200 hover:border-blue-300'
+                          ? 'border-green-300 bg-green-50'
+                          : isFullyBooked
+                            ? 'border-red-200 bg-red-50'
+                            : 'border-gray-200 hover:border-blue-300'
                           }`}
                       >
                         {/* ✅ Add "Already Booked" indicator */}
@@ -913,19 +913,19 @@ export default function InstructorProfile() {
                               <Button
                                 size="sm"
                                 className={`text-xs transition-all ${userHasBooked
-                                    ? 'bg-green-500 cursor-not-allowed'
-                                    : isFullyBooked
-                                      ? 'bg-gray-400 cursor-not-allowed'
-                                      : isAlmostFull
-                                        ? 'bg-orange-500 hover:bg-orange-600 animate-pulse'
-                                        : ''
+                                  ? 'bg-green-500 cursor-not-allowed'
+                                  : isFullyBooked
+                                    ? 'bg-gray-400 cursor-not-allowed'
+                                    : isAlmostFull
+                                      ? 'bg-orange-500 hover:bg-orange-600 animate-pulse'
+                                      : ''
                                   }`}
                                 onClick={() => handleQuickBook(schedule)}
                                 disabled={bookingLoading === schedule.id || isFullyBooked || userHasBooked}
                               >
                                 {bookingLoading === schedule.id ? (
                                   <>
-                                    <LoadingSpinner size="xs" className="mr-1" />
+                                    <LoadingSpinner size="sm" />
                                     Booking...
                                   </>
                                 ) : userHasBooked ? (

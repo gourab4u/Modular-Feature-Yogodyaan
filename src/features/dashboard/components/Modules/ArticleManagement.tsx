@@ -109,7 +109,10 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
       if (error) throw error
 
       console.log('Moderation logs fetched:', data) // Debug log
-      setModerationLogs(data || [])
+      setModerationLogs((data || []).map((log: any) => ({
+        ...log,
+        moderator: Array.isArray(log.moderator) ? log.moderator[0] : log.moderator
+      })))
     } catch (error) {
       console.error('Error fetching moderation logs:', error)
       setModerationLogs([])
@@ -276,7 +279,10 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
   if (showEditor) {
     return (
       <ArticleEditor
-        article={editingArticle || undefined}
+        article={editingArticle ? {
+          ...editingArticle,
+          image_url: editingArticle.image_url || ''
+        } as any : undefined}
         onSave={handleSaveArticle}
         onCancel={() => {
           setEditingArticle(null)
@@ -334,7 +340,7 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
                       <div className="text-sm font-medium text-gray-900">
                         {article.title}
                         {hasModeratorFeedback(article) && (
-                          <MessageSquare className="w-4 h-4 text-blue-500 inline ml-2" title="Has feedback" />
+                          <MessageSquare className="w-4 h-4 text-blue-500 inline ml-2" />
                         )}
                       </div>
                       <div className="text-sm text-gray-500 truncate max-w-xs">
@@ -350,7 +356,7 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
                           {article.status.replace('_', ' ')}
                         </span>
                         {article.status === 'draft' && article.moderation_status === 'rejected' && (
-                          <AlertCircle className="w-4 h-4 text-red-500 ml-2" title="Rejected - needs revision" />
+                          <AlertCircle className="w-4 h-4 text-red-500 ml-2" />
                         )}
                       </div>
                     </td>

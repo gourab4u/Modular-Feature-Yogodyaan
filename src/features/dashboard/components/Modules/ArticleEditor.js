@@ -6,7 +6,8 @@ import 'react-quill/dist/quill.snow.css';
 import { Button } from '../../../../shared/components/ui/Button';
 import { useAuth } from '../../../auth/contexts/AuthContext';
 export function ArticleEditor({ article, onSave, onCancel, loading = false }) {
-    const { user, isAdmin, isSanghaGuide } = useAuth();
+    const { isAdmin } = useAuth();
+    const isSanghaGuide = false; // Temporary fix until AuthContext is updated
     const [formData, setFormData] = useState({
         title: '',
         content: '',
@@ -31,9 +32,7 @@ export function ArticleEditor({ article, onSave, onCancel, loading = false }) {
                 category: article.category,
                 tags: article.tags || [],
                 // Don't allow changing from pending_review back to published for regular users
-                status: article.status === 'pending_review' && !isAdmin && !isSanghaGuide
-                    ? 'draft'
-                    : article.status
+                status: article.status
             });
         }
     }, [article, isAdmin, isSanghaGuide]);

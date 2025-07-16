@@ -9,7 +9,6 @@ import {
   Mail,
   MessageCircle,
   Settings,
-  Shield,
   TrendingUp,
   Users as UsersIcon,
   Award,
@@ -120,7 +119,7 @@ export function AdminDashboard() {
 
       // ✅ NEW: Filter instructors from profiles by role
       const instructors = profiles.filter(profile =>
-        profile.user_roles?.some(r => ['instructor', 'yoga_acharya'].includes(r.roles?.name))
+        profile.user_roles?.some((r: any) => ['instructor', 'yoga_acharya'].includes(r.roles?.name))
       )
 
       const monthlyRevenue = transactions
@@ -237,8 +236,8 @@ export function AdminDashboard() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`py-4 text-sm font-medium flex items-center space-x-1 border-b-2 ${activeTab === tab.id
-                  ? 'border-emerald-600 text-emerald-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                ? 'border-emerald-600 text-emerald-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
             >
               {tab.icon}
