@@ -33,6 +33,12 @@ interface Booking {
   status: string
   created_at: string
   updated_at: string
+  timezone?: string
+  goals?: string
+  preferred_days?: string[]
+  preferred_times?: string[]
+  package_type?: string
+  booking_notes?: string
 }
 
 export function BookingManagement() {
@@ -648,6 +654,30 @@ export function BookingManagement() {
                       <div>
                         <p className="text-sm text-gray-500">Booking Date</p>
                         <p className="font-medium">{formatDate(selectedBooking.created_at)}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Time Zone</p>
+                        <p className="font-medium">{selectedBooking.timezone || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Goals</p>
+                        <p className="font-medium">{selectedBooking.goals || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Preferred Days</p>
+                        <p className="font-medium">{selectedBooking.preferred_days?.join(', ') || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Preferred Times</p>
+                        <p className="font-medium">{selectedBooking.preferred_times?.join(', ') || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Package</p>
+                        <p className="font-medium">{selectedBooking.package_type || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Health Conditions / Notes</p>
+                        <p className="font-medium">{selectedBooking.booking_notes || 'None'}</p>
                       </div>
                     </div>
                   </div>

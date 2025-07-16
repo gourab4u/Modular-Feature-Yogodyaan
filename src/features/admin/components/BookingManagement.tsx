@@ -36,6 +36,7 @@ interface Booking {
 }
 
 export function BookingManagement() {
+  console.log('BookingManagement component rendering');
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
@@ -49,8 +50,11 @@ export function BookingManagement() {
   const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
-    fetchBookings()
-  }, [])
+    console.log('useEffect triggered');
+    fetchBookings();
+  }, []);
+
+  console.log('Component mounted');
 
   const fetchBookings = async () => {
     try {
@@ -58,7 +62,9 @@ export function BookingManagement() {
       const { data, error } = await supabase
         .from('bookings')
         .select('*')
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      console.log('Fetched bookings:', data);
 
       if (error) throw error
       setBookings(data || [])
@@ -100,7 +106,7 @@ export function BookingManagement() {
       setBookings(bookings.filter(booking => booking.id !== id))
       setShowConfirmDelete(null)
       setSelectedBooking(null)
-      
+
       setSuccessMessage('Booking deleted successfully')
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
@@ -118,14 +124,14 @@ export function BookingManagement() {
       if (error) throw error
 
       // Update local state
-      setBookings(bookings.map(booking => 
+      setBookings(bookings.map(booking =>
         booking.id === id ? { ...booking, status } : booking
       ))
-      
+
       if (selectedBooking && selectedBooking.id === id) {
         setSelectedBooking({ ...selectedBooking, status })
       }
-      
+
       setSuccessMessage(`Booking status updated to ${status}`)
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
@@ -135,7 +141,7 @@ export function BookingManagement() {
 
   const handleSaveBooking = async () => {
     if (!selectedBooking) return
-    
+
     try {
       const { error } = await supabase
         .from('bookings')
@@ -145,17 +151,17 @@ export function BookingManagement() {
       if (error) throw error
 
       // Update local state
-      const updatedBookings = bookings.map(booking => 
-        booking.id === selectedBooking.id 
-          ? { ...booking, ...updatedBooking } 
+      const updatedBookings = bookings.map(booking =>
+        booking.id === selectedBooking.id
+          ? { ...booking, ...updatedBooking }
           : booking
       )
-      
+
       setBookings(updatedBookings)
       setSelectedBooking({ ...selectedBooking, ...updatedBooking })
       setIsEditing(false)
       setUpdatedBooking({})
-      
+
       setSuccessMessage('Booking updated successfully')
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
@@ -165,13 +171,13 @@ export function BookingManagement() {
 
   const sendNotification = async () => {
     if (!selectedBooking) return
-    
+
     setIsNotifying(true)
     try {
       // This would typically call an API or Edge Function
       // For now we'll simulate success
       await new Promise(resolve => setTimeout(resolve, 1000))
-      
+
       setSuccessMessage(`Notification sent to ${selectedBooking.email}`)
       setTimeout(() => setSuccessMessage(''), 3000)
     } catch (error) {
@@ -201,18 +207,18 @@ export function BookingManagement() {
 
   // Filter bookings based on search term and filters
   const filteredBookings = bookings.filter(booking => {
-    const matchesSearch = searchTerm === '' || 
+    const matchesSearch = searchTerm === '' ||
       `${booking.first_name} ${booking.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       booking.class_name.toLowerCase().includes(searchTerm.toLowerCase())
-    
+
     const matchesStatus = statusFilter === 'all' || booking.status === statusFilter
-    
+
     let matchesDate = true
     const bookingDate = new Date(booking.class_date)
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    
+
     if (dateFilter === 'today') {
       const todayStr = today.toISOString().split('T')[0]
       matchesDate = booking.class_date === todayStr
@@ -221,7 +227,7 @@ export function BookingManagement() {
     } else if (dateFilter === 'past') {
       matchesDate = bookingDate < today
     }
-    
+
     return matchesSearch && matchesStatus && matchesDate
   })
 
@@ -458,7 +464,7 @@ export function BookingManagement() {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6">
               {isEditing ? (
                 <div className="space-y-4">
@@ -469,11 +475,11 @@ export function BookingManagement() {
                     <input
                       type="text"
                       value={updatedBooking.class_name || ''}
-                      onChange={(e) => setUpdatedBooking({...updatedBooking, class_name: e.target.value})}
+                      onChange={(e) => setUpdatedBooking({ ...updatedBooking, class_name: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Instructor
@@ -481,11 +487,11 @@ export function BookingManagement() {
                     <input
                       type="text"
                       value={updatedBooking.instructor || ''}
-                      onChange={(e) => setUpdatedBooking({...updatedBooking, instructor: e.target.value})}
+                      onChange={(e) => setUpdatedBooking({ ...updatedBooking, instructor: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -494,11 +500,11 @@ export function BookingManagement() {
                       <input
                         type="date"
                         value={updatedBooking.class_date || ''}
-                        onChange={(e) => setUpdatedBooking({...updatedBooking, class_date: e.target.value})}
+                        onChange={(e) => setUpdatedBooking({ ...updatedBooking, class_date: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Time
@@ -506,19 +512,19 @@ export function BookingManagement() {
                       <input
                         type="text"
                         value={updatedBooking.class_time || ''}
-                        onChange={(e) => setUpdatedBooking({...updatedBooking, class_time: e.target.value})}
+                        onChange={(e) => setUpdatedBooking({ ...updatedBooking, class_time: e.target.value })}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Status
                     </label>
                     <select
                       value={updatedBooking.status || ''}
-                      onChange={(e) => setUpdatedBooking({...updatedBooking, status: e.target.value})}
+                      onChange={(e) => setUpdatedBooking({ ...updatedBooking, status: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="confirmed">Confirmed</option>
@@ -527,19 +533,19 @@ export function BookingManagement() {
                       <option value="no_show">No Show</option>
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Special Requests
                     </label>
                     <textarea
                       value={updatedBooking.special_requests || ''}
-                      onChange={(e) => setUpdatedBooking({...updatedBooking, special_requests: e.target.value})}
+                      onChange={(e) => setUpdatedBooking({ ...updatedBooking, special_requests: e.target.value })}
                       rows={3}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
-                  
+
                   <div className="flex justify-end space-x-3 pt-4">
                     <Button
                       variant="outline"
@@ -581,7 +587,7 @@ export function BookingManagement() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Class Details */}
                   <div>
                     <h4 className="text-md font-semibold text-gray-900 mb-3 border-b pb-2">Class Details</h4>
@@ -604,7 +610,7 @@ export function BookingManagement() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Additional Information */}
                   <div>
                     <h4 className="text-md font-semibold text-gray-900 mb-3 border-b pb-2">Additional Information</h4>
@@ -632,7 +638,7 @@ export function BookingManagement() {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Action Buttons */}
                   <div className="border-t pt-4 flex flex-wrap gap-3 justify-end">
                     <Button
@@ -644,7 +650,7 @@ export function BookingManagement() {
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
                     </Button>
-                    
+
                     {selectedBooking.status === 'confirmed' && (
                       <>
                         <Button
@@ -656,7 +662,7 @@ export function BookingManagement() {
                           <CheckCircle className="w-4 h-4 mr-1" />
                           Mark Attended
                         </Button>
-                        
+
                         <Button
                           variant="outline"
                           size="sm"
@@ -668,7 +674,7 @@ export function BookingManagement() {
                         </Button>
                       </>
                     )}
-                    
+
                     {selectedBooking.status !== 'cancelled' && (
                       <Button
                         variant="outline"
@@ -680,7 +686,7 @@ export function BookingManagement() {
                         Cancel Booking
                       </Button>
                     )}
-                    
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -691,7 +697,7 @@ export function BookingManagement() {
                       <Mail className="w-4 h-4 mr-1" />
                       {isNotifying ? 'Sending...' : 'Notify Customer'}
                     </Button>
-                    
+
                     <Button
                       size="sm"
                       onClick={() => setShowConfirmDelete(selectedBooking.id)}

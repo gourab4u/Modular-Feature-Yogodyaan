@@ -421,7 +421,13 @@ export default function InstructorProfile() {
         special_requests: '',
         emergency_contact: 'Not provided',
         emergency_phone: 'Not provided',
-        status: 'confirmed'
+        status: 'confirmed',
+        timezone: instructor?.time_zone || 'UTC',
+        package_type: 'Standard',
+        goals: 'Improve flexibility',
+        preferred_days: ['Monday', 'Wednesday'],
+        preferred_times: ['Morning'],
+        health_conditions: 'None'
       }
 
       const { data: booking, error: bookingError } = await supabase

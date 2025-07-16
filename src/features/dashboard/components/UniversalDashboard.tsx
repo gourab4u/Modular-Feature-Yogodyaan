@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Footer } from '../../../shared/components/layout/Footer';
 import { Header } from '../../../shared/components/layout/Header';
 import RoleBasedNavigation from '../../../shared/components/navigation/RoleBasedNavigation';
-import { getModulesForRole, hasModuleAccess, UserRole, DashboardModule } from '../../../shared/config/roleConfig';
+import { DashboardModule, getModulesForRole, hasModuleAccess, UserRole } from '../../../shared/config/roleConfig';
 
 // Lazy load components (Modules add here)
 const InstructorManagement = React.lazy(() => import('./Modules/InstructorManagement'));
@@ -41,8 +41,6 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
   const location = useLocation();
 
   // Debug logs
-  console.log('user.role:', user.role);
-  console.log('userModules:', userModules);
 
   // Component mapping (Modules add here)
   const componentMap = {
