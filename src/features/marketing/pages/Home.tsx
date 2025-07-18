@@ -131,7 +131,7 @@ export function Home() {
             <div className="relative">
               <div className="relative z-10">
                 <img
-                  src="public/images/Garudasana.png"
+                  src="/images/Garudasana.png"
                   alt="Garudasana"
                   className="rounded-2xl shadow-2xl"
                 />
