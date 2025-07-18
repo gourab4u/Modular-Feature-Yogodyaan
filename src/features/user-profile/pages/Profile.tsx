@@ -1,11 +1,14 @@
 import { AlertCircle, Award, Calendar, Camera, CheckCircle, Clock, Edit2, Facebook, FileText, Globe, Instagram, Mail, Phone, Save, Shield, User, X, XCircle, Youtube } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import ReactQuill from 'react-quill'
+import 'react-quill/dist/quill.snow.css'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
 import { useAdmin } from '../../admin/contexts/AdminContext'
 import { useAuth } from '../../auth/contexts/AuthContext'
+
 
 export function Profile() {
   const { user } = useAuth()
@@ -704,16 +707,26 @@ export function Profile() {
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
                   {editing ? (
-                    <textarea
-                      name="bio"
-                      rows={4}
+                    <ReactQuill
                       value={profileData.bio}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
+                      onChange={value => setProfileData(prev => ({ ...prev, bio: value }))}
+                      className="bg-white"
+                      theme="snow"
                       placeholder="Tell us about yourself..."
+                      modules={{
+                        toolbar: [
+                          [{ header: [1, 2, false] }],
+                          ['bold', 'italic', 'underline', 'strike'],
+                          [{ list: 'ordered' }, { list: 'bullet' }],
+                          ['link', 'clean'],
+                        ],
+                      }}
                     />
                   ) : (
-                    <p className="text-gray-900 py-2">{profileData.bio || 'No bio provided'}</p>
+                    <div
+                      className="text-gray-900 py-2"
+                      dangerouslySetInnerHTML={{ __html: profileData.bio || '<span class="text-gray-500">No bio provided</span>' }}
+                    />
                   )}
                 </div>
 

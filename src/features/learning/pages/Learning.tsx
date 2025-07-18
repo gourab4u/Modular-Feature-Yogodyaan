@@ -9,19 +9,19 @@ export function Learning() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [sortBy, setSortBy] = useState<'latest' | 'popular' | 'highest_rated'>('latest')
-  
+
   const { articles, loading, error, refetch } = useArticles()
 
   // Memoize filtered articles to prevent unnecessary re-renders
   const filteredArticles = useMemo(() => {
     return articles.filter(article => {
-      const matchesSearch = searchTerm === '' || 
+      const matchesSearch = searchTerm === '' ||
         article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         article.preview_text.toLowerCase().includes(searchTerm.toLowerCase()) ||
         article.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()))
-      
+
       const matchesCategory = selectedCategory === 'all' || article.category === selectedCategory
-      
+
       return matchesSearch && matchesCategory
     })
   }, [articles, searchTerm, selectedCategory])
@@ -79,7 +79,7 @@ export function Learning() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">Yoga Learning Center</h1>
           <p className="text-xl text-gray-600 leading-relaxed">
-            Discover comprehensive guides, expert insights, and practical tips to deepen your yoga practice. 
+            Discover comprehensive guides, expert insights, and practical tips to deepen your yoga practice.
             From beginner fundamentals to advanced techniques, find everything you need for your wellness journey.
           </p>
         </div>
@@ -164,12 +164,12 @@ export function Learning() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold mb-6">Ready to Start Your Practice?</h2>
           <p className="text-xl mb-8 text-blue-100">
-            Take your learning to the next level with personalized yoga sessions. 
+            Take your learning to the next level with personalized yoga sessions.
             Book a class with our expert instructors today.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
-              href="/book-class"
+              href="/services"
               className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 hover:scale-105 inline-block"
             >
               Book Your Class

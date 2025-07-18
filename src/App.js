@@ -1,5 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { ScrollToTop } from './shared/components/ScrollToTop';
 // Context imports - updated paths
 import { AdminProvider } from './features/admin/contexts/AdminContext';
 import { AuthProvider, useAuth } from './features/auth/contexts/AuthContext';
@@ -25,14 +26,14 @@ import { Home } from './features/marketing/pages/Home';
 import { Services } from './features/marketing/pages/Services';
 import { Testimonials } from './features/marketing/pages/Testimonials';
 import { BookClass } from './features/scheduling/pages/BookClass';
+import { BookCorporate } from './features/scheduling/pages/BookCorporate';
+import { BookOneOnOne } from './features/scheduling/pages/BookOneOnOne';
 import InstructorProfile from './features/scheduling/pages/InstructorProfile';
 import { Schedule } from './features/scheduling/pages/Schedule';
 import { Profile } from './features/user-profile/pages/Profile';
 import { NotFound } from './pages/NotFound';
-import { BookOneOnOne } from './features/scheduling/pages/BookOneOnOne';
-import { BookCorporate } from './features/scheduling/pages/BookCorporate';
 function App() {
-    return (_jsx(ThemeProvider, { children: _jsx(Router, { children: _jsx(AuthProvider, { children: _jsx(NotificationProvider, { children: _jsx(AdminProvider, { children: _jsx(AppRoutes, {}) }) }) }) }) }));
+    return (_jsx(ThemeProvider, { children: _jsxs(Router, { children: [_jsx(ScrollToTop, {}), _jsx(AuthProvider, { children: _jsx(NotificationProvider, { children: _jsx(AdminProvider, { children: _jsx(AppRoutes, {}) }) }) })] }) }));
 }
 function AppRoutes() {
     const { user, userRoles } = useAuth(); // Get current user from auth context

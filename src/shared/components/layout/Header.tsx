@@ -23,7 +23,6 @@ export function Header() {
     { name: 'Services', href: '/services' },
     { name: 'Schedule', href: '/schedule' },
     { name: 'Learning', href: '/learning' },
-    { name: 'Testimonials', href: '/testimonials' },
     { name: 'Contact', href: '/contact' },
   ];
 
@@ -43,16 +42,6 @@ export function Header() {
     };
   }, []);
 
-  const getUserDisplayName = () => {
-    if (user?.user_metadata?.full_name) {
-      return user.user_metadata.full_name;
-    }
-    // If no full name, extract name from email (before @)
-    if (user?.email) {
-      return user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-    }
-    return 'User';
-  };
 
   const handleSignOut = () => {
     signOut();
@@ -91,26 +80,26 @@ export function Header() {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
-                {/* 🔔 Notification Bell - Added here */}
-                <NotificationDropdown />
+                {/* 🔔 Notification Bell - Enhanced styling */}
+                <div className="relative">
+                  <div className="p-2 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors duration-200 border border-gray-200 hover:border-gray-300">
+                    <NotificationDropdown />
+                  </div>
+                </div>
 
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors p-2 rounded-lg hover:bg-gray-50"
+                    className="flex items-center text-gray-700 hover:text-blue-600 transition-all duration-200 p-2.5 rounded-full hover:bg-blue-50 border border-gray-200 hover:border-blue-300 bg-white hover:shadow-sm"
                   >
-                    <User size={20} />
-                    <div className="flex flex-col items-start">
-                      <span className="text-sm font-medium">
-                        {getUserDisplayName()}
-                        {isAdmin && <span className="text-blue-600 ml-1">(Admin)</span>}
-                        {isMantraCurator && !isAdmin && <span className="text-emerald-600 ml-1">(Curator)</span>}
-                      </span>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                      <User size={18} className="text-white" />
                     </div>
+                    {/* Removed full name and roles */}
                     {isDropdownOpen ? (
-                      <ChevronUp size={16} className="text-gray-400" />
+                      <ChevronUp size={16} className="text-gray-400 ml-2" />
                     ) : (
-                      <ChevronDown size={16} className="text-gray-400" />
+                      <ChevronDown size={16} className="text-gray-400 ml-2" />
                     )}
                   </button>
 
@@ -206,19 +195,19 @@ export function Header() {
               <div className="pt-4 border-t">
                 {user ? (
                   <div className="space-y-3">
-                    {/* 🔔 Mobile Notification Section */}
+                    {/* 🔔 Mobile Notification Section - Enhanced */}
                     <div className="flex items-center justify-between pb-3 border-b border-gray-200">
                       <span className="text-sm font-medium text-gray-700">Notifications</span>
-                      <NotificationDropdown />
+                      <div className="p-2 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors duration-200 border border-gray-200">
+                        <NotificationDropdown />
+                      </div>
                     </div>
 
-                    <div className="flex items-center space-x-2 text-gray-700 mb-3">
-                      <User size={20} />
-                      <span className="text-sm font-medium">
-                        {getUserDisplayName()}
-                        {isAdmin && <span className="text-blue-600 ml-1">(Admin)</span>}
-                        {isMantraCurator && !isAdmin && <span className="text-emerald-600 ml-1">(Curator)</span>}
-                      </span>
+                    <div className="flex items-center space-x-3 text-gray-700 mb-3">
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                        <User size={18} className="text-white" />
+                      </div>
+                      <span className="text-sm font-medium">Account</span>
                     </div>
 
                     <Link

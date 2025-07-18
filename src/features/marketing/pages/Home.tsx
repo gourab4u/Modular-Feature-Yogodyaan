@@ -8,19 +8,22 @@ export function Home() {
       icon: <User className="w-12 h-12 text-blue-600" />,
       title: "Personalized Online Coaching",
       description: "Individual attention, flexible scheduling, customized programs",
-      features: ["1-on-1 sessions", "Personalized routines", "Flexible timing", "Progress tracking"]
+      features: ["1-on-1 sessions", "Personalized routines", "Flexible timing", "Progress tracking"],
+      route: "/book/individual"
     },
     {
       icon: <Users className="w-12 h-12 text-green-600" />,
       title: "Online Group Sessions",
       description: "Build consistency with like-minded professionals",
-      features: ["Small group classes", "Community support", "Regular schedule", "Affordable pricing"]
+      features: ["Small group classes", "Community support", "Regular schedule", "Affordable pricing"],
+      route: "/book-class"
     },
     {
       icon: <Building className="w-12 h-12 text-purple-600" />,
       title: "Corporate Wellness Solutions",
       description: "Enhance team well-being and performance",
-      features: ["Team sessions", "Workplace wellness", "Stress reduction", "Productivity boost"]
+      features: ["Team sessions", "Workplace wellness", "Stress reduction", "Productivity boost"],
+      route: "/book/corporate"
     }
   ]
 
@@ -80,21 +83,26 @@ export function Home() {
             <div className="space-y-8">
               <div className="space-y-4">
                 <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
-                  Transform Your 
+                  Transform Your
                   <span className="block text-blue-600">Workplace, Mind,</span>
                   <span className="block text-green-600">and Body — Online</span>
                 </h1>
                 <p className="text-xl text-gray-600 leading-relaxed">
-                  Yogodyaan brings personalized corporate and wellness yoga programs 
+                  Yogodyaan brings personalized corporate and wellness yoga programs
                   to professionals worldwide. Experience the power of yoga from anywhere.
                 </p>
               </div>
-              
+
               <div className="flex flex-col sm:flex-row gap-4">
-                <Link to="/book-class">
-                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 hover:scale-105 shadow-lg">
-                    Book Your Class
-                    <ArrowRight className="ml-2 w-5 h-5" />
+                <Link to="/services">
+                  <Button
+                    size="lg"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 shadow-md"
+                  >
+                    <span className="flex items-center whitespace-nowrap">
+                      Book Your Class
+                      <ArrowRight className="ml-2 w-5 h-5" />
+                    </span>
                   </Button>
                 </Link>
                 <Link to="/about">
@@ -119,12 +127,12 @@ export function Home() {
                 </div>
               </div>
             </div>
-            
+
             <div className="relative">
               <div className="relative z-10">
                 <img
-                  src="https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop"
-                  alt="Professional yoga practice"
+                  src="public/images/Garudasana.png"
+                  alt="Garudasana"
                   className="rounded-2xl shadow-2xl"
                 />
               </div>
@@ -143,7 +151,7 @@ export function Home() {
               Choose the perfect yoga program that fits your lifestyle and goals
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {services.map((service, index) => (
               <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200">
@@ -152,7 +160,7 @@ export function Home() {
                 </div>
                 <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">{service.title}</h3>
                 <p className="text-gray-600 mb-6 text-center">{service.description}</p>
-                
+
                 <ul className="space-y-2 mb-8">
                   {service.features.map((feature, idx) => (
                     <li key={idx} className="flex items-center text-gray-700">
@@ -161,8 +169,8 @@ export function Home() {
                     </li>
                   ))}
                 </ul>
-                
-                <Link to="/book-class">
+
+                <Link to={service.route}>
                   <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300">
                     Book Your Class
                   </Button>
@@ -190,25 +198,25 @@ export function Home() {
                 </div>
               </div>
             </div>
-            
+
             <div className="space-y-6">
               <h2 className="text-4xl font-bold text-gray-900">Your Global Yoga Journey Starts Here</h2>
               <div className="space-y-4 text-gray-700 leading-relaxed">
                 <p>
-                  With over 5 years of expertise combining traditional yoga practices with modern wellness needs, 
+                  With over 5 years of expertise combining traditional yoga practices with modern wellness needs,
                   I specialize in bringing the transformative power of yoga to professionals worldwide.
                 </p>
                 <p>
-                  My focus on online teaching and global reach ensures that distance is never a barrier to 
-                  your wellness journey. Whether you're a busy executive in New York or a startup founder 
+                  My focus on online teaching and global reach ensures that distance is never a barrier to
+                  your wellness journey. Whether you're a busy executive in New York or a startup founder
                   in Singapore, personalized yoga guidance is just a click away.
                 </p>
                 <p>
-                  I believe that yoga is not just about physical postures—it's about creating balance, 
+                  I believe that yoga is not just about physical postures—it's about creating balance,
                   reducing stress, and enhancing overall well-being in our fast-paced professional lives.
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center p-4 bg-white rounded-lg shadow-sm">
                   <div className="text-2xl font-bold text-blue-600">500+</div>
@@ -233,7 +241,7 @@ export function Home() {
               Experience the difference with our unique approach to online yoga
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {benefits.map((benefit, index) => (
               <div key={index} className="text-center p-6 rounded-xl hover:bg-gray-50 transition-all duration-300">
@@ -257,7 +265,7 @@ export function Home() {
               Real stories from professionals who transformed their lives with Yogodyaan
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
               <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300">
@@ -290,13 +298,19 @@ export function Home() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold mb-6">Begin Your Wellness Journey</h2>
           <p className="text-xl mb-8 text-blue-100">
-            Join thousands of professionals worldwide who have discovered the transformative power of yoga. 
+            Join thousands of professionals worldwide who have discovered the transformative power of yoga.
             Schedule your first class today and take the first step towards a healthier, more balanced life.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/book-class">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 hover:text-blue-700 px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 hover:scale-105 shadow-lg">
-                Book Your Class Now
+            <Link to="/services">
+              <Button
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 text-lg font-semibold rounded-lg transition-all duration-300 shadow-md"
+              >
+                <span className="flex items-center whitespace-nowrap">
+                  Book Your Class
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </span>
               </Button>
             </Link>
             <Link to="/contact">

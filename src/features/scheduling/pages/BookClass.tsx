@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Globe, MapPin, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
 import { useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { supabase } from '../../../shared/lib/supabase'
@@ -6,48 +6,21 @@ import { useAuth } from '../../auth/contexts/AuthContext'
 
 export function BookClass() {
   const { user } = useAuth()
-  const [selectedService, setSelectedService] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<any>({})
-  
+
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
     country: '',
     classType: '',
+    groupSize: '',
     message: ''
   })
-
-  const services = [
-    {
-      id: '1on1',
-      name: '1-on-1 Coaching',
-      description: 'Personalized sessions tailored to your needs',
-      price: 'From $75',
-      duration: '60 minutes',
-      icon: <Users className="w-6 h-6" />
-    },
-    {
-      id: 'group',
-      name: 'Group Classes',
-      description: 'Small group sessions with like-minded professionals',
-      price: 'From $25',
-      duration: '45-60 minutes',
-      icon: <Globe className="w-6 h-6" />
-    },
-    {
-      id: 'corporate',
-      name: 'Corporate Programs',
-      description: 'Workplace wellness solutions for teams',
-      price: 'Custom pricing',
-      duration: '30-90 minutes',
-      icon: <MapPin className="w-6 h-6" />
-    }
-  ]
 
   const timeSlots = [
     '06:00 AM', '07:00 AM', '08:00 AM', '09:00 AM', '10:00 AM',
@@ -76,17 +49,17 @@ export function BookClass() {
     const startingDayOfWeek = firstDay.getDay()
 
     const days = []
-    
+
     // Add empty cells for days before the first day of the month
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null)
     }
-    
+
     // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day))
     }
-    
+
     return days
   }
 
@@ -110,13 +83,13 @@ export function BookClass() {
 
   const validateForm = () => {
     const newErrors: any = {}
-    
+
     if (!formData.fullName.trim()) newErrors.fullName = 'Full name is required'
     if (!formData.email.trim()) newErrors.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid'
     if (!formData.country) newErrors.country = 'Country is required'
     if (!formData.classType) newErrors.classType = 'Class type is required'
-    if (!selectedService) newErrors.service = 'Please select a service'
+    if (!formData.groupSize) newErrors.groupSize = 'Group size is required'
     if (!selectedDate) newErrors.date = 'Please select a date'
     if (!selectedTime) newErrors.time = 'Please select a time'
 
@@ -126,17 +99,15 @@ export function BookClass() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
 
     setLoading(true)
-    
+
     try {
-      const selectedServiceData = services.find(s => s.id === selectedService)
-      
       const bookingData = {
         user_id: user?.id || null,
-        class_name: selectedServiceData?.name || '',
+        class_name: 'Private Group Class',
         instructor: 'Yogodaan Instructor',
         class_date: selectedDate,
         class_time: selectedTime,
@@ -165,13 +136,13 @@ export function BookClass() {
         email: '',
         country: '',
         classType: '',
+        groupSize: '',
         message: ''
       })
-      setSelectedService('')
       setSelectedDate('')
       setSelectedTime('')
       setShowBookingForm(false)
-      
+
       alert('Booking confirmed! You will receive a confirmation email shortly.')
     } catch (error: any) {
       setErrors({ general: error.message || 'An error occurred while booking your class.' })
@@ -180,56 +151,36 @@ export function BookClass() {
     }
   }
 
-  const canProceedToBooking = selectedService && selectedDate && selectedTime
+  const canProceedToBooking = selectedDate && selectedTime
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-blue-50 via-white to-green-50 py-20">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">Book Your Yoga Class</h1>
-          <p className="text-xl text-gray-600 leading-relaxed">
-            Schedule your personalized yoga session with our expert instructor. 
-            Choose your preferred service, date, and time to begin your wellness journey.
+          <h1 className="text-5xl font-bold text-gray-900 mb-6">Book Your Private Group Class</h1>
+          <p className="text-xl text-gray-600 leading-relaxed mb-8">
+            Create a memorable yoga experience for your group! Whether it's for your team, family, friends, or special occasion,
+            we'll design a personalized session that brings everyone together in wellness and mindfulness.
           </p>
+
+          {/* Group Classes Motivation */}
+          <div className="bg-white rounded-xl shadow-lg p-6 mx-auto max-w-2xl border-l-4 border-blue-500">
+            <div className="flex items-center justify-center mb-4">
+              <Users className="w-8 h-8 text-blue-500 mr-3" />
+              <h3 className="text-xl font-semibold text-gray-900">Strengthen Bonds Through Yoga</h3>
+            </div>
+            <p className="text-gray-600 leading-relaxed">
+              Whether it's team building, celebrating a special occasion, or simply sharing mindfulness with loved ones,
+              our private group sessions create lasting memories while nurturing wellness together.
+            </p>
+          </div>
         </div>
       </section>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {!showBookingForm ? (
           <div className="space-y-12">
-            {/* Service Selection */}
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-8">Choose Your Service</h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {services.map((service) => (
-                  <div
-                    key={service.id}
-                    onClick={() => setSelectedService(service.id)}
-                    className={`p-6 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
-                      selectedService === service.id
-                        ? 'border-blue-500 bg-blue-50 shadow-lg'
-                        : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
-                    }`}
-                  >
-                    <div className="flex items-center mb-4">
-                      <div className={`p-2 rounded-lg mr-3 ${
-                        selectedService === service.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'
-                      }`}>
-                        {service.icon}
-                      </div>
-                      <h3 className="text-xl font-semibold text-gray-900">{service.name}</h3>
-                    </div>
-                    <p className="text-gray-600 mb-4">{service.description}</p>
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="font-semibold text-blue-600">{service.price}</span>
-                      <span className="text-gray-500">{service.duration}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Calendar */}
             <div>
               <h2 className="text-3xl font-bold text-gray-900 mb-8">Select Date</h2>
@@ -253,7 +204,7 @@ export function BookClass() {
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-7 gap-2 mb-4">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
                     <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
@@ -261,7 +212,7 @@ export function BookClass() {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="grid grid-cols-7 gap-2">
                   {getDaysInMonth(currentMonth).map((date, index) => (
                     <div key={index} className="aspect-square">
@@ -269,13 +220,12 @@ export function BookClass() {
                         <button
                           onClick={() => isDateAvailable(date) && setSelectedDate(formatDate(date))}
                           disabled={!isDateAvailable(date)}
-                          className={`w-full h-full rounded-lg text-sm font-medium transition-all duration-200 ${
-                            selectedDate === formatDate(date)
+                          className={`w-full h-full rounded-lg text-sm font-medium transition-all duration-200 ${selectedDate === formatDate(date)
                               ? 'bg-blue-500 text-white shadow-lg'
                               : isDateAvailable(date)
-                              ? 'hover:bg-blue-50 text-gray-900'
-                              : 'text-gray-300 cursor-not-allowed'
-                          }`}
+                                ? 'hover:bg-blue-50 text-gray-900'
+                                : 'text-gray-300 cursor-not-allowed'
+                            }`}
                         >
                           {date.getDate()}
                         </button>
@@ -295,11 +245,10 @@ export function BookClass() {
                     <button
                       key={time}
                       onClick={() => setSelectedTime(time)}
-                      className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${
-                        selectedTime === time
+                      className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${selectedTime === time
                           ? 'bg-blue-500 text-white shadow-lg'
                           : 'bg-gray-50 text-gray-900 hover:bg-blue-50 border border-gray-200'
-                      }`}
+                        }`}
                     >
                       {time}
                     </button>
@@ -316,11 +265,10 @@ export function BookClass() {
               <Button
                 onClick={() => setShowBookingForm(true)}
                 disabled={!canProceedToBooking}
-                className={`px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 ${
-                  canProceedToBooking
+                className={`px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 ${canProceedToBooking
                     ? 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105'
                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                  }`}
               >
                 Proceed to Booking Details
               </Button>
@@ -347,7 +295,7 @@ export function BookClass() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600">Service:</span>
-                    <span className="font-medium">{services.find(s => s.id === selectedService)?.name}</span>
+                    <span className="font-medium">Private Group Class</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Date:</span>
@@ -359,7 +307,7 @@ export function BookClass() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Duration:</span>
-                    <span className="font-medium">{services.find(s => s.id === selectedService)?.duration}</span>
+                    <span className="font-medium">60-90 minutes</span>
                   </div>
                 </div>
               </div>
@@ -372,6 +320,28 @@ export function BookClass() {
                 )}
 
                 <div>
+                  <label htmlFor="groupSize" className="block text-sm font-medium text-gray-700 mb-1">
+                    Group Size *
+                  </label>
+                  <select
+                    id="groupSize"
+                    name="groupSize"
+                    value={formData.groupSize}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.groupSize ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                  >
+                    <option value="">Select group size</option>
+                    <option value="2-5">2-5 people</option>
+                    <option value="6-10">6-10 people</option>
+                    <option value="11-15">11-15 people</option>
+                    <option value="16-20">16-20 people</option>
+                    <option value="20+">20+ people</option>
+                  </select>
+                  {errors.groupSize && <p className="text-red-500 text-sm mt-1">{errors.groupSize}</p>}
+                </div>
+
+                <div>
                   <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
                     Full Name *
                   </label>
@@ -381,9 +351,8 @@ export function BookClass() {
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.fullName ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     placeholder="Enter your full name"
                   />
                   {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
@@ -399,9 +368,8 @@ export function BookClass() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.email ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     placeholder="Enter your email address"
                   />
                   {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
@@ -416,9 +384,8 @@ export function BookClass() {
                     name="country"
                     value={formData.country}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.country ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.country ? 'border-red-500' : 'border-gray-300'
+                      }`}
                   >
                     <option value="">Select your country</option>
                     {countries.map(country => (
@@ -437,9 +404,8 @@ export function BookClass() {
                     name="classType"
                     value={formData.classType}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.classType ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.classType ? 'border-red-500' : 'border-gray-300'
+                      }`}
                   >
                     <option value="">Select class type</option>
                     {classTypes.map(type => (
@@ -451,7 +417,7 @@ export function BookClass() {
 
                 <div>
                   <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
-                    Optional Message
+                    Special Requirements & Goals
                   </label>
                   <textarea
                     id="message"
@@ -459,7 +425,7 @@ export function BookClass() {
                     rows={4}
                     value={formData.message}
                     onChange={handleInputChange}
-                    placeholder="Tell us about your goals, experience level, or any special requirements..."
+                    placeholder="Tell us about your group's experience level, specific goals, occasion details, or any special requirements..."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

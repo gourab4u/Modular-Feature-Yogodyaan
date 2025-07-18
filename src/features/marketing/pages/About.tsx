@@ -1,4 +1,4 @@
-import { Award, Users, Heart, Target } from 'lucide-react'
+import { Award, Heart, Target, Users } from 'lucide-react'
 
 export function About() {
   const values = [
@@ -58,7 +58,7 @@ export function About() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h1 className="text-5xl font-bold mb-6">About Yogodyaan</h1>
           <p className="text-xl text-emerald-100">
-            Dedicated to spreading the transformative power of yoga and creating a community 
+            Dedicated to spreading the transformative power of yoga and creating a community
             where everyone can find their path to wellness and inner peace.
           </p>
         </div>
@@ -69,23 +69,19 @@ export function About() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Our Story</h2>
-              <div className="space-y-4 text-gray-700">
+              <h2 className="text-4xl font-bold text-gray-900 mb-6">Welcome to Yogodyaan – Breathe. Move. Transform.</h2>
+              <div className="space-y-4 text-gray-700 text-lg">
                 <p>
-                  Yogodyaan was born from a simple belief: that yoga has the power to transform lives. 
-                  Founded in 2015 by Priya Sharma, our studio began as a small space with big dreams 
-                  of creating an inclusive, welcoming environment for yoga practitioners of all levels.
+                  Founded by Ms. Bratati Batabyal in 2021, Yogodyaan is an all-online yoga platform empowering people to live healthier, more mindful lives through yoga.
                 </p>
                 <p>
-                  The word "Yogodyaan" combines "Yoga" with "Daan" (meaning gift or donation in Sanskrit), 
-                  reflecting our mission to share the gift of yoga with our community. We believe that 
-                  yoga is not just about physical postures, but a holistic practice that nurtures the 
-                  mind, body, and spirit.
+                  We’ve trained 1000+ students in different parts of the world—offering accessible, expert-led sessions that blend ancient yogic wisdom with modern lifestyles.
                 </p>
                 <p>
-                  Today, we're proud to have helped thousands of students discover the joy and benefits 
-                  of yoga. Our experienced instructors are passionate about guiding each student on 
-                  their unique journey, whether they're complete beginners or advanced practitioners.
+                  From corporate wellness and chair yoga to programs for beginners and advanced practitioners, we’re here to help you de-stress, strengthen, and reconnect—wherever you are.
+                </p>
+                <p>
+                  Join our growing community and take the first step toward a balanced, energized, and joyful life.
                 </p>
               </div>
             </div>

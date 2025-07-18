@@ -746,7 +746,11 @@ export default function InstructorProfile() {
                     <BookOpen className="w-6 h-6 mr-3 text-blue-600" />
                     About {instructor.full_name.split(' ')[0]}
                   </h2>
-                  <p className="text-gray-700 leading-relaxed text-lg">{instructor.bio}</p>
+                  {/* Render bio as rich text (HTML) - ensure bio is sanitized if coming from user input */}
+                  <div
+                    className="text-gray-700 leading-relaxed text-lg"
+                    dangerouslySetInnerHTML={{ __html: instructor.bio }}
+                  />
                 </div>
               )}
 

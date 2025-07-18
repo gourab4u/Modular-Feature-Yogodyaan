@@ -1,6 +1,32 @@
 import { Award, Building, CheckCircle, Clock, Globe, Heart, Target, User, Users } from 'lucide-react'
-import { Link } from 'react-router-dom'
-import { Button } from '../../../shared/components/ui/Button'
+
+// Button component
+const Button = ({ children, className = "", variant = "primary", size = "md", ...props }) => {
+  const baseClasses = "font-semibold rounded-lg transition-all duration-300 cursor-pointer inline-block text-center"
+  const variants = {
+    primary: "bg-blue-600 hover:bg-blue-700 text-white",
+    outline: "border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white"
+  }
+  const sizes = {
+    md: "px-6 py-3",
+    lg: "px-8 py-4 text-lg"
+  }
+
+  return (
+    <button className={`${baseClasses} ${variants[variant]} ${sizes[size]} ${className}`} {...props}>
+      {children}
+    </button>
+  )
+}
+
+// Link component
+const Link = ({ to, children, className = "", ...props }) => {
+  return (
+    <a href={to} className={className} {...props}>
+      {children}
+    </a>
+  )
+}
 
 export function Services() {
   const services = [
@@ -8,7 +34,7 @@ export function Services() {
       icon: <User className="w-16 h-16 text-blue-600" />,
       title: "1-on-1 Coaching",
       subtitle: "Personalized Online Coaching",
-      description: "Individual attention, flexible scheduling, customized programs tailored to your specific needs and goals.",
+      description: "Individual attention with flexible scheduling and customized programs tailored to your specific needs and goals.",
       features: [
         "Personalized yoga routines",
         "Flexible scheduling across time zones",
@@ -17,7 +43,7 @@ export function Services() {
         "Customized meditation practices",
         "Injury modification and support"
       ],
-      pricing: "Starting from $75/session",
+      pricing: "From ₹375/session",
       duration: "60 minutes",
       ideal: "Busy professionals, beginners, specific health goals",
       bookingLink: "/book/individual"
@@ -26,7 +52,7 @@ export function Services() {
       icon: <Users className="w-16 h-16 text-green-600" />,
       title: "Group Classes",
       subtitle: "Online Group Sessions",
-      description: "Build consistency with like-minded professionals in small, intimate group settings.",
+      description: "Build consistency with like-minded professionals in small, intimate group settings. Perfect for teams or private groups seeking dedicated sessions.",
       features: [
         "Small group classes (max 8 people)",
         "Regular weekly schedule",
@@ -35,16 +61,16 @@ export function Services() {
         "Interactive sessions with Q&A",
         "Progressive skill development"
       ],
-      pricing: "Starting from $25/session",
+      pricing: "From ₹125/session/person",
       duration: "45-60 minutes",
       ideal: "Team building, regular practice, community connection",
-      bookingLink: "/schedule"
+      bookingLink: "/book-class"
     },
     {
       icon: <Building className="w-16 h-16 text-purple-600" />,
       title: "Corporate Programs",
       subtitle: "Corporate Wellness Solutions",
-      description: "Enhance team well-being and performance with specialized workplace wellness programs.",
+      description: "Enhance team well-being and performance with specialized workplace wellness programs designed for modern organizations.",
       features: [
         "Team wellness sessions",
         "Stress reduction workshops",
@@ -90,8 +116,8 @@ export function Services() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h1 className="text-5xl font-bold text-gray-900 mb-6">Our Services</h1>
           <p className="text-xl text-gray-600 leading-relaxed">
-            Discover the perfect yoga program that fits your lifestyle, schedule, and wellness goals.
-            From personalized 1-on-1 coaching to corporate wellness solutions, we have something for everyone.
+            Discover the yoga program that fits your lifestyle, schedule, and wellness goals.
+            From personalized coaching to corporate wellness solutions.
           </p>
         </div>
       </section>
@@ -137,13 +163,32 @@ export function Services() {
                     </div>
                   </div>
 
-                  <Link to={service.bookingLink}>
-                    <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 hover:scale-105">
-                      {service.title === "1-on-1 Coaching" ? "Book Individual Session" :
-                        service.title === "Group Classes" ? "View Class Schedule" :
-                          "Book Corporate Program"}
-                    </Button>
-                  </Link>
+                  {service.title === "Group Classes" ? (
+                    <div className="space-y-3">
+                      <p className="text-gray-600 text-sm">
+                        If you have a group and want to book a private session, use the button below.
+                        To join our scheduled weekly classes, please check the class schedule.
+                      </p>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <Link to={service.bookingLink}>
+                          <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300">
+                            Book Group Session
+                          </Button>
+                        </Link>
+                        <Link to="/schedule">
+                          <Button variant="outline" className="border-2 border-green-600 text-green-600 hover:bg-green-600 hover:text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300">
+                            View Class Schedule
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <Link to={service.bookingLink}>
+                      <Button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all duration-300 hover:scale-105">
+                        {service.title === "1-on-1 Coaching" ? "Book Individual Session" : "Book Corporate Program"}
+                      </Button>
+                    </Link>
+                  )}
                 </div>
 
                 <div className={`${index % 2 === 1 ? 'lg:col-start-1' : ''}`}>
@@ -192,7 +237,7 @@ export function Services() {
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Flexible Pricing Options</h2>
+            <h2 className="text-4xl font-bold text-gray-900 mb-4">Pricing Options</h2>
             <p className="text-xl text-gray-600">
               Choose the plan that works best for your schedule and budget
             </p>
@@ -202,7 +247,7 @@ export function Services() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">1-on-1 Coaching</h3>
-                <div className="text-3xl font-bold text-blue-600 mb-2">$75+</div>
+                <div className="text-3xl font-bold text-blue-600 mb-2">From ₹375</div>
                 <p className="text-gray-600 mb-4">per session</p>
                 <Link to="/book/individual">
                   <Button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium">
@@ -212,8 +257,8 @@ export function Services() {
               </div>
               <div className="text-center">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">Group Classes</h3>
-                <div className="text-3xl font-bold text-green-600 mb-2">$25+</div>
-                <p className="text-gray-600 mb-4">per session</p>
+                <div className="text-3xl font-bold text-green-600 mb-2">From ₹125</div>
+                <p className="text-gray-600 mb-4">per session / person</p>
                 <Link to="/schedule">
                   <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium">
                     View Schedule
@@ -253,11 +298,14 @@ export function Services() {
           <h2 className="text-4xl font-bold mb-6">Ready to Start Your Journey?</h2>
           <p className="text-xl mb-8 text-blue-100">
             Choose the service that best fits your needs and schedule your first session today.
-            Transform your wellness routine with professional guidance from anywhere in the world.
+            Transform your wellness routine with professional guidance.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/book/individual">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold rounded-lg">
+              <Button
+                size="lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg font-semibold rounded-lg shadow-lg transition-all duration-200 hover:scale-105"
+              >
                 Book Individual Session
               </Button>
             </Link>
