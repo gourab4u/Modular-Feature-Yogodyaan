@@ -1,5 +1,5 @@
-// src/shared/config/roleConfig.ts
 
+// Types
 export type UserRole =
   | 'admin'
   | 'super_admin'
@@ -20,23 +20,25 @@ export type DashboardModule =
   | 'class_assignment'
   | 'article_editing'
   | 'content_review'
+  | 'user_profile'
   | 'booking_management'
   | 'assigned_bookings'
   | 'weekly_schedule'
   | 'class_schedule_manager'
   | 'class_type_manager'
   | 'article_workflow'
-  | 'forms';
+  | 'forms'
 
 export interface ModuleConfig {
-  id: string;
+  id: DashboardModule | string;
   title: string;
-  component: string; // Component name to lazy load
+  component: string; // Component name to lazy load or import
   icon?: string;
   description?: string;
   order: number;
 }
 
+// Role-based module configuration
 export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
   super_admin: [
     { id: 'user_management', title: 'User Management', component: 'UserManagement', icon: 'users', order: 2 },
@@ -62,35 +64,38 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'forms', title: 'Forms', component: 'Forms', icon: 'file-text', order: 8 },
     { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 99 }
   ],
+
   instructor: [
     { id: 'assigned_bookings', title: 'My Bookings', component: 'AssignedBookings', icon: 'calendar', order: 1 },
     { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 3 }
   ],
+
   yoga_acharya: [
     { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 1 },
     { id: 'class_assignment', title: 'Class Management', component: 'ClassAssignmentManager', icon: 'edit', order: 2 },
     { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 3 }
   ],
+
   energy_exchange_lead: [
     { id: 'financial_data', title: 'Financial Data', component: 'FinancialData', icon: 'bar-chart', order: 1 },
     { id: 'transaction_management', title: 'Transactions', component: 'TransactionManagement', icon: 'credit-card', order: 2 }
   ],
+
   sangha_guide: [
     { id: 'comment_moderation', title: 'Comment Moderation', component: 'CommentModeration', icon: 'message-square', order: 1 },
     { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 3 },
     { id: 'content_review', title: 'Content Review', component: 'ContentReview', icon: 'check-circle', order: 4 },
     { id: 'article_workflow', title: 'Article Workflow', component: 'ArticleWorkflow', icon: 'CheckCircle', order: 5 }
   ],
+
   user: [
-    { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 2 }
+    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 5 },
+    { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 6 },
   ]
 };
 
 // Helper function to get modules for a specific role
 export const getModulesForRole = (role: UserRole): ModuleConfig[] => {
-  console.log("getModulesForRole called with role:", role);
-  console.log("ROLE_MODULES object:", ROLE_MODULES);
-  console.log("Modules for role:", ROLE_MODULES[role]);
   return ROLE_MODULES[role]?.sort((a, b) => a.order - b.order) || [];
 };
 

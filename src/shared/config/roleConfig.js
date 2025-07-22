@@ -1,4 +1,4 @@
-// src/shared/config/roleConfig.ts
+// Role-based module configuration
 export const ROLE_MODULES = {
     super_admin: [
         { id: 'user_management', title: 'User Management', component: 'UserManagement', icon: 'users', order: 2 },
@@ -43,14 +43,12 @@ export const ROLE_MODULES = {
         { id: 'article_workflow', title: 'Article Workflow', component: 'ArticleWorkflow', icon: 'CheckCircle', order: 5 }
     ],
     user: [
-        { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 2 }
+        { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 5 },
+        { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 6 },
     ]
 };
 // Helper function to get modules for a specific role
 export const getModulesForRole = (role) => {
-    console.log("getModulesForRole called with role:", role);
-    console.log("ROLE_MODULES object:", ROLE_MODULES);
-    console.log("Modules for role:", ROLE_MODULES[role]);
     return ROLE_MODULES[role]?.sort((a, b) => a.order - b.order) || [];
 };
 // Helper function to check if user has access to a specific module

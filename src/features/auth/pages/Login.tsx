@@ -1,7 +1,8 @@
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../../shared/components/ui/Button'
+import { supabase } from '../../../shared/lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 
 export function Login() {
@@ -14,11 +15,20 @@ export function Login() {
   })
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<any>({})
-  
+
   const { signIn, signUp, user } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/'
+  const location = useLocation()
+
+  // Prefer state.redirectTo, fallback to search param, then "/"
+  const redirectTo =
+    location.state?.redirectTo ||
+    searchParams.get('redirect') ||
+    '/'
+
+  // Message from navigation state (e.g., "You need to sign in to start writing articles.")
+  const message = location.state?.message
 
   // Redirect if already logged in
   useEffect(() => {
@@ -37,13 +47,13 @@ export function Login() {
 
   const validateForm = () => {
     const newErrors: any = {}
-    
+
     if (!formData.email.trim()) newErrors.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid'
-    
+
     if (!formData.password) newErrors.password = 'Password is required'
     else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters'
-    
+
     if (isSignUp && formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match'
     }
@@ -54,14 +64,42 @@ export function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validateForm()) return
 
     setLoading(true)
-    
+
     try {
       if (isSignUp) {
         await signUp(formData.email, formData.password)
+
+        // Get JWT for Authorization header
+        const { data: sessionData } = await supabase.auth.getSession()
+        const jwt = sessionData?.session?.access_token
+
+        // Specify role_id
+        const role_id = 'user'
+        // Get assigned_by (current admin user_id or 'system')
+        const assigned_by = user?.id || 'system'
+
+        // Get user_id from session
+        const user_id = sessionData.session?.user?.id
+
+        if (user_id && jwt) {
+          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/assign_default_user_role`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${jwt}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id,
+              role_id,
+              assigned_by
+            })
+          })
+        }
+
         alert('Account created successfully! Please check your email for verification.')
       } else {
         await signIn(formData.email, formData.password)
@@ -90,7 +128,14 @@ export function Login() {
           <p className="mt-2 text-gray-600">
             {isSignUp ? 'Join our yoga community today' : 'Welcome back to your practice'}
           </p>
-          {redirectTo !== '/' && (
+          {/* Show message if present (e.g., "You need to sign in to start writing articles.") */}
+          {message && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-blue-800 text-sm">{message}</p>
+            </div>
+          )}
+          {/* Fallback: show booking message if redirectTo is not "/" and no custom message */}
+          {!message && redirectTo !== '/' && (
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-blue-800 text-sm">
                 Please sign in to continue booking your class
@@ -119,9 +164,8 @@ export function Login() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    errors.email ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter your email"
                 />
               </div>
@@ -140,9 +184,8 @@ export function Login() {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                    errors.password ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full pl-10 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.password ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   placeholder="Enter your password"
                 />
                 <button
@@ -169,9 +212,8 @@ export function Login() {
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                      errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                    className={`w-full pl-10 pr-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                      }`}
                     placeholder="Confirm your password"
                   />
                 </div>

@@ -187,7 +187,7 @@ export function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="relative">
               <img
-                src="https://images.pexels.com/photos/3823488/pexels-photo-3823488.jpeg?auto=compress&cs=tinysrgb&w=500&h=600&fit=crop"
+                src="\images\Virbhadrasana2.png?auto=compress&cs=tinysrgb&w=500&h=600&fit=crop"
                 alt="Yoga instructor"
                 className="rounded-2xl shadow-lg"
               />
@@ -219,11 +219,11 @@ export function Home() {
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-blue-600">500+</div>
-                  <div className="text-sm text-gray-600">Global Students</div>
+                  <div className="text-2xl font-bold text-blue-600">1000+</div>
+                  <div className="text-sm text-gray-600">Inspired Lives</div>
                 </div>
                 <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-green-600">50+</div>
+                  <div className="text-2xl font-bold text-green-600">5+</div>
                   <div className="text-sm text-gray-600">Corporate Programs</div>
                 </div>
               </div>

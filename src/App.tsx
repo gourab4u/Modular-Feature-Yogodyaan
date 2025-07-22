@@ -22,6 +22,7 @@ import { Login } from './features/auth/pages/Login';
 import { ArticleView } from './features/learning/pages/ArticleView';
 import { Learning } from './features/learning/pages/Learning';
 import { About } from './features/marketing/pages/About';
+import { Achievements } from './features/marketing/pages/Achievements';
 import { Contact } from './features/marketing/pages/Contact';
 import { Home } from './features/marketing/pages/Home';
 import { Services } from './features/marketing/pages/Services';
@@ -33,7 +34,6 @@ import InstructorProfile from './features/scheduling/pages/InstructorProfile';
 import { Schedule } from './features/scheduling/pages/Schedule';
 import { Profile } from './features/user-profile/pages/Profile';
 import { NotFound } from './pages/NotFound';
-
 
 function App() {
   return (
@@ -138,6 +138,7 @@ function AppRoutes() {
               <Route path="*" element={<NotFound />} />
               <Route path="/book/individual" element={<BookOneOnOne />} />
               <Route path="/book/corporate" element={<BookCorporate />} />
+              <Route path="/achievements" element={<Achievements />} />
             </Routes>
           </main>
           <Footer />

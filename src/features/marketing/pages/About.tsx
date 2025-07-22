@@ -26,20 +26,20 @@ export function About() {
 
   const instructors = [
     {
-      name: "Priya Sharma",
+      name: "Bratati Batabyal",
       title: "Founder & Lead Instructor",
-      experience: "15+ years",
+      experience: "5+ years",
       specialization: "Hatha & Vinyasa Yoga",
-      image: "https://images.pexels.com/photos/3823488/pexels-photo-3823488.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
-      bio: "Priya founded Yogodyaan with a vision to make authentic yoga accessible to everyone. Trained in India and certified in multiple yoga styles."
+      image: "/images/pp_Bratati.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
+      bio: "Bratati founded Yogodyaan with a vision to make authentic yoga accessible to everyone. Trained in India and certified in multiple yoga styles."
     },
     {
-      name: "David Thompson",
+      name: "Amita Agarwal",
       title: "Senior Instructor",
-      experience: "10+ years",
+      experience: "6+ years",
       specialization: "Power Yoga & Meditation",
       image: "https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
-      bio: "David brings a dynamic approach to yoga, combining strength-building poses with mindfulness practices for complete wellness."
+      bio: "Amita brings a dynamic approach to yoga, combining strength-building poses with mindfulness practices for complete wellness."
     },
     {
       name: "Lisa Chen",
@@ -153,19 +153,19 @@ export function About() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold mb-2">5000+</div>
+              <div className="text-4xl font-bold mb-2">1000+</div>
               <div className="text-emerald-100">Happy Students</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">50+</div>
+              <div className="text-4xl font-bold mb-2">25+</div>
               <div className="text-emerald-100">Classes per Week</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">9</div>
+              <div className="text-4xl font-bold mb-2">5</div>
               <div className="text-emerald-100">Years of Experience</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">15+</div>
+              <div className="text-4xl font-bold mb-2">3+</div>
               <div className="text-emerald-100">Certified Instructors</div>
             </div>
           </div>

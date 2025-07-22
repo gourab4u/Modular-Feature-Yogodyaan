@@ -68,10 +68,11 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
         .select('*')
         .order('created_at', { ascending: false })
 
-      // Filter by author if specified or if user is mantra curator
-      if (authorId || (isMantraCurator && user)) {
-        const filterAuthorId = authorId || user?.id
-        query = query.eq('author_id', filterAuthorId)
+      // Always filter by current user unless authorId is provided
+      if (authorId) {
+        query = query.eq('author_id', authorId)
+      } else if (user) {
+        query = query.eq('author_id', user.id)
       }
 
       const { data, error } = await query
