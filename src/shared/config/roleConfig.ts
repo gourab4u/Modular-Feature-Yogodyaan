@@ -66,8 +66,8 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
   ],
 
   instructor: [
-    { id: 'assigned_bookings', title: 'My Bookings', component: 'AssignedBookings', icon: 'calendar', order: 1 },
-    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 3 }
+    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 1 },
+    { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 2 }
   ],
 
   yoga_acharya: [

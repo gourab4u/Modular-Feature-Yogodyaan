@@ -53,14 +53,50 @@ export function UserManagement() {
         }
     };
     const handleRoleUpdate = async (userId, newRoles) => {
-        // Update the local state
-        setUsers(prev => prev.map(user => user.user_id === userId
-            ? { ...user, user_roles: newRoles }
-            : user));
-        // Refresh the data
-        await fetchUsers();
-        setShowRoleManagement(false);
-        setSelectedUser(null);
+        setLoading(true);
+        setError(null);
+        try {
+            // Get the current session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session)
+                throw new Error('No active session');
+            // Call your Edge Function to update roles
+            const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-update-user-roles`;
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${session.access_token}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId,
+                    user_roles: newRoles // This should be an array of role names like ['admin', 'instructor']
+                }),
+            });
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+            }
+            const result = await response.json();
+            console.log('Role update successful:', result);
+            // Update local state immediately
+            setUsers(prev => prev.map(user => user.user_id === userId
+                ? { ...user, user_roles: newRoles }
+                : user));
+            // Refresh the data to ensure consistency
+            await fetchUsers();
+            setShowRoleManagement(false);
+            setSelectedUser(null);
+            // Show success message
+            console.log('Roles updated successfully');
+        }
+        catch (error) {
+            console.error('Role update error:', error);
+            setError(error instanceof Error ? error.message : 'Failed to update roles');
+        }
+        finally {
+            setLoading(false);
+        }
     };
     const getFilteredUsers = () => {
         return users.filter(user => {

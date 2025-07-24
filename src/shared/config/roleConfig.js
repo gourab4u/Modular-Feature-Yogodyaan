@@ -24,8 +24,8 @@ export const ROLE_MODULES = {
         { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 99 }
     ],
     instructor: [
-        { id: 'assigned_bookings', title: 'My Bookings', component: 'AssignedBookings', icon: 'calendar', order: 1 },
-        { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 3 }
+        { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 1 },
+        { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 2 }
     ],
     yoga_acharya: [
         { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 1 },
