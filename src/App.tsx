@@ -17,6 +17,7 @@ import { ProtectedRoute } from './features/auth/components/ProtectedRoute';
 import UniversalDashboard from './features/dashboard/components/UniversalDashboard';
 // Page imports - updated paths
 import { AdminDashboard } from './features/admin/pages/AdminDashboard';
+import { AuthCallback } from './features/auth/components/AuthCallback';
 import { AdminLogin } from './features/auth/pages/AdminLogin';
 import { Login } from './features/auth/pages/Login';
 import { ArticleView } from './features/learning/pages/ArticleView';
@@ -139,6 +140,7 @@ function AppRoutes() {
               <Route path="/book/individual" element={<BookOneOnOne />} />
               <Route path="/book/corporate" element={<BookCorporate />} />
               <Route path="/achievements" element={<Achievements />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
             </Routes>
           </main>
           <Footer />

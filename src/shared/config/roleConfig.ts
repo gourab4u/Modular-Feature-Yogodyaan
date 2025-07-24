@@ -28,6 +28,7 @@ export type DashboardModule =
   | 'class_type_manager'
   | 'article_workflow'
   | 'forms'
+  | 'newsletterManagement'
 
 export interface ModuleConfig {
   id: DashboardModule | string;
@@ -51,7 +52,8 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 9 },
     { id: 'financial_data', title: 'Financial Data', component: 'FinancialData', icon: 'bar-chart', order: 10 },
     { id: 'form_submission', title: 'Form Submissions & Messages', component: 'FormSubmissions', icon: 'file-text', order: 11 },
-    { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 99 }
+    { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 12 },
+    { id: 'newsletterManagement', title: 'NewsLetter Management', component: 'NewsletterManagement', icon: 'mail', order: 13 },
   ],
 
   admin: [

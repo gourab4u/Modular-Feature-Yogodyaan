@@ -20,6 +20,7 @@ const ContentReview = React.lazy(() => import('./Modules/ContentReview'));
 const ClassTypeManager = React.lazy(() => import('./Modules/ClassTypeManager'));
 const ArticleWorkflow = React.lazy(() => import('./Modules/ArticleWorkflow'));
 const UserProfile = React.lazy(() => import('./Modules/UserProfile'));
+const NewsletterManagement = React.lazy(() => import('./Modules/NewsletterManagement'));
 const UniversalDashboard = ({ user }) => {
     const userModules = getModulesForRole(user.role);
     const navigate = useNavigate();
@@ -41,6 +42,7 @@ const UniversalDashboard = ({ user }) => {
         ClassTypeManager,
         ArticleWorkflow,
         UserProfile,
+        NewsletterManagement,
     };
     // Get the first available module for default tab
     const defaultModule = userModules[0]?.id || 'user_profile';

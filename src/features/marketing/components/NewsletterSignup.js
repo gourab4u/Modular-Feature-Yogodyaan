@@ -58,3 +58,4 @@ export function NewsletterSignup({ className = '', showTitle = true }) {
                                     setError('');
                                 }, className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: "your@email.com", required: true })] }), _jsx(Button, { type: "submit", loading: loading, className: "w-full bg-blue-600 hover:bg-blue-700 text-white", children: loading ? 'Subscribing...' : 'Subscribe to Newsletter' }), _jsx("p", { className: "text-xs text-gray-500 text-center", children: "We respect your privacy. Unsubscribe at any time." })] })] }));
 }
+export default NewsletterSignup;
