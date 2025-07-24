@@ -73,7 +73,9 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
   yoga_acharya: [
     { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 1 },
     { id: 'class_assignment', title: 'Class Management', component: 'ClassAssignmentManager', icon: 'edit', order: 2 },
-    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 3 }
+    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 3 },
+    { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 4 },
+    { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 5 },
   ],
 
   energy_exchange_lead: [

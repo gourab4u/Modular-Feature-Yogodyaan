@@ -175,7 +175,7 @@ function WeeklyScheduleContent() {
 
                     {schedule.class_type.price && (
                       <div className="text-blue-600 font-semibold">
-                        ${schedule.class_type.price}
+                        ₹{schedule.class_type.price}
                       </div>
                     )}
                   </div>

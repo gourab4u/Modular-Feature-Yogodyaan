@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { Button } from '../../../../shared/components/ui/Button';
 import { LoadingSpinner } from '../../../../shared/components/ui/LoadingSpinner';
 import { supabase } from '../../../../shared/lib/supabase';
+import { useAuth } from '../../../auth/contexts/AuthContext'; // Add this import
 export function ClassTypeManager() {
+    const { user } = useAuth(); // Add this
     const [classTypes, setClassTypes] = useState([]);
     const [archivedClassTypes, setArchivedClassTypes] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -12,12 +14,13 @@ export function ClassTypeManager() {
     const [showForm, setShowForm] = useState(false);
     const [editingClassType, setEditingClassType] = useState(null);
     const [errors, setErrors] = useState({});
-    const [activeTab, setActiveTab] = useState('active'); // ✅ Add tab state
+    const [activeTab, setActiveTab] = useState('active');
+    const [userProfile, setUserProfile] = useState(null); // Update type
     const [formData, setFormData] = useState({
         name: '',
         description: '',
         difficulty_level: 'beginner',
-        price: 800, // ✅ Default to weekly classes for ₹800/month
+        price: 800,
         duration_minutes: 60,
         max_participants: 20,
         is_active: true,
@@ -28,6 +31,71 @@ export function ClassTypeManager() {
         { value: 'intermediate', label: 'Intermediate' },
         { value: 'advanced', label: 'Advanced' }
     ];
+    // Add this useEffect to fetch user profile and check permissions from user_roles table
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            if (user?.id) {
+                try {
+                    // First get the user's basic profile
+                    const { data: profile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .single();
+                    if (profileError) {
+                        console.error('Error fetching user profile:', profileError);
+                        return;
+                    }
+                    // Then get the user's roles from user_roles table
+                    const { data: userRoles, error: rolesError } = await supabase
+                        .from('user_roles')
+                        .select(`
+              role_id,
+              roles!inner(name)
+            `)
+                        .eq('user_id', user.id);
+                    if (rolesError) {
+                        console.error('Error fetching user roles:', rolesError);
+                        setUserProfile({ ...profile, roles: [] });
+                        return;
+                    }
+                    // Extract role names from the joined query - handle the actual structure safely
+                    let roleNames = [];
+                    if (userRoles && Array.isArray(userRoles)) {
+                        roleNames = userRoles
+                            .map((ur) => {
+                            // Handle both possible structures
+                            if (ur.roles && typeof ur.roles === 'object') {
+                                return ur.roles.name;
+                            }
+                            return null;
+                        })
+                            .filter(Boolean); // Remove null values
+                    }
+                    console.log('Raw userRoles data:', userRoles); // Debug log to see actual structure
+                    console.log('Extracted role names:', roleNames);
+                    const profileWithRoles = {
+                        ...profile,
+                        roles: roleNames,
+                        hasRole: (roleName) => roleNames.includes(roleName)
+                    };
+                    setUserProfile(profileWithRoles);
+                    console.log('User profile:', profileWithRoles);
+                    console.log('User roles:', roleNames);
+                    // Check if user has required permissions
+                    const allowedRoles = ['yoga_acharya', 'admin', 'super_admin'];
+                    const hasRequiredRole = roleNames.some(role => allowedRoles.includes(role));
+                    if (!hasRequiredRole) {
+                        console.warn('User does not have required role for class management. Current roles:', roleNames);
+                    }
+                }
+                catch (error) {
+                    console.error('Error checking user permissions:', error);
+                }
+            }
+        };
+        fetchUserProfile();
+    }, [user]);
     useEffect(() => {
         fetchClassTypes();
     }, []);
@@ -81,45 +149,97 @@ export function ClassTypeManager() {
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
+    // Add permission check function
+    const checkUserPermissions = () => {
+        if (!user) {
+            setErrors({ general: 'You must be logged in to perform this action' });
+            return false;
+        }
+        if (!userProfile) {
+            setErrors({ general: 'User profile not loaded. Please try again.' });
+            return false;
+        }
+        const allowedRoles = ['yoga_acharya', 'admin', 'super_admin'];
+        const userRoles = userProfile.roles || [];
+        const hasRequiredRole = userRoles.some((role) => allowedRoles.includes(role));
+        if (!hasRequiredRole) {
+            setErrors({
+                general: `Access denied. Required roles: ${allowedRoles.join(', ')}. Your roles: ${userRoles.join(', ') || 'none'}`
+            });
+            return false;
+        }
+        return true;
+    };
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!validateForm())
+            return;
+        // Check permissions before proceeding
+        if (!checkUserPermissions())
             return;
         try {
             setSaving(true);
             if (editingClassType) {
                 const { error } = await supabase
                     .from('class_types')
-                    .update(formData)
+                    .update({
+                    ...formData,
+                    updated_by: user?.id,
+                    updated_at: new Date().toISOString()
+                })
                     .eq('id', editingClassType.id);
                 if (error)
                     throw error;
             }
             else {
+                // For new class types, include user tracking fields
+                const classTypeData = {
+                    ...formData,
+                    is_archived: false,
+                    created_by: user?.id,
+                    updated_by: user?.id,
+                };
+                console.log('Inserting class type with data:', classTypeData);
+                console.log('Current user:', user);
+                console.log('User profile role:', userProfile?.role);
                 const { error } = await supabase
                     .from('class_types')
-                    .insert([{ ...formData, is_archived: false }]);
-                if (error)
+                    .insert([classTypeData]);
+                if (error) {
+                    console.error('Insert error:', error);
                     throw error;
+                }
             }
             await fetchClassTypes();
             resetForm();
             alert(editingClassType ? 'Class type updated successfully!' : 'Class type created successfully!');
         }
         catch (error) {
-            setErrors({ general: error.message });
+            console.error('Error saving class type:', error);
+            // More specific error handling for RLS
+            if (error.message.includes('row-level security') || error.message.includes('policy')) {
+                setErrors({
+                    general: `Permission denied. Please ensure you have the required role (yoga_acharya, admin, or super_admin). Current roles: ${userProfile?.roles?.join(', ') || 'none'}`
+                });
+            }
+            else {
+                setErrors({ general: error.message });
+            }
         }
         finally {
             setSaving(false);
         }
     };
     const handleEdit = (classType) => {
+        if (!checkUserPermissions())
+            return;
         setEditingClassType(classType);
         setFormData({ ...classType });
         setShowForm(true);
     };
-    // ✅ Archive function instead of delete
     const handleArchive = async (id) => {
+        if (!checkUserPermissions())
+            return;
         if (!confirm('Are you sure you want to archive this class type? It will be moved to the archived section and all related schedules will be deactivated.'))
             return;
         try {
@@ -130,7 +250,8 @@ export function ClassTypeManager() {
                 .update({
                 is_archived: true,
                 is_active: false,
-                archived_at: new Date().toISOString()
+                archived_at: new Date().toISOString(),
+                updated_by: user?.id
             })
                 .eq('id', id);
             if (classTypeError)
@@ -158,8 +279,9 @@ export function ClassTypeManager() {
             setLoading(false);
         }
     };
-    // ✅ Unarchive function to restore archived classes
     const handleUnarchive = async (id) => {
+        if (!checkUserPermissions())
+            return;
         if (!confirm('Are you sure you want to restore this class type from the archive?'))
             return;
         try {
@@ -169,7 +291,8 @@ export function ClassTypeManager() {
                 .update({
                 is_archived: false,
                 is_active: true,
-                archived_at: null
+                archived_at: null,
+                updated_by: user?.id
             })
                 .eq('id', id);
             if (error)
@@ -190,7 +313,7 @@ export function ClassTypeManager() {
             name: '',
             description: '',
             difficulty_level: 'beginner',
-            price: 800, // ✅ Reset to default ₹800
+            price: 800,
             duration_minutes: 60,
             max_participants: 20,
             is_active: true,
@@ -208,11 +331,9 @@ export function ClassTypeManager() {
             default: return 'bg-gray-100 text-gray-800';
         }
     };
-    // ✅ Helper function to format price in INR
     const formatPrice = (price) => {
         return `₹${price}`;
     };
-    // ✅ Helper function to format archive date
     const formatArchiveDate = (dateString) => {
         if (!dateString)
             return 'Unknown';
@@ -222,10 +343,17 @@ export function ClassTypeManager() {
             day: 'numeric'
         });
     };
+    // Add role check for UI elements
+    const canManageClasses = userProfile && userProfile.roles &&
+        userProfile.roles.some((role) => ['yoga_acharya', 'admin', 'super_admin'].includes(role));
     if (loading) {
         return (_jsx("div", { className: "flex justify-center py-12", children: _jsx(LoadingSpinner, { size: "lg" }) }));
     }
-    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex justify-between items-center", children: [_jsxs("h2", { className: "text-2xl font-bold text-gray-900 flex items-center", children: [_jsx(Award, { className: "w-6 h-6 mr-2" }), "Class Type Manager"] }), _jsxs("div", { className: "flex items-center space-x-4", children: [_jsxs("div", { className: "flex bg-gray-100 rounded-lg p-1", children: [_jsxs("button", { onClick: () => setActiveTab('active'), className: `px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'active'
+    // Show access denied message if user doesn't have required role
+    if (!canManageClasses) {
+        return (_jsx("div", { className: "text-center py-12", children: _jsxs("div", { className: "bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto", children: [_jsx("h3", { className: "text-lg font-semibold text-red-900 mb-2", children: "Access Denied" }), _jsx("p", { className: "text-red-700", children: "You need yoga_acharya, admin, or super_admin role to manage class types." }), _jsxs("p", { className: "text-sm text-red-600 mt-2", children: ["Current roles: ", userProfile?.roles?.join(', ') || 'No roles assigned'] })] }) }));
+    }
+    return (_jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "flex justify-between items-center", children: [_jsxs("h2", { className: "text-2xl font-bold text-gray-900 flex items-center", children: [_jsx(Award, { className: "w-6 h-6 mr-2" }), "Class Type Manager", _jsx("span", { className: "ml-2 text-sm bg-blue-100 text-blue-600 px-2 py-1 rounded", children: userProfile?.roles?.join(', ') || 'No roles' })] }), _jsxs("div", { className: "flex items-center space-x-4", children: [_jsxs("div", { className: "flex bg-gray-100 rounded-lg p-1", children: [_jsxs("button", { onClick: () => setActiveTab('active'), className: `px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'active'
                                             ? 'bg-white text-blue-600 shadow-sm'
                                             : 'text-gray-600 hover:text-gray-900'}`, children: ["Active Classes (", classTypes.length, ")"] }), _jsxs("button", { onClick: () => setActiveTab('archived'), className: `px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'archived'
                                             ? 'bg-white text-blue-600 shadow-sm'

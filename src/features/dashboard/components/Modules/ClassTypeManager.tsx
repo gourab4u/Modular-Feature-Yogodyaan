@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../../shared/lib/supabase'
+import { useAuth } from '../../../auth/contexts/AuthContext'; // Add this import
 
 interface ClassType {
   id?: string
@@ -13,11 +14,25 @@ interface ClassType {
   duration_minutes: number
   max_participants: number
   is_active: boolean
-  is_archived?: boolean // ✅ Add archived field
-  archived_at?: string // ✅ Track when archived
+  is_archived?: boolean
+  archived_at?: string
+  created_by?: string  // Add these fields for RLS
+  updated_by?: string
+}
+
+// Add interfaces for role checking
+interface UserProfile {
+  id: string
+  user_id: string
+  full_name?: string
+  email?: string
+  roles?: string[]
+  hasRole?: (roleName: string) => boolean
+  [key: string]: any
 }
 
 export function ClassTypeManager() {
+  const { user } = useAuth() // Add this
   const [classTypes, setClassTypes] = useState<ClassType[]>([])
   const [archivedClassTypes, setArchivedClassTypes] = useState<ClassType[]>([])
   const [loading, setLoading] = useState(true)
@@ -25,13 +40,14 @@ export function ClassTypeManager() {
   const [showForm, setShowForm] = useState(false)
   const [editingClassType, setEditingClassType] = useState<ClassType | null>(null)
   const [errors, setErrors] = useState<any>({})
-  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active') // ✅ Add tab state
+  const [activeTab, setActiveTab] = useState<'active' | 'archived'>('active')
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null) // Update type
 
   const [formData, setFormData] = useState<ClassType>({
     name: '',
     description: '',
     difficulty_level: 'beginner',
-    price: 800, // ✅ Default to weekly classes for ₹800/month
+    price: 800,
     duration_minutes: 60,
     max_participants: 20,
     is_active: true,
@@ -43,6 +59,82 @@ export function ClassTypeManager() {
     { value: 'intermediate', label: 'Intermediate' },
     { value: 'advanced', label: 'Advanced' }
   ]
+
+  // Add this useEffect to fetch user profile and check permissions from user_roles table
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.id) {
+        try {
+          // First get the user's basic profile
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single()
+
+          if (profileError) {
+            console.error('Error fetching user profile:', profileError)
+            return
+          }
+
+          // Then get the user's roles from user_roles table
+          const { data: userRoles, error: rolesError } = await supabase
+            .from('user_roles')
+            .select(`
+              role_id,
+              roles!inner(name)
+            `)
+            .eq('user_id', user.id)
+
+          if (rolesError) {
+            console.error('Error fetching user roles:', rolesError)
+            setUserProfile({ ...profile, roles: [] })
+            return
+          }
+
+          // Extract role names from the joined query - handle the actual structure safely
+          let roleNames: string[] = []
+
+          if (userRoles && Array.isArray(userRoles)) {
+            roleNames = userRoles
+              .map((ur: any) => {
+                // Handle both possible structures
+                if (ur.roles && typeof ur.roles === 'object') {
+                  return ur.roles.name
+                }
+                return null
+              })
+              .filter(Boolean) // Remove null values
+          }
+
+          console.log('Raw userRoles data:', userRoles) // Debug log to see actual structure
+          console.log('Extracted role names:', roleNames)
+
+          const profileWithRoles = {
+            ...profile,
+            roles: roleNames,
+            hasRole: (roleName: string) => roleNames.includes(roleName)
+          }
+
+          setUserProfile(profileWithRoles)
+          console.log('User profile:', profileWithRoles)
+          console.log('User roles:', roleNames)
+
+          // Check if user has required permissions
+          const allowedRoles = ['yoga_acharya', 'admin', 'super_admin']
+          const hasRequiredRole = roleNames.some(role => allowedRoles.includes(role))
+
+          if (!hasRequiredRole) {
+            console.warn('User does not have required role for class management. Current roles:', roleNames)
+          }
+        } catch (error) {
+          console.error('Error checking user permissions:', error)
+        }
+      }
+    }
+
+    fetchUserProfile()
+  }, [user])
 
   useEffect(() => {
     fetchClassTypes()
@@ -99,10 +191,39 @@ export function ClassTypeManager() {
     return Object.keys(newErrors).length === 0
   }
 
+  // Add permission check function
+  const checkUserPermissions = () => {
+    if (!user) {
+      setErrors({ general: 'You must be logged in to perform this action' })
+      return false
+    }
+
+    if (!userProfile) {
+      setErrors({ general: 'User profile not loaded. Please try again.' })
+      return false
+    }
+
+    const allowedRoles = ['yoga_acharya', 'admin', 'super_admin']
+    const userRoles = userProfile.roles || []
+    const hasRequiredRole = userRoles.some((role: string) => allowedRoles.includes(role))
+
+    if (!hasRequiredRole) {
+      setErrors({
+        general: `Access denied. Required roles: ${allowedRoles.join(', ')}. Your roles: ${userRoles.join(', ') || 'none'}`
+      })
+      return false
+    }
+
+    return true
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) return
+
+    // Check permissions before proceeding
+    if (!checkUserPermissions()) return
 
     try {
       setSaving(true)
@@ -110,36 +231,67 @@ export function ClassTypeManager() {
       if (editingClassType) {
         const { error } = await supabase
           .from('class_types')
-          .update(formData)
+          .update({
+            ...formData,
+            updated_by: user?.id,
+            updated_at: new Date().toISOString()
+          })
           .eq('id', editingClassType.id)
 
         if (error) throw error
       } else {
+        // For new class types, include user tracking fields
+        const classTypeData = {
+          ...formData,
+          is_archived: false,
+          created_by: user?.id,
+          updated_by: user?.id,
+        }
+
+        console.log('Inserting class type with data:', classTypeData)
+        console.log('Current user:', user)
+        console.log('User profile role:', userProfile?.role)
+
         const { error } = await supabase
           .from('class_types')
-          .insert([{ ...formData, is_archived: false }])
+          .insert([classTypeData])
 
-        if (error) throw error
+        if (error) {
+          console.error('Insert error:', error)
+          throw error
+        }
       }
 
       await fetchClassTypes()
       resetForm()
       alert(editingClassType ? 'Class type updated successfully!' : 'Class type created successfully!')
     } catch (error: any) {
-      setErrors({ general: error.message })
+      console.error('Error saving class type:', error)
+
+      // More specific error handling for RLS
+      if (error.message.includes('row-level security') || error.message.includes('policy')) {
+        setErrors({
+          general: `Permission denied. Please ensure you have the required role (yoga_acharya, admin, or super_admin). Current roles: ${userProfile?.roles?.join(', ') || 'none'}`
+        })
+      } else {
+        setErrors({ general: error.message })
+      }
     } finally {
       setSaving(false)
     }
   }
 
   const handleEdit = (classType: ClassType) => {
+    if (!checkUserPermissions()) return
+
     setEditingClassType(classType)
     setFormData({ ...classType })
     setShowForm(true)
   }
 
-  // ✅ Archive function instead of delete
   const handleArchive = async (id: string) => {
+    if (!checkUserPermissions()) return
+
     if (!confirm('Are you sure you want to archive this class type? It will be moved to the archived section and all related schedules will be deactivated.')) return
 
     try {
@@ -151,7 +303,8 @@ export function ClassTypeManager() {
         .update({
           is_archived: true,
           is_active: false,
-          archived_at: new Date().toISOString()
+          archived_at: new Date().toISOString(),
+          updated_by: user?.id
         })
         .eq('id', id)
 
@@ -181,8 +334,9 @@ export function ClassTypeManager() {
     }
   }
 
-  // ✅ Unarchive function to restore archived classes
   const handleUnarchive = async (id: string) => {
+    if (!checkUserPermissions()) return
+
     if (!confirm('Are you sure you want to restore this class type from the archive?')) return
 
     try {
@@ -193,7 +347,8 @@ export function ClassTypeManager() {
         .update({
           is_archived: false,
           is_active: true,
-          archived_at: null
+          archived_at: null,
+          updated_by: user?.id
         })
         .eq('id', id)
 
@@ -214,7 +369,7 @@ export function ClassTypeManager() {
       name: '',
       description: '',
       difficulty_level: 'beginner',
-      price: 800, // ✅ Reset to default ₹800
+      price: 800,
       duration_minutes: 60,
       max_participants: 20,
       is_active: true,
@@ -234,12 +389,10 @@ export function ClassTypeManager() {
     }
   }
 
-  // ✅ Helper function to format price in INR
   const formatPrice = (price: number) => {
     return `₹${price}`
   }
 
-  // ✅ Helper function to format archive date
   const formatArchiveDate = (dateString?: string) => {
     if (!dateString) return 'Unknown'
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -249,10 +402,31 @@ export function ClassTypeManager() {
     })
   }
 
+  // Add role check for UI elements
+  const canManageClasses = userProfile && userProfile.roles &&
+    userProfile.roles.some((role: string) => ['yoga_acharya', 'admin', 'super_admin'].includes(role))
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
         <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  // Show access denied message if user doesn't have required role
+  if (!canManageClasses) {
+    return (
+      <div className="text-center py-12">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+          <h3 className="text-lg font-semibold text-red-900 mb-2">Access Denied</h3>
+          <p className="text-red-700">
+            You need yoga_acharya, admin, or super_admin role to manage class types.
+          </p>
+          <p className="text-sm text-red-600 mt-2">
+            Current roles: {userProfile?.roles?.join(', ') || 'No roles assigned'}
+          </p>
+        </div>
       </div>
     )
   }
@@ -263,16 +437,19 @@ export function ClassTypeManager() {
         <h2 className="text-2xl font-bold text-gray-900 flex items-center">
           <Award className="w-6 h-6 mr-2" />
           Class Type Manager
+          <span className="ml-2 text-sm bg-blue-100 text-blue-600 px-2 py-1 rounded">
+            {userProfile?.roles?.join(', ') || 'No roles'}
+          </span>
         </h2>
 
-        {/* ✅ Tab Navigation */}
+        {/* Tab Navigation */}
         <div className="flex items-center space-x-4">
           <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setActiveTab('active')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'active'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               Active Classes ({classTypes.length})
@@ -280,8 +457,8 @@ export function ClassTypeManager() {
             <button
               onClick={() => setActiveTab('archived')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === 'archived'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
                 }`}
             >
               <Archive className="w-4 h-4 mr-1 inline" />
@@ -462,7 +639,7 @@ export function ClassTypeManager() {
         </div>
       )}
 
-      {/* ✅ Active Classes Tab */}
+      {/* Active Classes Tab */}
       {activeTab === 'active' && (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           {classTypes.length === 0 ? (
@@ -493,7 +670,6 @@ export function ClassTypeManager() {
                       >
                         <Edit className="w-4 h-4" />
                       </button>
-                      {/* ✅ Archive button instead of delete */}
                       <button
                         onClick={() => handleArchive(classType.id!)}
                         className="text-orange-600 hover:text-orange-800 p-1"
@@ -540,7 +716,6 @@ export function ClassTypeManager() {
                     </div>
                   </div>
 
-                  {/* ✅ Added pricing context */}
                   {classType.price === 800 && (
                     <div className="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
                       💡 Weekly classes for ₹800/month
@@ -553,7 +728,7 @@ export function ClassTypeManager() {
         </div>
       )}
 
-      {/* ✅ Archived Classes Tab */}
+      {/* Archived Classes Tab */}
       {activeTab === 'archived' && (
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           {archivedClassTypes.length === 0 ? (
@@ -584,7 +759,6 @@ export function ClassTypeManager() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {/* ✅ Unarchive button */}
                       <button
                         onClick={() => handleUnarchive(classType.id!)}
                         className="text-green-600 hover:text-green-800 p-1"
@@ -628,7 +802,6 @@ export function ClassTypeManager() {
                     </div>
                   </div>
 
-                  {/* Archive notice */}
                   <div className="mt-3 p-2 bg-orange-100 border border-orange-200 rounded text-xs text-orange-800">
                     📦 This class is archived. Click restore to make it active again.
                   </div>
