@@ -48,7 +48,8 @@ export function BookOneOnOne() {
                 .from('class_packages')
                 .select('*')
                 .eq('is_active', true)
-                .eq('type', 'individual')
+                .eq('is_archived', false)
+                .eq('type', 'Individual')
                 .order('price');
             if (error) {
                 throw error;

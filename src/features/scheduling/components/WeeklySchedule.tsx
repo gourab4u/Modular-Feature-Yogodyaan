@@ -109,19 +109,19 @@ function WeeklyScheduleContent() {
   const days = [0, 1, 2, 3, 4, 5, 6]
 
   return (
-    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center">
-          <Calendar className="w-6 h-6 mr-2 text-blue-600" />
+    <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg overflow-hidden border border-gray-200 dark:border-slate-600">
+      <div className="p-6 border-b border-gray-200 dark:border-slate-600">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
+          <Calendar className="w-6 h-6 mr-2 text-blue-600 dark:text-blue-400" />
           Weekly Class Schedule
         </h2>
-        <p className="text-gray-600 mt-1">Regular weekly classes - book your spot today!</p>
+        <p className="text-gray-600 dark:text-slate-300 mt-1">Regular weekly classes - book your spot today!</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-7 divide-y lg:divide-y-0 lg:divide-x divide-gray-200">
+      <div className="grid grid-cols-1 lg:grid-cols-7 divide-y lg:divide-y-0 lg:divide-x divide-gray-200 dark:divide-slate-600">
         {days.map(day => (
           <div key={day} className="p-4">
-            <h3 className="font-semibold text-gray-900 mb-4 text-center">
+            <h3 className="font-semibold text-gray-900 dark:text-white mb-4 text-center">
               {getDayName(day)}
             </h3>
 
@@ -129,35 +129,35 @@ function WeeklyScheduleContent() {
               {schedulesByDay[day]?.map(schedule => (
                 <div
                   key={schedule.id}
-                  className="bg-gradient-to-br from-blue-50 to-green-50 rounded-lg p-4 hover:shadow-md transition-all duration-300"
+                  className="bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-slate-700 dark:to-slate-600 rounded-lg p-4 hover:shadow-md transition-all duration-300 border border-gray-200 dark:border-slate-500"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <h4 className="font-medium text-gray-900 text-sm leading-tight">
+                    <h4 className="font-medium text-gray-900 dark:text-white text-sm leading-tight">
                       {schedule.class_type.name}
                     </h4>
                     <span className={`px-2 py-1 text-xs rounded-full ${schedule.class_type.difficulty_level === 'beginner'
-                      ? 'bg-green-100 text-green-800'
+                      ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
                       : schedule.class_type.difficulty_level === 'intermediate'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-red-100 text-red-800'
+                        ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
+                        : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
                       }`}>
                       {schedule.class_type.difficulty_level}
                     </span>
                   </div>
 
-                  <div className="space-y-2 text-xs text-gray-600 mb-3">
+                  <div className="space-y-2 text-xs text-gray-600 dark:text-slate-300 mb-3">
                     <div className="flex items-center">
-                      <Clock className="w-3 h-3 mr-1" />
+                      <Clock className="w-3 h-3 mr-1 text-blue-500 dark:text-blue-400" />
                       {formatTime(schedule.start_time)} ({schedule.duration_minutes}min)
                     </div>
 
                     <div className="flex items-center">
-                      <Users className="w-3 h-3 mr-1" />
+                      <Users className="w-3 h-3 mr-1 text-emerald-500 dark:text-emerald-400" />
                       Max {schedule.max_participants} students
                     </div>
 
                     <div className="flex items-center">
-                      <Award className="w-3 h-3 mr-1" />
+                      <Award className="w-3 h-3 mr-1 text-orange-500 dark:text-orange-400" />
                       <InstructorLink
                         instructor={{
                           id: schedule.instructor_id || '',
@@ -174,7 +174,7 @@ function WeeklyScheduleContent() {
                     </div>
 
                     {schedule.class_type.price && (
-                      <div className="text-blue-600 font-semibold">
+                      <div className="text-blue-600 dark:text-blue-400 font-semibold">
                         ₹{schedule.class_type.price}
                       </div>
                     )}
@@ -190,7 +190,7 @@ function WeeklyScheduleContent() {
                   </Button>
                 </div>
               )) || (
-                  <div className="text-center text-gray-500 text-sm py-8">
+                  <div className="text-center text-gray-500 dark:text-gray-400 text-sm py-8">
                     No classes scheduled
                   </div>
                 )}
@@ -199,30 +199,30 @@ function WeeklyScheduleContent() {
         ))}
       </div>
 
-      <div className="p-6 bg-gray-50 border-t border-gray-200">
+      <div className="p-6 bg-gray-50 dark:bg-slate-700 border-t border-gray-200 dark:border-slate-600">
         <div className="text-center">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">How Booking Works</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">How Booking Works</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-slate-300">
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                <span className="text-blue-600 font-semibold">1</span>
+              <div className="w-8 h-8 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center mb-2">
+                <span className="text-white font-semibold">1</span>
               </div>
-              <p>Click "Book Now" on any class</p>
+              <p className="text-gray-900 dark:text-white">Click "Book Now" on any class</p>
             </div>
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                <span className="text-blue-600 font-semibold">2</span>
+              <div className="w-8 h-8 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center mb-2">
+                <span className="text-white font-semibold">2</span>
               </div>
-              <p>Sign in to your account</p>
+              <p className="text-gray-900 dark:text-white">Sign in to your account</p>
             </div>
             <div className="flex flex-col items-center">
-              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mb-2">
-                <span className="text-blue-600 font-semibold">3</span>
+              <div className="w-8 h-8 bg-blue-500 dark:bg-blue-600 rounded-full flex items-center justify-center mb-2">
+                <span className="text-white font-semibold">3</span>
               </div>
-              <p>Get instant confirmation</p>
+              <p className="text-gray-900 dark:text-white">Get instant confirmation</p>
             </div>
           </div>
-          <p className="mt-4 text-xs text-gray-500">
+          <p className="mt-4 text-xs text-gray-500 dark:text-slate-300">
             * Bookings are made for the next occurrence of the selected class
           </p>
         </div>

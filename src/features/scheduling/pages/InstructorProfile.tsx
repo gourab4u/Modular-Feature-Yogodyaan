@@ -536,13 +536,13 @@ export default function InstructorProfile() {
   const getDifficultyColor = (level: string) => {
     switch (level?.toLowerCase()) {
       case 'beginner':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 border-green-200 dark:border-green-700'
       case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 border-yellow-200 dark:border-yellow-700'
       case 'advanced':
-        return 'bg-red-100 text-red-800 border-red-200'
+        return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 border-red-200 dark:border-red-700'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 border-gray-200 dark:border-gray-600'
     }
   }
 
@@ -567,7 +567,7 @@ export default function InstructorProfile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     )
@@ -575,10 +575,10 @@ export default function InstructorProfile() {
 
   if (error || !instructor) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Instructor Not Found</h1>
-          <p className="text-gray-600 mb-6">{error || 'The instructor profile you are looking for does not exist.'}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Instructor Not Found</h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">{error || 'The instructor profile you are looking for does not exist.'}</p>
           <Button onClick={() => navigate(-1)}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Go Back
@@ -589,7 +589,7 @@ export default function InstructorProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Enhanced Header with Gradient Background */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-green-600 relative overflow-hidden">
         <div className="absolute inset-0 bg-black bg-opacity-20"></div>
@@ -709,7 +709,7 @@ export default function InstructorProfile() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+      <div className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {tabs.map((tab) => {
@@ -719,8 +719,8 @@ export default function InstructorProfile() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                     }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -741,14 +741,14 @@ export default function InstructorProfile() {
             <div className="lg:col-span-2 space-y-8">
               {/* Bio Section */}
               {instructor.bio && (
-                <div className="bg-white rounded-xl shadow-lg p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
                     <BookOpen className="w-6 h-6 mr-3 text-blue-600" />
                     About {instructor.full_name.split(' ')[0]}
                   </h2>
                   {/* Render bio as rich text (HTML) - ensure bio is sanitized if coming from user input */}
                   <div
-                    className="text-gray-700 leading-relaxed text-lg"
+                    className="text-gray-700 dark:text-gray-300 leading-relaxed text-lg"
                     dangerouslySetInnerHTML={{ __html: instructor.bio }}
                   />
                 </div>
@@ -756,23 +756,23 @@ export default function InstructorProfile() {
 
               {/* Teaching Philosophy */}
               {instructor.teaching_philosophy && (
-                <div className="bg-white rounded-xl shadow-lg p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Teaching Philosophy</h2>
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-r-lg">
-                    <p className="text-gray-700 leading-relaxed italic text-lg">"{instructor.teaching_philosophy}"</p>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Teaching Philosophy</h2>
+                  <div className="bg-blue-50 dark:bg-blue-900 border-l-4 border-blue-400 p-6 rounded-r-lg">
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed italic text-lg">"{instructor.teaching_philosophy}"</p>
                   </div>
                 </div>
               )}
 
               {/* Languages */}
               {instructor.languages && instructor.languages.length > 0 && (
-                <div className="bg-white rounded-xl shadow-lg p-8">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-6">Languages</h2>
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Languages</h2>
                   <div className="flex flex-wrap gap-3">
                     {instructor.languages.map((language, index) => (
                       <span
                         key={index}
-                        className="bg-purple-100 text-purple-800 px-4 py-2 rounded-full text-sm font-medium border border-purple-200"
+                        className="bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 px-4 py-2 rounded-full text-sm font-medium border border-purple-200 dark:border-purple-700"
                       >
                         {language}
                       </span>
@@ -786,8 +786,8 @@ export default function InstructorProfile() {
             <div className="space-y-6">
               {/* Achievements */}
               {instructor.achievements && instructor.achievements.length > 0 && (
-                <div className="bg-white rounded-xl shadow-lg p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
                     <Award className="w-5 h-5 mr-2 text-yellow-500" />
                     Achievements
                   </h3>
@@ -795,7 +795,7 @@ export default function InstructorProfile() {
                     {instructor.achievements.map((achievement, index) => (
                       <div key={index} className="flex items-start space-x-3">
                         <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2 flex-shrink-0"></div>
-                        <p className="text-gray-700 text-sm">{achievement}</p>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm">{achievement}</p>
                       </div>
                     ))}
                   </div>
@@ -803,8 +803,8 @@ export default function InstructorProfile() {
               )}
 
               {/* Quick Actions */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
                 <div className="space-y-3">
                   <Button className="w-full" onClick={() => setActiveTab('classes')}>
                     <Calendar className="w-4 h-4 mr-2" />
@@ -834,8 +834,8 @@ export default function InstructorProfile() {
         {/* ✅ Enhanced Classes Tab with booking status indicators */}
         {activeTab === 'classes' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
                 <Calendar className="w-6 h-6 mr-3 text-blue-600" />
                 Weekly Class Schedule
               </h2>
@@ -843,8 +843,8 @@ export default function InstructorProfile() {
               {schedules.length === 0 ? (
                 <div className="text-center py-12">
                   <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Classes Scheduled</h3>
-                  <p className="text-gray-500">This instructor doesn't have any classes scheduled at the moment.</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Classes Scheduled</h3>
+                  <p className="text-gray-500 dark:text-gray-400">This instructor doesn't have any classes scheduled at the moment.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -858,10 +858,10 @@ export default function InstructorProfile() {
                       <div
                         key={schedule.id}
                         className={`border rounded-xl p-6 hover:shadow-lg transition-all duration-200 ${userHasBooked
-                          ? 'border-green-300 bg-green-50'
+                          ? 'border-green-300 bg-green-50 dark:bg-green-900 dark:border-green-600'
                           : isFullyBooked
-                            ? 'border-red-200 bg-red-50'
-                            : 'border-gray-200 hover:border-blue-300'
+                            ? 'border-red-200 bg-red-50 dark:bg-red-900 dark:border-red-600'
+                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-300 dark:hover:border-blue-600'
                           }`}
                       >
                         {/* ✅ Add "Already Booked" indicator */}
@@ -875,7 +875,7 @@ export default function InstructorProfile() {
 
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <h3 className="font-bold text-lg text-gray-900 mb-1">
+                            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-1">
                               {schedule.class_type.name}
                             </h3>
                             <p className="text-blue-600 font-medium">
@@ -887,7 +887,7 @@ export default function InstructorProfile() {
                           </span>
                         </div>
 
-                        <div className="space-y-3 text-sm text-gray-600">
+                        <div className="space-y-3 text-sm text-gray-600 dark:text-gray-300">
                           <div className="flex items-center">
                             <Clock className="w-4 h-4 mr-2 text-blue-500" />
                             <span className="font-medium">
@@ -914,8 +914,8 @@ export default function InstructorProfile() {
                           )}
 
                           {schedule.class_type.price && (
-                            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                              <span className="font-semibold text-blue-600 text-lg">
+                            <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-700">
+                              <span className="font-semibold text-blue-600 dark:text-blue-400 text-lg">
                                 ${schedule.class_type.price}
                               </span>
 
@@ -959,35 +959,35 @@ export default function InstructorProfile() {
                         </div>
 
                         {schedule.class_type.description && (
-                          <div className="mt-4 pt-4 border-t border-gray-100">
-                            <p className="text-xs text-gray-600 leading-relaxed">{schedule.class_type.description}</p>
+                          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{schedule.class_type.description}</p>
                           </div>
                         )}
 
                         {/* ✅ Enhanced booking status indicators */}
                         {isFullyBooked ? (
-                          <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
-                            <p className="text-xs text-red-800 font-medium">
+                          <div className="mt-3 p-2 bg-red-50 dark:bg-red-900 border border-red-200 dark:border-red-700 rounded-lg">
+                            <p className="text-xs text-red-800 dark:text-red-200 font-medium">
                               🔴 This class is fully booked
                             </p>
                           </div>
                         ) : isAlmostFull ? (
-                          <div className="mt-3 p-2 bg-orange-50 border border-orange-200 rounded-lg">
-                            <p className="text-xs text-orange-800 font-medium">
+                          <div className="mt-3 p-2 bg-orange-50 dark:bg-orange-900 border border-orange-200 dark:border-orange-700 rounded-lg">
+                            <p className="text-xs text-orange-800 dark:text-orange-200 font-medium">
                               ⚡ Only {availableSpots} spots left - Book now!
                             </p>
                           </div>
                         ) : (
-                          <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
-                            <p className="text-xs text-green-800 font-medium">
+                          <div className="mt-3 p-2 bg-green-50 dark:bg-green-900 border border-green-200 dark:border-green-700 rounded-lg">
+                            <p className="text-xs text-green-800 dark:text-green-200 font-medium">
                               ✅ {availableSpots} spots available
                             </p>
                           </div>
                         )}
 
                         {/* ✅ Add next class date info */}
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <p className="text-xs text-gray-500">
+                        <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             Next class: {(() => {
                               const today = new Date()
                               const daysUntilClass = (schedule.day_of_week - today.getDay() + 7) % 7
@@ -1009,8 +1009,8 @@ export default function InstructorProfile() {
         {/* Certifications Tab */}
         {activeTab === 'certifications' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
                 <GraduationCap className="w-6 h-6 mr-3 text-blue-600" />
                 Certifications & Qualifications
               </h2>
@@ -1018,23 +1018,23 @@ export default function InstructorProfile() {
               {!instructor.certifications || instructor.certifications.length === 0 ? (
                 <div className="text-center py-12">
                   <GraduationCap className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Certifications Listed</h3>
-                  <p className="text-gray-500">This instructor hasn't added their certifications yet.</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Certifications Listed</h3>
+                  <p className="text-gray-500 dark:text-gray-400">This instructor hasn't added their certifications yet.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {instructor.certifications.map((certification, index) => (
                     <div
                       key={index}
-                      className="bg-gradient-to-br from-blue-50 to-green-50 border border-blue-200 rounded-xl p-6 hover:shadow-md transition-shadow"
+                      className="bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-900 dark:to-green-900 border border-blue-200 dark:border-blue-700 rounded-xl p-6 hover:shadow-md transition-shadow"
                     >
                       <div className="flex items-start space-x-4">
                         <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                           <GraduationCap className="w-6 h-6 text-white" />
                         </div>
                         <div className="flex-1">
-                          <h3 className="font-bold text-lg text-gray-900 mb-2">{certification}</h3>
-                          <div className="flex items-center text-sm text-gray-600">
+                          <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2">{certification}</h3>
+                          <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                             <Award className="w-4 h-4 mr-2 text-blue-500" />
                             <span>Certified Professional</span>
                           </div>
@@ -1047,20 +1047,20 @@ export default function InstructorProfile() {
 
               {/* Experience Section */}
               <div className="mt-8 pt-8 border-t border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4">Professional Experience</h3>
-                <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Professional Experience</h3>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
                     <div>
                       <div className="text-3xl font-bold text-blue-600">{instructor.experience_years || 0}</div>
-                      <div className="text-sm text-gray-600 mt-1">Years Teaching</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">Years Teaching</div>
                     </div>
                     <div>
                       <div className="text-3xl font-bold text-green-600">{stats?.total_classes || 0}</div>
-                      <div className="text-sm text-gray-600 mt-1">Classes Taught</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">Classes Taught</div>
                     </div>
                     <div>
                       <div className="text-3xl font-bold text-purple-600">{stats?.total_students || 0}</div>
-                      <div className="text-sm text-gray-600 mt-1">Students Guided</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">Students Guided</div>
                     </div>
                   </div>
                 </div>
@@ -1072,25 +1072,25 @@ export default function InstructorProfile() {
         {/* Reviews Tab */}
         {activeTab === 'reviews' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6 flex items-center">
                 <Star className="w-6 h-6 mr-3 text-yellow-500" />
                 Student Reviews
               </h2>
 
               {stats && (
-                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-6 mb-8">
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900 dark:to-orange-900 rounded-lg p-6 mb-8">
                   <div className="flex items-center justify-center space-x-8">
                     <div className="text-center">
-                      <div className="text-4xl font-bold text-gray-900">{stats.average_rating.toFixed(1)}</div>
+                      <div className="text-4xl font-bold text-gray-900 dark:text-white">{stats.average_rating.toFixed(1)}</div>
                       <div className="flex justify-center mt-2">
                         {renderStars(stats.average_rating)}
                       </div>
-                      <div className="text-sm text-gray-600 mt-1">Overall Rating</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">Overall Rating</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-4xl font-bold text-gray-900">{stats.total_reviews}</div>
-                      <div className="text-sm text-gray-600 mt-1">Total Reviews</div>
+                      <div className="text-4xl font-bold text-gray-900 dark:text-white">{stats.total_reviews}</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">Total Reviews</div>
                     </div>
                   </div>
                 </div>
@@ -1099,8 +1099,8 @@ export default function InstructorProfile() {
               {/* Placeholder for reviews - you can implement actual review fetching */}
               <div className="text-center py-12">
                 <Star className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Reviews Coming Soon</h3>
-                <p className="text-gray-500">Student reviews will be displayed here once the review system is implemented.</p>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Reviews Coming Soon</h3>
+                <p className="text-gray-500 dark:text-gray-400">Student reviews will be displayed here once the review system is implemented.</p>
               </div>
             </div>
           </div>

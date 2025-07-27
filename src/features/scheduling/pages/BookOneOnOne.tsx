@@ -11,9 +11,10 @@ interface ClassPackage {
     description: string | null
     class_count: number
     price: number
-    validity_days: number
+    validity_days?: number
     class_type_restrictions: string[] | null
-    is_active: boolean
+    is_active?: boolean
+    is_archived: boolean
     type: string | null
     duration: string | null
     course_type: string | null
@@ -68,7 +69,8 @@ export function BookOneOnOne() {
                 .from('class_packages')
                 .select('*')
                 .eq('is_active', true)
-                .eq('type', 'individual')
+                .eq('is_archived', false)
+                .eq('type', 'Individual')
                 .order('price')
 
             if (error) {

@@ -87,7 +87,7 @@ function AppRoutes() {
         path="/dashboard/*"
         element={
           <ProtectedRoute>
-            <div className="min-h-screen">
+            <div className="min-h-screen bg-white dark:bg-slate-900">
               {dashboardUser && <UniversalDashboard user={dashboardUser} />}
             </div>
           </ProtectedRoute>
@@ -98,12 +98,12 @@ function AppRoutes() {
       <Route
         path="/unauthorized"
         element={
-          <div className="min-h-screen flex flex-col">
+          <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900">
             <Header />
             <main className="flex-grow flex items-center justify-center">
               <div className="text-center">
                 <h1 className="text-2xl font-bold text-red-600 mb-4">Unauthorized Access</h1>
-                <p className="text-gray-600">You don't have permission to access this resource.</p>
+                <p className="text-gray-600 dark:text-slate-300">You don't have permission to access this resource.</p>
               </div>
             </main>
             <Footer />
@@ -113,9 +113,9 @@ function AppRoutes() {
 
       {/* Public Routes */}
       <Route path="/*" element={
-        <div className="min-h-screen flex flex-col">
+        <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900">
           <Header />
-          <main className="flex-grow">
+          <main className="flex-grow bg-white dark:bg-slate-900">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />

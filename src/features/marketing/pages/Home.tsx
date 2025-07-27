@@ -5,21 +5,21 @@ import { Button } from '../../../shared/components/ui/Button'
 export function Home() {
   const services = [
     {
-      icon: <User className="w-12 h-12 text-blue-600" />,
+      icon: <User className="w-12 h-12 text-blue-500 dark:text-blue-400" />,
       title: "Personalized Online Coaching",
       description: "Individual attention, flexible scheduling, customized programs",
       features: ["1-on-1 sessions", "Personalized routines", "Flexible timing", "Progress tracking"],
       route: "/book/individual"
     },
     {
-      icon: <Users className="w-12 h-12 text-green-600" />,
+      icon: <Users className="w-12 h-12 text-emerald-500 dark:text-emerald-400" />,
       title: "Online Group Sessions",
       description: "Build consistency with like-minded professionals",
       features: ["Small group classes", "Community support", "Regular schedule", "Affordable pricing"],
       route: "/book-class"
     },
     {
-      icon: <Building className="w-12 h-12 text-purple-600" />,
+      icon: <Building className="w-12 h-12 text-orange-500 dark:text-orange-400" />,
       title: "Corporate Wellness Solutions",
       description: "Enhance team well-being and performance",
       features: ["Team sessions", "Workplace wellness", "Stress reduction", "Productivity boost"],
@@ -29,22 +29,22 @@ export function Home() {
 
   const benefits = [
     {
-      icon: <Globe className="w-8 h-8 text-blue-600" />,
+      icon: <Globe className="w-8 h-8 text-blue-500 dark:text-blue-400" />,
       title: "Global Accessibility",
       description: "Join from anywhere in the world with just an internet connection"
     },
     {
-      icon: <Building className="w-8 h-8 text-green-600" />,
+      icon: <Building className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />,
       title: "Corporate Wellness Focus",
       description: "Specialized programs designed for busy professionals"
     },
     {
-      icon: <Target className="w-8 h-8 text-purple-600" />,
+      icon: <Target className="w-8 h-8 text-purple-500 dark:text-purple-400" />,
       title: "Personalized Approach",
       description: "Customized sessions tailored to your specific needs and goals"
     },
     {
-      icon: <Award className="w-8 h-8 text-orange-600" />,
+      icon: <Award className="w-8 h-8 text-orange-500 dark:text-orange-400" />,
       title: "Professional Experience",
       description: "5+ years of expertise combining traditional practices with modern wellness"
     }
@@ -75,19 +75,19 @@ export function Home() {
   ]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-br from-blue-50 via-white to-green-50 py-20 lg:py-32">
+      <section className="relative bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 py-20 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
               <div className="space-y-4">
-                <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 leading-tight">
+                <h1 className="text-4xl lg:text-6xl font-bold text-gray-900 dark:text-white leading-tight">
                   Transform Your
-                  <span className="block text-blue-600">Workplace, Mind,</span>
-                  <span className="block text-green-600">and Body — Online</span>
+                  <span className="block text-blue-600 dark:text-blue-400">Workplace, Mind,</span>
+                  <span className="block text-emerald-600 dark:text-emerald-400">and Body — Online</span>
                 </h1>
-                <p className="text-xl text-gray-600 leading-relaxed">
+                <p className="text-xl text-gray-600 dark:text-slate-300 leading-relaxed">
                   Yogodyaan brings personalized corporate and wellness yoga programs
                   to professionals worldwide. Experience the power of yoga from anywhere.
                 </p>
@@ -112,9 +112,9 @@ export function Home() {
                 </Link>
               </div>
 
-              <div className="flex items-center space-x-8 text-sm text-gray-600">
+              <div className="flex items-center space-x-8 text-sm text-gray-600 dark:text-slate-400">
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
                   <span>5+ Years Experience</span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -122,7 +122,7 @@ export function Home() {
                   <span>Global Reach</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                   <span>Corporate Focus</span>
                 </div>
               </div>
@@ -143,28 +143,28 @@ export function Home() {
       </section>
 
       {/* Services Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Services</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Our Services</h2>
+            <p className="text-xl text-gray-600 dark:text-slate-300 max-w-3xl mx-auto">
               Choose the perfect yoga program that fits your lifestyle and goals
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {services.map((service, index) => (
-              <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-blue-200">
+              <div key={index} className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-500">
                 <div className="flex justify-center mb-6">
                   {service.icon}
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">{service.title}</h3>
-                <p className="text-gray-600 mb-6 text-center">{service.description}</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 text-center">{service.title}</h3>
+                <p className="text-gray-600 dark:text-slate-300 mb-6 text-center">{service.description}</p>
 
                 <ul className="space-y-2 mb-8">
                   {service.features.map((feature, idx) => (
-                    <li key={idx} className="flex items-center text-gray-700">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full mr-3"></div>
+                    <li key={idx} className="flex items-center text-gray-700 dark:text-slate-300">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full mr-3"></div>
                       {feature}
                     </li>
                   ))}
@@ -182,7 +182,7 @@ export function Home() {
       </section>
 
       {/* About Section */}
-      <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
+      <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50 dark:from-slate-800 dark:to-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div className="relative">
@@ -191,17 +191,17 @@ export function Home() {
                 alt="Yoga instructor"
                 className="rounded-2xl shadow-lg"
               />
-              <div className="absolute -bottom-6 -right-6 bg-white p-6 rounded-xl shadow-lg">
+              <div className="absolute -bottom-6 -right-6 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg border border-gray-100 dark:border-slate-700">
                 <div className="text-center">
-                  <div className="text-3xl font-bold text-blue-600">5+</div>
-                  <div className="text-sm text-gray-600">Years Experience</div>
+                  <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">5+</div>
+                  <div className="text-sm text-gray-600 dark:text-slate-300">Years Experience</div>
                 </div>
               </div>
             </div>
 
             <div className="space-y-6">
-              <h2 className="text-4xl font-bold text-gray-900">Your Global Yoga Journey Starts Here</h2>
-              <div className="space-y-4 text-gray-700 leading-relaxed">
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-white">Your Global Yoga Journey Starts Here</h2>
+              <div className="space-y-4 text-gray-700 dark:text-slate-300 leading-relaxed">
                 <p>
                   With over 5 years of expertise combining traditional yoga practices with modern wellness needs,
                   I specialize in bringing the transformative power of yoga to professionals worldwide.
@@ -218,13 +218,13 @@ export function Home() {
               </div>
 
               <div className="grid grid-cols-2 gap-6">
-                <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-blue-600">1000+</div>
-                  <div className="text-sm text-gray-600">Inspired Lives</div>
+                <div className="text-center p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-100 dark:border-slate-700">
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">1000+</div>
+                  <div className="text-sm text-gray-600 dark:text-slate-300">Inspired Lives</div>
                 </div>
-                <div className="text-center p-4 bg-white rounded-lg shadow-sm">
-                  <div className="text-2xl font-bold text-green-600">5+</div>
-                  <div className="text-sm text-gray-600">Corporate Programs</div>
+                <div className="text-center p-4 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-100 dark:border-slate-700">
+                  <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">5+</div>
+                  <div className="text-sm text-gray-600 dark:text-slate-300">Corporate Programs</div>
                 </div>
               </div>
             </div>
@@ -233,23 +233,23 @@ export function Home() {
       </section>
 
       {/* Why Choose Yogodyaan */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Why Choose Yogodyaan</h2>
-            <p className="text-xl text-gray-600">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Yogodyaan</h2>
+            <p className="text-xl text-gray-600 dark:text-slate-300">
               Experience the difference with our unique approach to online yoga
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {benefits.map((benefit, index) => (
-              <div key={index} className="text-center p-6 rounded-xl hover:bg-gray-50 transition-all duration-300">
+              <div key={index} className="text-center p-6 rounded-xl hover:bg-gray-50 dark:hover:bg-slate-800 transition-all duration-300 border border-transparent hover:border-gray-200 dark:hover:border-slate-700">
                 <div className="flex justify-center mb-4">
                   {benefit.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-3">{benefit.title}</h3>
-                <p className="text-gray-600">{benefit.description}</p>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">{benefit.title}</h3>
+                <p className="text-gray-600 dark:text-slate-300">{benefit.description}</p>
               </div>
             ))}
           </div>
@@ -257,18 +257,18 @@ export function Home() {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-20 bg-gradient-to-br from-blue-50 to-green-50">
+      <section className="py-20 bg-gradient-to-br from-blue-50 to-emerald-50 dark:from-slate-800 dark:to-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">What Our Global Community Says</h2>
-            <p className="text-xl text-gray-600">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">What Our Global Community Says</h2>
+            <p className="text-xl text-gray-600 dark:text-slate-300">
               Real stories from professionals who transformed their lives with Yogodyaan
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300">
+              <div key={index} className="bg-white dark:bg-slate-800 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 dark:border-slate-700">
                 <div className="flex items-center mb-6">
                   <img
                     src={testimonial.image}
@@ -276,13 +276,13 @@ export function Home() {
                     className="w-16 h-16 rounded-full mr-4 object-cover"
                   />
                   <div>
-                    <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
-                    <p className="text-sm text-gray-600">{testimonial.position}</p>
-                    <p className="text-xs text-blue-600">{testimonial.location}</p>
+                    <h4 className="font-semibold text-gray-900 dark:text-white">{testimonial.name}</h4>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">{testimonial.position}</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">{testimonial.location}</p>
                   </div>
                 </div>
-                <p className="text-gray-700 italic leading-relaxed">"{testimonial.content}"</p>
-                <div className="flex text-yellow-400 mt-4">
+                <p className="text-gray-700 dark:text-slate-300 italic leading-relaxed">"{testimonial.content}"</p>
+                <div className="flex text-yellow-400 dark:text-yellow-300 mt-4">
                   {[...Array(5)].map((_, i) => (
                     <span key={i}>★</span>
                   ))}

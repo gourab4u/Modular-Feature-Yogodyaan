@@ -43,8 +43,8 @@ export function ShareButtons({ title, url, className = '' }: ShareButtonsProps) 
   }
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg p-6 ${className}`}>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+    <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-6 ${className}`}>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
         <Share2 className="w-5 h-5 mr-2" />
         Share this Article
       </h3>
@@ -100,7 +100,7 @@ export function ShareButtons({ title, url, className = '' }: ShareButtonsProps) 
           className={`w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-lg transition-colors ${
             copied
               ? 'bg-green-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-600'
           }`}
         >
           <LinkIcon className="w-4 h-4" />

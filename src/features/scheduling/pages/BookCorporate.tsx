@@ -273,6 +273,9 @@ export function BookCorporate() {
         try {
             setLoading(true)
 
+            const durationStr = selectedPackage?.duration
+            const session_duration_minutes = durationStr ? (parseInt(durationStr, 10) || 60) : 60
+
             const bookingData = {
                 user_id: user.id,
                 class_name: `Corporate: ${selectedPackage?.name}`,
@@ -296,13 +299,13 @@ export function BookCorporate() {
                 preferred_times: formData.preferredTimes,
                 session_frequency: formData.frequency,
                 goals: formData.objectives,
-                current_wellness_programs: formData.hasWellnessProgram,
+                current_wellness_programs: formData.hasWellnessProgram ? formData.hasWellnessProgram === 'yes' : null,
                 timezone: formData.timezone,
                 emergency_contact: formData.contactName,
                 emergency_phone: formData.phone,
                 class_package_id: selectedPackage?.id || null,
                 price: selectedPackage?.price || 0,
-                session_duration: selectedPackage?.duration || '60 min',
+                session_duration: session_duration_minutes,
                 equipment_needed: false,
                 booking_notes: formData.previousExperience ? `Previous Experience: ${formData.previousExperience}` : null
             }

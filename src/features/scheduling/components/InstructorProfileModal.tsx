@@ -21,13 +21,13 @@ const InstructorProfileModal: React.FC<InstructorProfileModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-semibold">Instructor Profile</h2>
+        <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Instructor Profile</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100"
           >
             <X size={24} />
           </button>
@@ -48,20 +48,20 @@ const InstructorProfileModal: React.FC<InstructorProfileModalProps> = ({
                 }}
               />
             ) : (
-              <div className="w-20 h-20 rounded-full bg-gray-300 flex items-center justify-center">
-                <User size={32} className="text-gray-600" />
+              <div className="w-20 h-20 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center">
+                <User size={32} className="text-gray-600 dark:text-gray-300" />
               </div>
             )}
           </div>
 
           {/* Basic Info */}
           <div className="text-center mb-6">
-            <h3 className="text-lg font-semibold mb-2">{displayName}</h3>
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">{displayName}</h3>
             {instructor.specialization && (
-              <p className="text-gray-600 mb-2">{instructor.specialization}</p>
+              <p className="text-gray-600 dark:text-gray-300 mb-2">{instructor.specialization}</p>
             )}
             {instructor.experience && (
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {instructor.experience} years experience
               </p>
             )}
@@ -70,19 +70,19 @@ const InstructorProfileModal: React.FC<InstructorProfileModalProps> = ({
           {/* Contact Info */}
           <div className="space-y-3 mb-6">
             <div className="flex items-center">
-              <Mail size={16} className="text-gray-400 mr-3" />
-              <span className="text-sm">{instructor.email}</span>
+              <Mail size={16} className="text-gray-400 dark:text-gray-300 mr-3" />
+              <span className="text-sm text-gray-900 dark:text-gray-100">{instructor.email}</span>
             </div>
             {instructor.phone && (
               <div className="flex items-center">
-                <Phone size={16} className="text-gray-400 mr-3" />
-                <span className="text-sm">{instructor.phone}</span>
+                <Phone size={16} className="text-gray-400 dark:text-gray-300 mr-3" />
+                <span className="text-sm text-gray-900 dark:text-gray-100">{instructor.phone}</span>
               </div>
             )}
             {(instructor.joinDate || instructor.created_at) && (
               <div className="flex items-center">
-                <Calendar size={16} className="text-gray-400 mr-3" />
-                <span className="text-sm">
+                <Calendar size={16} className="text-gray-400 dark:text-gray-300 mr-3" />
+                <span className="text-sm text-gray-900 dark:text-gray-100">
                   Joined {new Date(instructor.joinDate || instructor.created_at || '').toLocaleDateString()}
                 </span>
               </div>
@@ -92,8 +92,8 @@ const InstructorProfileModal: React.FC<InstructorProfileModalProps> = ({
           {/* Short Bio */}
           {instructor.bio && (
             <div className="mb-6">
-              <h4 className="font-medium mb-2">About</h4>
-              <p className="text-sm text-gray-600 line-clamp-3">
+              <h4 className="font-medium mb-2 text-gray-900 dark:text-white">About</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-3">
                 {instructor.bio}
               </p>
             </div>
@@ -109,7 +109,7 @@ const InstructorProfileModal: React.FC<InstructorProfileModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded hover:bg-gray-300 transition-colors"
+              className="flex-1 bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200 py-2 px-4 rounded hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors"
             >
               Close
             </button>

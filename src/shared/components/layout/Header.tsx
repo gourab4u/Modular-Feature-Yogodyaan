@@ -5,6 +5,7 @@ import { useAdmin as useAdminContext } from '../../../features/admin/contexts/Ad
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { NotificationDropdown } from '../../../features/notifications/components/NotificationDropdown';
 import { Button } from '../ui/Button';
+import { ThemeToggle } from '../ui/ThemeToggle';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -49,7 +50,7 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50 border-b border-gray-100">
+    <header className="bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-50 border-b border-gray-100 dark:border-slate-700 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo */}
@@ -57,7 +58,7 @@ export function Header() {
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
               <span className="text-white font-bold text-lg">Y</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">Yogodyaan</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-slate-100">Yogodyaan</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -67,8 +68,8 @@ export function Header() {
                 key={item.name}
                 to={item.href}
                 className={`font-medium transition-colors duration-200 ${isActive(item.href)
-                  ? 'text-blue-600 border-b-2 border-blue-600 pb-1'
-                  : 'text-gray-700 hover:text-blue-600'
+                  ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 pb-1'
+                  : 'text-gray-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400'
                   }`}
               >
                 {item.name}
@@ -78,11 +79,14 @@ export function Header() {
 
           {/* User Menu */}
           <div className="hidden md:flex items-center space-x-4">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+            
             {user ? (
               <>
                 {/* 🔔 Notification Bell - Enhanced styling */}
                 <div className="relative">
-                  <div className="p-2 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors duration-200 border border-gray-200 hover:border-gray-300">
+                  <div className="p-2 rounded-full bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors duration-200 border border-blue-200 dark:border-slate-600 hover:border-blue-300 dark:hover:border-slate-500 shadow-sm">
                     <NotificationDropdown />
                   </div>
                 </div>
@@ -90,7 +94,7 @@ export function Header() {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center text-gray-700 hover:text-blue-600 transition-all duration-200 p-2.5 rounded-full hover:bg-blue-50 border border-gray-200 hover:border-blue-300 bg-white hover:shadow-sm"
+                    className="flex items-center text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 p-2.5 rounded-full hover:bg-blue-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-600 hover:border-blue-300 dark:hover:border-slate-500 bg-white dark:bg-slate-900 hover:shadow-sm"
                   >
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                       <User size={18} className="text-white" />
@@ -105,11 +109,11 @@ export function Header() {
 
                   {/* Dropdown Menu */}
                   {isDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-slate-600 backdrop-blur-sm">
                       <Link
                         to="/profile"
                         onClick={() => setIsDropdownOpen(false)}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
                       >
                         <UserCircle size={16} className="mr-2" />
                         Profile
@@ -118,7 +122,7 @@ export function Header() {
                       <Link
                         to="/dashboard"
                         onClick={() => setIsDropdownOpen(false)}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
                       >
                         <LayoutDashboard size={16} className="mr-2" />
                         Dashboard
@@ -128,7 +132,7 @@ export function Header() {
                         <Link
                           to="/admin/dashboard"
                           onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
                         >
                           <BookOpen size={16} className="mr-2" />
                           Manage Articles
@@ -139,7 +143,7 @@ export function Header() {
                         <Link
                           to="/admin/dashboard"
                           onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
                         >
                           <LayoutDashboard size={16} className="mr-2" />
                           Admin Dashboard
@@ -150,7 +154,7 @@ export function Header() {
 
                       <button
                         onClick={handleSignOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
                       >
                         <LogOut size={16} className="mr-2" />
                         Sign Out
@@ -168,7 +172,7 @@ export function Header() {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden"
+            className="md:hidden text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -177,7 +181,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t">
+          <div className="md:hidden py-4 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
             <nav className="flex flex-col space-y-4">
               {navigation.map((item) => (
                 <Link
@@ -185,7 +189,7 @@ export function Header() {
                   to={item.href}
                   className={`font-medium transition-colors duration-200 ${isActive(item.href)
                     ? 'text-blue-600'
-                    : 'text-gray-700 hover:text-blue-600'
+                    : 'text-gray-700 dark:text-gray-200 hover:text-blue-600'
                     }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
@@ -193,17 +197,23 @@ export function Header() {
                 </Link>
               ))}
               <div className="pt-4 border-t">
+                {/* Theme Toggle for Mobile */}
+                <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700 mb-3">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Theme</span>
+                  <ThemeToggle />
+                </div>
+                
                 {user ? (
                   <div className="space-y-3">
                     {/* 🔔 Mobile Notification Section - Enhanced */}
-                    <div className="flex items-center justify-between pb-3 border-b border-gray-200">
-                      <span className="text-sm font-medium text-gray-700">Notifications</span>
-                      <div className="p-2 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors duration-200 border border-gray-200">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Notifications</span>
+                      <div className="p-2 rounded-full bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200 border border-gray-200 dark:border-gray-700">
                         <NotificationDropdown />
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-3 text-gray-700 mb-3">
+                    <div className="flex items-center space-x-3 text-gray-700 dark:text-gray-200 mb-3">
                       <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
                         <User size={18} className="text-white" />
                       </div>
@@ -213,7 +223,7 @@ export function Header() {
                     <Link
                       to="/profile"
                       onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors py-2"
+                      className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 transition-colors py-2"
                     >
                       <UserCircle size={16} />
                       <span>Profile</span>
@@ -222,7 +232,7 @@ export function Header() {
                     <Link
                       to="/dashboard"
                       onClick={() => setIsMenuOpen(false)}
-                      className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors py-2"
+                      className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 transition-colors py-2"
                     >
                       <LayoutDashboard size={16} />
                       <span>Dashboard</span>
@@ -232,7 +242,7 @@ export function Header() {
                       <Link
                         to="/admin/dashboard"
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors py-2"
+                        className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 transition-colors py-2"
                       >
                         <BookOpen size={16} />
                         <span>Manage Articles</span>
@@ -243,7 +253,7 @@ export function Header() {
                       <Link
                         to="/admin/dashboard"
                         onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors py-2"
+                        className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 transition-colors py-2"
                       >
                         <LayoutDashboard size={16} />
                         <span>Admin Dashboard</span>

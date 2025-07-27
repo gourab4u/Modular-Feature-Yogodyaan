@@ -62,16 +62,16 @@ export function NewsletterSignup({ className = '', showTitle = true }: Newslette
 
   if (subscribed) {
     return (
-      <div className={`bg-green-50 border border-green-200 rounded-lg p-6 text-center ${className}`}>
-        <CheckCircle className="w-12 h-12 text-green-600 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-green-900 mb-2">Successfully Subscribed!</h3>
-        <p className="text-green-700">
+      <div className={`bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-6 text-center ${className}`}>
+        <CheckCircle className="w-12 h-12 text-green-600 dark:text-green-400 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">Successfully Subscribed!</h3>
+        <p className="text-green-700 dark:text-green-200">
           Thank you for subscribing to our newsletter. You'll receive updates about new classes,
           wellness tips, and special offers.
         </p>
         <button
           onClick={() => setSubscribed(false)}
-          className="mt-4 text-green-600 hover:text-green-700 font-medium text-sm"
+          className="mt-4 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-medium text-sm"
         >
           Subscribe another email
         </button>
@@ -80,12 +80,12 @@ export function NewsletterSignup({ className = '', showTitle = true }: Newslette
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow-lg p-6 ${className}`}>
+    <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-200 dark:border-slate-600 p-6 ${className}`}>
       {showTitle && (
         <div className="text-center mb-6">
-          <Mail className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Stay Updated</h3>
-          <p className="text-gray-600">
+          <Mail className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Stay Updated</h3>
+          <p className="text-gray-600 dark:text-slate-300">
             Get the latest yoga tips, class updates, and wellness insights delivered to your inbox.
           </p>
         </div>
@@ -93,13 +93,13 @@ export function NewsletterSignup({ className = '', showTitle = true }: Newslette
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+            <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
           </div>
         )}
 
         <div>
-          <label htmlFor="newsletter-name" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="newsletter-name" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             Name (Optional)
           </label>
           <input
@@ -107,13 +107,13 @@ export function NewsletterSignup({ className = '', showTitle = true }: Newslette
             id="newsletter-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             placeholder="Your name"
           />
         </div>
 
         <div>
-          <label htmlFor="newsletter-email" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="newsletter-email" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
             Email Address *
           </label>
           <input
@@ -124,7 +124,7 @@ export function NewsletterSignup({ className = '', showTitle = true }: Newslette
               setEmail(e.target.value)
               setError('')
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
             placeholder="your@email.com"
             required
           />
@@ -138,7 +138,7 @@ export function NewsletterSignup({ className = '', showTitle = true }: Newslette
           {loading ? 'Subscribing...' : 'Subscribe to Newsletter'}
         </Button>
 
-        <p className="text-xs text-gray-500 text-center">
+        <p className="text-xs text-gray-500 dark:text-slate-400 text-center">
           We respect your privacy. Unsubscribe at any time.
         </p>
       </form>

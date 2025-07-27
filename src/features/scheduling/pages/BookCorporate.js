@@ -248,13 +248,14 @@ export function BookCorporate() {
             return;
         try {
             setLoading(true);
-            // Only include fields that are not undefined/null and match your bookings table schema
+            const durationStr = selectedPackage?.duration;
+            const session_duration_minutes = durationStr ? (parseInt(durationStr, 10) || 60) : 60;
             const bookingData = {
                 user_id: user.id,
-                class_name: selectedPackage?.name ? `Corporate: ${selectedPackage.name}` : '',
+                class_name: `Corporate: ${selectedPackage?.name}`,
                 instructor: 'Yogodaan Corporate Team',
                 class_date: formData.startDate,
-                class_time: formData.preferredTimes[0] || '',
+                class_time: formData.preferredTimes[0],
                 first_name: formData.contactName.split(' ')[0] || '',
                 last_name: formData.contactName.split(' ').slice(1).join(' ') || '',
                 email: formData.email,
@@ -266,24 +267,22 @@ export function BookCorporate() {
                 company_name: formData.companyName,
                 job_title: formData.position,
                 industry: formData.industry,
-                participants_count: formData.participantCount ? parseInt(formData.participantCount) : null,
+                participants_count: parseInt(formData.participantCount),
                 work_location: formData.location,
                 preferred_days: formData.preferredDays,
                 preferred_times: formData.preferredTimes,
                 session_frequency: formData.frequency,
                 goals: formData.objectives,
-                current_wellness_programs: formData.hasWellnessProgram,
+                current_wellness_programs: formData.hasWellnessProgram ? formData.hasWellnessProgram === 'yes' : null,
                 timezone: formData.timezone,
                 emergency_contact: formData.contactName,
                 emergency_phone: formData.phone,
                 class_package_id: selectedPackage?.id || null,
-                price: selectedPackage?.price ?? null,
-                session_duration: selectedPackage?.duration || '60 min',
+                price: selectedPackage?.price || 0,
+                session_duration: session_duration_minutes,
                 equipment_needed: false,
                 booking_notes: formData.previousExperience ? `Previous Experience: ${formData.previousExperience}` : null
             };
-            // Remove any undefined/null fields that are not allowed by your schema
-            Object.keys(bookingData).forEach((key) => (bookingData[key] === undefined ? delete bookingData[key] : undefined));
             const { error } = await supabase
                 .from('bookings')
                 .insert([bookingData]);

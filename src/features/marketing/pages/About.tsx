@@ -3,22 +3,22 @@ import { Award, Heart, Target, Users } from 'lucide-react'
 export function About() {
   const values = [
     {
-      icon: <Heart className="w-8 h-8 text-emerald-600" />,
+      icon: <Heart className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />,
       title: "Compassion",
       description: "We approach every student with kindness, understanding, and patience on their unique journey."
     },
     {
-      icon: <Target className="w-8 h-8 text-emerald-600" />,
+      icon: <Target className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />,
       title: "Excellence",
       description: "We strive for the highest standards in teaching, safety, and student experience."
     },
     {
-      icon: <Users className="w-8 h-8 text-emerald-600" />,
+      icon: <Users className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />,
       title: "Community",
       description: "We foster a supportive, inclusive environment where everyone feels welcome and valued."
     },
     {
-      icon: <Award className="w-8 h-8 text-emerald-600" />,
+      icon: <Award className="w-8 h-8 text-emerald-500 dark:text-emerald-400" />,
       title: "Authenticity",
       description: "We honor traditional yoga practices while making them accessible to modern practitioners."
     }
@@ -52,7 +52,7 @@ export function About() {
   ]
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* Hero Section */}
       <section className="gradient-bg text-white py-20">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
@@ -65,12 +65,12 @@ export function About() {
       </section>
 
       {/* Story Section */}
-      <section className="py-20">
+      <section className="py-20 bg-white dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-4xl font-bold text-gray-900 mb-6">Welcome to Yogodyaan – Breathe. Move. Transform.</h2>
-              <div className="space-y-4 text-gray-700 text-lg">
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">Welcome to Yogodyaan – Breathe. Move. Transform.</h2>
+              <div className="space-y-4 text-gray-700 dark:text-white text-lg">
                 <p>
                   Founded by Ms. Bratati Batabyal in 2021, Yogodyaan is an all-online yoga platform empowering people to live healthier, more mindful lives through yoga.
                 </p>
@@ -97,22 +97,22 @@ export function About() {
       </section>
 
       {/* Values Section */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 bg-slate-800 dark:bg-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Our Values</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <h2 className="text-4xl font-bold text-white mb-4">Our Values</h2>
+            <p className="text-xl text-slate-300 max-w-3xl mx-auto">
               These core values guide everything we do and shape the experience we create for our students.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {values.map((value, index) => (
-              <div key={index} className="card p-6 text-center">
+              <div key={index} className="bg-slate-700 border border-slate-600 rounded-xl p-6 text-center hover:bg-slate-600 transition-all duration-300">
                 <div className="flex justify-center mb-4">
                   {value.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">{value.title}</h3>
-                <p className="text-gray-600">{value.description}</p>
+                <h3 className="text-xl font-semibold text-white mb-2">{value.title}</h3>
+                <p className="text-slate-300">{value.description}</p>
               </div>
             ))}
           </div>
@@ -120,28 +120,28 @@ export function About() {
       </section>
 
       {/* Instructors Section */}
-      <section className="py-20">
+      <section className="py-20 bg-white dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">Meet Our Instructors</h2>
-            <p className="text-xl text-gray-600">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Meet Our Instructors</h2>
+            <p className="text-xl text-gray-600 dark:text-slate-300">
               Our certified instructors bring years of experience and passion to every class.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {instructors.map((instructor, index) => (
-              <div key={index} className="card p-6 text-center">
+              <div key={index} className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-6 text-center shadow-lg hover:shadow-xl transition-all duration-300">
                 <img
                   src={instructor.image}
                   alt={instructor.name}
-                  className="w-32 h-32 rounded-full mx-auto mb-4 object-cover"
+                  className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-slate-600"
                 />
-                <h3 className="text-xl font-semibold text-gray-900 mb-1">{instructor.name}</h3>
-                <p className="text-emerald-600 font-medium mb-2">{instructor.title}</p>
-                <div className="text-sm text-gray-600 mb-4">
-                  <p>{instructor.experience} • {instructor.specialization}</p>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">{instructor.name}</h3>
+                <p className="text-emerald-500 dark:text-emerald-400 font-medium mb-2">{instructor.title}</p>
+                <div className="text-sm text-gray-600 dark:text-slate-400 mb-4">
+                  <p><span className="text-orange-500 dark:text-orange-400 font-semibold">{instructor.experience}</span> • <span className="text-blue-500 dark:text-blue-400 font-semibold">{instructor.specialization}</span></p>
                 </div>
-                <p className="text-gray-700">{instructor.bio}</p>
+                <p className="text-gray-700 dark:text-white">{instructor.bio}</p>
               </div>
             ))}
           </div>

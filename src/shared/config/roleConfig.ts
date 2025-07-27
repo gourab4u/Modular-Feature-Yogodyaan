@@ -52,7 +52,7 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 9 },
     { id: 'financial_data', title: 'Financial Data', component: 'FinancialData', icon: 'bar-chart', order: 10 },
     { id: 'form_submission', title: 'Form Submissions & Messages', component: 'FormSubmissions', icon: 'file-text', order: 11 },
-    { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 12 },
+    { id: 'class_type_manager', title: 'Class & Package Manager', component: 'ClassTypeManager', icon: 'layers', order: 12 },
     { id: 'newsletterManagement', title: 'NewsLetter Management', component: 'NewsletterManagement', icon: 'mail', order: 13 },
   ],
 
@@ -64,7 +64,7 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'business_settings', title: 'Business Settings', component: 'BusinessSettings', icon: 'settings', order: 5 },
     { id: 'article_editing', title: 'Article Editing', component: 'ArticleEditing', icon: 'edit', order: 6 },
     { id: 'forms', title: 'Forms', component: 'Forms', icon: 'file-text', order: 8 },
-    { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 99 }
+    { id: 'class_type_manager', title: 'Class & Package Manager', component: 'ClassTypeManager', icon: 'layers', order: 7 }
   ],
 
   instructor: [
@@ -77,7 +77,7 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'class_assignment', title: 'Class Management', component: 'ClassAssignmentManager', icon: 'edit', order: 2 },
     { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 3 },
     { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 4 },
-    { id: 'class_type_manager', title: 'Class Type Manager', component: 'ClassTypeManager', icon: 'layers', order: 5 },
+    { id: 'class_type_manager', title: 'Class & Package Manager', component: 'ClassTypeManager', icon: 'layers', order: 5 },
     { id: 'class_assignment', title: 'Class Assignment', component: 'ClassAssignmentManager', icon: 'edit', order: 6 },
   ],
 
