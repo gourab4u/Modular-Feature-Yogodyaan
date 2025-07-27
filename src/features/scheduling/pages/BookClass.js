@@ -1,6 +1,6 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react';
-import { useState } from 'react';
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { ChevronLeft, ChevronRight, Clock, Search, Users } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '../../../shared/components/ui/Button';
 import { supabase } from '../../../shared/lib/supabase';
 import { useAuth } from '../../auth/contexts/AuthContext';
@@ -12,6 +12,10 @@ export function BookClass() {
     const [showBookingForm, setShowBookingForm] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const [classTypes, setClassTypes] = useState([]);
+    const [loadingClassTypes, setLoadingClassTypes] = useState(true);
+    const [classTypeSearch, setClassTypeSearch] = useState('');
+    const [selectedClassType, setSelectedClassType] = useState(null);
     const [formData, setFormData] = useState({
         fullName: '',
         email: '',
@@ -30,10 +34,47 @@ export function BookClass() {
         'France', 'India', 'Singapore', 'Japan', 'Brazil', 'Mexico',
         'South Africa', 'Nigeria', 'Other'
     ];
-    const classTypes = [
-        'Hatha Yoga', 'Vinyasa Flow', 'Power Yoga', 'Restorative Yoga',
-        'Meditation', 'Breathwork', 'Corporate Wellness', 'Beginner Friendly'
-    ];
+    // Fetch class types from database
+    useEffect(() => {
+        fetchClassTypes();
+    }, []);
+    const fetchClassTypes = async () => {
+        try {
+            setLoadingClassTypes(true);
+            const { data, error } = await supabase
+                .from('class_types')
+                .select('*')
+                .eq('is_active', true)
+                .eq('is_archived', false)
+                .order('name');
+            if (error) {
+                throw error;
+            }
+            setClassTypes(data || []);
+        }
+        catch (error) {
+            console.error('Error fetching class types:', error);
+            setErrors({ classTypes: 'Failed to load class types. Please refresh the page.' });
+        }
+        finally {
+            setLoadingClassTypes(false);
+        }
+    };
+    // Filter class types based on search
+    const filteredClassTypes = classTypes.filter(classType => classType.name.toLowerCase().includes(classTypeSearch.toLowerCase()) ||
+        (classType.description && classType.description.toLowerCase().includes(classTypeSearch.toLowerCase())));
+    const getDifficultyColor = (level) => {
+        switch (level?.toLowerCase()) {
+            case 'beginner':
+                return 'bg-green-100 text-green-800 border-green-200';
+            case 'intermediate':
+                return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'advanced':
+                return 'bg-red-100 text-red-800 border-red-200';
+            default:
+                return 'bg-gray-100 text-gray-800 border-gray-200';
+        }
+    };
     // Calendar functionality
     const getDaysInMonth = (date) => {
         const year = date.getFullYear();
@@ -66,6 +107,13 @@ export function BookClass() {
         setFormData(prev => ({ ...prev, [name]: value }));
         if (errors[name]) {
             setErrors((prev) => ({ ...prev, [name]: '' }));
+        }
+    };
+    const handleClassTypeSelect = (classType) => {
+        setSelectedClassType(classType);
+        setFormData(prev => ({ ...prev, classType: classType.name }));
+        if (errors.classType) {
+            setErrors((prev) => ({ ...prev, classType: '' }));
         }
     };
     const validateForm = () => {
@@ -109,7 +157,8 @@ export function BookClass() {
                 special_requests: formData.message,
                 emergency_contact: '',
                 emergency_phone: '',
-                status: 'confirmed'
+                status: 'confirmed',
+                class_type_id: selectedClassType?.id || null
             };
             const { error } = await supabase
                 .from('bookings')
@@ -128,6 +177,7 @@ export function BookClass() {
             });
             setSelectedDate('');
             setSelectedTime('');
+            setSelectedClassType(null);
             setShowBookingForm(false);
             alert('Booking confirmed! You will receive a confirmation email shortly.');
         }
@@ -149,5 +199,9 @@ export function BookClass() {
                                     ? 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed'}`, children: "Proceed to Booking Details" }) })] })) : (
                 /* Booking Form */
-                _jsx("div", { className: "max-w-2xl mx-auto", children: _jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8", children: [_jsxs("div", { className: "flex items-center mb-8", children: [_jsxs("button", { onClick: () => setShowBookingForm(false), className: "flex items-center text-blue-600 hover:text-blue-700 transition-colors mr-4", children: [_jsx(ChevronLeft, { className: "w-5 h-5 mr-1" }), "Back"] }), _jsx("h2", { className: "text-3xl font-bold text-gray-900", children: "Confirm Booking" })] }), _jsxs("div", { className: "bg-blue-50 rounded-lg p-6 mb-8", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900 mb-4", children: "Booking Summary" }), _jsxs("div", { className: "space-y-2 text-sm", children: [_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Service:" }), _jsx("span", { className: "font-medium", children: "Private Group Class" })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Date:" }), _jsx("span", { className: "font-medium", children: new Date(selectedDate).toLocaleDateString() })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Time:" }), _jsx("span", { className: "font-medium", children: selectedTime })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Duration:" }), _jsx("span", { className: "font-medium", children: "60-90 minutes" })] })] })] }), _jsxs("form", { onSubmit: handleSubmit, className: "space-y-6", children: [errors.general && (_jsx("div", { className: "bg-red-50 border border-red-200 rounded-lg p-3", children: _jsx("p", { className: "text-red-600 text-sm", children: errors.general }) })), _jsxs("div", { children: [_jsx("label", { htmlFor: "groupSize", className: "block text-sm font-medium text-gray-700 mb-1", children: "Group Size *" }), _jsxs("select", { id: "groupSize", name: "groupSize", value: formData.groupSize, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.groupSize ? 'border-red-500' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select group size" }), _jsx("option", { value: "2-5", children: "2-5 people" }), _jsx("option", { value: "6-10", children: "6-10 people" }), _jsx("option", { value: "11-15", children: "11-15 people" }), _jsx("option", { value: "16-20", children: "16-20 people" }), _jsx("option", { value: "20+", children: "20+ people" })] }), errors.groupSize && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.groupSize })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "fullName", className: "block text-sm font-medium text-gray-700 mb-1", children: "Full Name *" }), _jsx("input", { type: "text", id: "fullName", name: "fullName", value: formData.fullName, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : 'border-gray-300'}`, placeholder: "Enter your full name" }), errors.fullName && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.fullName })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "email", className: "block text-sm font-medium text-gray-700 mb-1", children: "Email Address *" }), _jsx("input", { type: "email", id: "email", name: "email", value: formData.email, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'}`, placeholder: "Enter your email address" }), errors.email && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.email })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "country", className: "block text-sm font-medium text-gray-700 mb-1", children: "Country *" }), _jsxs("select", { id: "country", name: "country", value: formData.country, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.country ? 'border-red-500' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select your country" }), countries.map(country => (_jsx("option", { value: country, children: country }, country)))] }), errors.country && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.country })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "classType", className: "block text-sm font-medium text-gray-700 mb-1", children: "Preferred Class Type *" }), _jsxs("select", { id: "classType", name: "classType", value: formData.classType, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.classType ? 'border-red-500' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select class type" }), classTypes.map(type => (_jsx("option", { value: type, children: type }, type)))] }), errors.classType && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.classType })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "message", className: "block text-sm font-medium text-gray-700 mb-1", children: "Special Requirements & Goals" }), _jsx("textarea", { id: "message", name: "message", rows: 4, value: formData.message, onChange: handleInputChange, placeholder: "Tell us about your group's experience level, specific goals, occasion details, or any special requirements...", className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" })] }), _jsx(Button, { type: "submit", loading: loading, className: "w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300", children: loading ? 'Confirming Booking...' : 'Confirm Booking' })] })] }) })) })] }));
+                _jsx("div", { className: "max-w-2xl mx-auto", children: _jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8", children: [_jsxs("div", { className: "flex items-center mb-8", children: [_jsxs("button", { onClick: () => setShowBookingForm(false), className: "flex items-center text-blue-600 hover:text-blue-700 transition-colors mr-4", children: [_jsx(ChevronLeft, { className: "w-5 h-5 mr-1" }), "Back"] }), _jsx("h2", { className: "text-3xl font-bold text-gray-900", children: "Confirm Booking" })] }), _jsxs("div", { className: "bg-blue-50 rounded-lg p-6 mb-8", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900 mb-4", children: "Booking Summary" }), _jsxs("div", { className: "space-y-2 text-sm", children: [_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Service:" }), _jsx("span", { className: "font-medium", children: "Private Group Class" })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Date:" }), _jsx("span", { className: "font-medium", children: new Date(selectedDate).toLocaleDateString() })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Time:" }), _jsx("span", { className: "font-medium", children: selectedTime })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Duration:" }), _jsx("span", { className: "font-medium", children: selectedClassType?.duration_minutes
+                                                            ? `${selectedClassType.duration_minutes} minutes`
+                                                            : '60-90 minutes' })] }), selectedClassType && (_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Class Type:" }), _jsx("span", { className: "font-medium", children: selectedClassType.name })] }))] })] }), _jsxs("form", { onSubmit: handleSubmit, className: "space-y-6", children: [errors.general && (_jsx("div", { className: "bg-red-50 border border-red-200 rounded-lg p-3", children: _jsx("p", { className: "text-red-600 text-sm", children: errors.general }) })), errors.classTypes && (_jsx("div", { className: "bg-red-50 border border-red-200 rounded-lg p-3", children: _jsx("p", { className: "text-red-600 text-sm", children: errors.classTypes }) })), _jsxs("div", { children: [_jsx("label", { htmlFor: "groupSize", className: "block text-sm font-medium text-gray-700 mb-1", children: "Group Size *" }), _jsxs("select", { id: "groupSize", name: "groupSize", value: formData.groupSize, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.groupSize ? 'border-red-500' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select group size" }), _jsx("option", { value: "2-5", children: "2-5 people" }), _jsx("option", { value: "6-10", children: "6-10 people" }), _jsx("option", { value: "11-15", children: "11-15 people" }), _jsx("option", { value: "16-20", children: "16-20 people" }), _jsx("option", { value: "20+", children: "20+ people" })] }), errors.groupSize && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.groupSize })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "fullName", className: "block text-sm font-medium text-gray-700 mb-1", children: "Full Name *" }), _jsx("input", { type: "text", id: "fullName", name: "fullName", value: formData.fullName, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : 'border-gray-300'}`, placeholder: "Enter your full name" }), errors.fullName && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.fullName })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "email", className: "block text-sm font-medium text-gray-700 mb-1", children: "Email Address *" }), _jsx("input", { type: "email", id: "email", name: "email", value: formData.email, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'}`, placeholder: "Enter your email address" }), errors.email && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.email })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "country", className: "block text-sm font-medium text-gray-700 mb-1", children: "Country *" }), _jsxs("select", { id: "country", name: "country", value: formData.country, onChange: handleInputChange, className: `w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.country ? 'border-red-500' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select your country" }), countries.map(country => (_jsx("option", { value: country, children: country }, country)))] }), errors.country && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.country })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-3", children: "Preferred Class Type *" }), loadingClassTypes ? (_jsxs("div", { className: "flex items-center justify-center py-8", children: [_jsx("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" }), _jsx("span", { className: "ml-2 text-gray-600", children: "Loading class types..." })] })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "relative mb-4", children: [_jsx(Search, { className: "absolute left-3 top-3 h-4 w-4 text-gray-400" }), _jsx("input", { type: "text", placeholder: "Search class types...", value: classTypeSearch, onChange: (e) => setClassTypeSearch(e.target.value), className: "w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" })] }), _jsx("div", { className: "grid gap-3 max-h-80 overflow-y-auto", children: filteredClassTypes.length === 0 ? (_jsx("div", { className: "text-center py-8 text-gray-500", children: classTypeSearch ? 'No class types found matching your search.' : 'No class types available.' })) : (filteredClassTypes.map((classType) => (_jsx("div", { onClick: () => handleClassTypeSelect(classType), className: `p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${selectedClassType?.id === classType.id
+                                                                ? 'border-blue-500 bg-blue-50 shadow-md'
+                                                                : 'border-gray-200 hover:border-blue-300'}`, children: _jsxs("div", { className: "flex items-start justify-between", children: [_jsxs("div", { className: "flex-1", children: [_jsx("h4", { className: "font-semibold text-gray-900 mb-1", children: classType.name }), classType.description && (_jsx("p", { className: "text-sm text-gray-600 mb-2", children: classType.description })), _jsxs("div", { className: "flex flex-wrap gap-2 items-center", children: [classType.difficulty_level && (_jsx("span", { className: `px-2 py-1 text-xs font-medium rounded-full border ${getDifficultyColor(classType.difficulty_level)}`, children: classType.difficulty_level })), classType.duration_minutes && (_jsxs("span", { className: "flex items-center text-xs text-gray-500", children: [_jsx(Clock, { className: "w-3 h-3 mr-1" }), classType.duration_minutes, " min"] })), classType.max_participants && (_jsxs("span", { className: "flex items-center text-xs text-gray-500", children: [_jsx(Users, { className: "w-3 h-3 mr-1" }), "Max ", classType.max_participants] })), classType.price && (_jsxs("span", { className: "text-sm font-semibold text-green-600", children: ["$", classType.price] }))] })] }), selectedClassType?.id === classType.id && (_jsx("div", { className: "ml-3", children: _jsx("div", { className: "w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center", children: _jsx("div", { className: "w-2 h-2 bg-white rounded-full" }) }) }))] }) }, classType.id)))) })] })), errors.classType && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.classType })] }), _jsxs("div", { children: [_jsx("label", { htmlFor: "message", className: "block text-sm font-medium text-gray-700 mb-1", children: "Special Requirements & Goals" }), _jsx("textarea", { id: "message", name: "message", rows: 4, value: formData.message, onChange: handleInputChange, placeholder: "Tell us about your group's experience level, specific goals, occasion details, or any special requirements...", className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" })] }), _jsx(Button, { type: "submit", loading: loading, className: "w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300", children: loading ? 'Confirming Booking...' : 'Confirm Booking' })] })] }) })) })] }));
 }

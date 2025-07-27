@@ -1,14 +1,11 @@
 import { AlertCircle, Award, Calendar, Camera, CheckCircle, Clock, Edit2, Facebook, FileText, Globe, Instagram, Mail, Phone, Save, Shield, User, X, XCircle, Youtube } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import ReactQuill from 'react-quill'
-import 'react-quill/dist/quill.snow.css'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
 import { useAdmin } from '../../admin/contexts/AdminContext'
 import { useAuth } from '../../auth/contexts/AuthContext'
-
 
 export function Profile() {
   const { user } = useAuth()
@@ -73,6 +70,55 @@ export function Profile() {
     { id: 'queries', label: 'My Queries', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Edit2 }
   ]
+
+  // ✅ Move utility functions to the top, before they're used
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed': return 'bg-green-100 text-green-800'
+      case 'pending': return 'bg-yellow-100 text-yellow-800'
+      case 'responded': return 'bg-blue-100 text-blue-800'
+      case 'cancelled': return 'bg-red-100 text-red-800'
+      case 'new': return 'bg-blue-100 text-blue-800'
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800'
+      case 'completed': return 'bg-green-100 text-green-800'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed': return <CheckCircle className="w-4 h-4" />
+      case 'cancelled': return <XCircle className="w-4 h-4" />
+      default: return <AlertCircle className="w-4 h-4" />
+    }
+  }
+
+  const getExperienceColor = (years: number) => {
+    if (years === 0) return 'bg-gray-100 text-gray-800'
+    if (years <= 2) return 'bg-green-100 text-green-800'
+    if (years <= 5) return 'bg-yellow-100 text-yellow-800'
+    return 'bg-red-100 text-red-800'
+  }
+
+  const renderArray = (arr: any[], emptyText: string = 'None') => {
+    if (!Array.isArray(arr) || arr.length === 0) {
+      return <span className="text-gray-500">{emptyText}</span>
+    }
+    return arr.join(', ')
+  }
+
+  // ✅ Helper to safely render JSONB fields
+  const renderJsonField = (field: any, key: string) => {
+    if (!field || typeof field !== 'object') return 'Not provided'
+    return field[key] || 'Not provided'
+  }
 
   useEffect(() => {
     if (user) {
@@ -160,75 +206,42 @@ export function Profile() {
     try {
       setLoading(true)
 
-      // ✅ Enhanced debugging and error handling
-      console.log('🔍 Fetching data for user:', user.email)
+      // Bookings query remains the same
+      const bookingsResult = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
-      const [bookingsResult, queriesResult] = await Promise.all([
-        supabase
-          .from('bookings')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
+      // Updated queries to filter by user_id properly
+      const queriesResult = await supabase
+        .from('contact_messages')
+        .select('id, name, email, phone, subject, message, status, created_at, user_id')
+        .eq('user_id', user.id) // This should now work with the user_id column
+        .order('created_at', { ascending: false })
 
-        supabase
-          .from('contact_messages')
-          .select('*')
-          .eq('email', user.email)
-          .order('created_at', { ascending: false })
-      ])
-
-      // Handle bookings
       if (bookingsResult.error) {
-        console.error('❌ Bookings error:', bookingsResult.error)
+        console.error('Error fetching bookings:', bookingsResult.error)
         setUserBookings([])
       } else {
-        console.log('✅ Bookings found:', bookingsResult.data?.length || 0)
         setUserBookings(bookingsResult.data || [])
       }
 
-      // Handle contact messages with detailed error checking
       if (queriesResult.error) {
-        console.error('❌ Contact messages error:', queriesResult.error)
-        console.log('Error details:', {
-          code: queriesResult.error.code,
-          message: queriesResult.error.message,
-          details: queriesResult.error.details,
-          hint: queriesResult.error.hint
-        })
-
-        // If it's an RLS error, try a different approach
-        if (queriesResult.error.code === '42501' || queriesResult.error.message?.includes('RLS')) {
-          console.log('🔐 RLS policy might be blocking access, trying alternative...')
-          // You might need to add RLS policies or use a different approach
-        }
-
+        console.error('Error fetching queries:', queriesResult.error)
         setUserQueries([])
       } else {
-        console.log('✅ Contact messages found:', queriesResult.data?.length || 0)
-        console.log('📧 Messages:', queriesResult.data)
-        setUserQueries(queriesResult.data || [])
+        setUserQueries(Array.isArray(queriesResult.data) ? queriesResult.data : [])
       }
 
     } catch (error) {
-      console.error('❌ General error fetching user data:', error)
+      console.error('Error in fetchUserData:', error)
       setUserBookings([])
       setUserQueries([])
     } finally {
       setLoading(false)
     }
   }
-
-  // ✅ Enhanced debug function with RLS checking
-
-
-
-
-
-  // ✅ Function to check and suggest RLS policy fixes
-
-
-
-
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -381,51 +394,6 @@ export function Profile() {
     } finally {
       setLoading(false)
     }
-  }
-
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800'
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      case 'responded': return 'bg-blue-100 text-blue-800'
-      case 'cancelled': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed': return <CheckCircle className="w-4 h-4" />
-      case 'cancelled': return <XCircle className="w-4 h-4" />
-      default: return <AlertCircle className="w-4 h-4" />
-    }
-  }
-
-  const getExperienceColor = (years: number) => {
-    if (years === 0) return 'bg-gray-100 text-gray-800'
-    if (years <= 2) return 'bg-green-100 text-green-800'
-    if (years <= 5) return 'bg-yellow-100 text-yellow-800'
-    return 'bg-red-100 text-red-800'
-  }
-
-  const renderArray = (arr: any[], emptyText: string = 'None') => {
-    if (!Array.isArray(arr) || arr.length === 0) {
-      return <span className="text-gray-500">{emptyText}</span>
-    }
-    return arr.join(', ')
-  }
-
-  // ✅ Helper to safely render JSONB fields
-  const renderJsonField = (field: any, key: string) => {
-    if (!field || typeof field !== 'object') return 'Not provided'
-    return field[key] || 'Not provided'
   }
 
   if (!user) {
@@ -707,26 +675,16 @@ export function Profile() {
                 <div className="mt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
                   {editing ? (
-                    <ReactQuill
+                    <textarea
+                      name="bio"
+                      rows={4}
                       value={profileData.bio}
-                      onChange={value => setProfileData(prev => ({ ...prev, bio: value }))}
-                      className="bg-white"
-                      theme="snow"
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
                       placeholder="Tell us about yourself..."
-                      modules={{
-                        toolbar: [
-                          [{ header: [1, 2, false] }],
-                          ['bold', 'italic', 'underline', 'strike'],
-                          [{ list: 'ordered' }, { list: 'bullet' }],
-                          ['link', 'clean'],
-                        ],
-                      }}
                     />
                   ) : (
-                    <div
-                      className="text-gray-900 py-2"
-                      dangerouslySetInnerHTML={{ __html: profileData.bio || '<span class="text-gray-500">No bio provided</span>' }}
-                    />
+                    <p className="text-gray-900 py-2">{profileData.bio || 'No bio provided'}</p>
                   )}
                 </div>
 
@@ -807,7 +765,6 @@ export function Profile() {
           </div>
         )}
 
-        {/* Rest of the tabs remain the same - Bookings and Queries */}
         {/* Bookings Tab */}
         {activeTab === 'bookings' && (
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -875,8 +832,7 @@ export function Profile() {
           </div>
         )}
 
-        {/* ✅ Queries Tab*/}
-        {/* ✅ Clean Queries Tab - Remove debug buttons */}
+        {/* Queries Tab */}
         {activeTab === 'queries' && (
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
             <div className="p-6 border-b border-gray-200">
@@ -900,7 +856,7 @@ export function Profile() {
                 <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">No messages found</h3>
                 <p className="text-gray-600 mb-6">
-                  No contact messages were sent from <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{user.email}</span>
+                  You haven't sent any contact messages yet.
                 </p>
                 <div className="space-x-3">
                   <Button onClick={() => navigate('/contact')}>
@@ -911,14 +867,14 @@ export function Profile() {
             ) : (
               <div className="divide-y divide-gray-200">
                 {userQueries.map((message, index) => (
-                  <div key={index} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div key={message.id || index} className="p-6 hover:bg-gray-50 transition-colors">
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="text-lg font-semibold text-gray-900">{message.subject}</h3>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(message.status)}`}>
                         {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
                       </span>
                     </div>
-                    <p className="text-gray-700 mb-3">{message.message}</p>
+                    <p className="text-gray-700 mb-3 line-clamp-3">{message.message}</p>
                     <div className="flex items-center justify-between text-sm text-gray-500">
                       <div className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
@@ -935,8 +891,7 @@ export function Profile() {
           </div>
         )}
 
-
-        {/* ✅ Updated Settings Tab with actual schema fields */}
+        {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
             <div className="bg-white rounded-xl shadow-lg p-6">

@@ -1,8 +1,19 @@
-import { ChevronLeft, ChevronRight, Users } from 'lucide-react'
-import { useState } from 'react'
+import { ChevronLeft, ChevronRight, Clock, Search, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { supabase } from '../../../shared/lib/supabase'
 import { useAuth } from '../../auth/contexts/AuthContext'
+
+interface ClassType {
+  id: string
+  name: string
+  description: string | null
+  difficulty_level: string | null
+  price: number | null
+  duration_minutes: number | null
+  max_participants: number | null
+  is_active: boolean
+}
 
 export function BookClass() {
   const { user } = useAuth()
@@ -12,6 +23,10 @@ export function BookClass() {
   const [showBookingForm, setShowBookingForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<any>({})
+  const [classTypes, setClassTypes] = useState<ClassType[]>([])
+  const [loadingClassTypes, setLoadingClassTypes] = useState(true)
+  const [classTypeSearch, setClassTypeSearch] = useState('')
+  const [selectedClassType, setSelectedClassType] = useState<ClassType | null>(null)
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -34,10 +49,52 @@ export function BookClass() {
     'South Africa', 'Nigeria', 'Other'
   ]
 
-  const classTypes = [
-    'Hatha Yoga', 'Vinyasa Flow', 'Power Yoga', 'Restorative Yoga',
-    'Meditation', 'Breathwork', 'Corporate Wellness', 'Beginner Friendly'
-  ]
+  // Fetch class types from database
+  useEffect(() => {
+    fetchClassTypes()
+  }, [])
+
+  const fetchClassTypes = async () => {
+    try {
+      setLoadingClassTypes(true)
+      const { data, error } = await supabase
+        .from('class_types')
+        .select('*')
+        .eq('is_active', true)
+        .eq('is_archived', false)
+        .order('name')
+
+      if (error) {
+        throw error
+      }
+
+      setClassTypes(data || [])
+    } catch (error) {
+      console.error('Error fetching class types:', error)
+      setErrors({ classTypes: 'Failed to load class types. Please refresh the page.' })
+    } finally {
+      setLoadingClassTypes(false)
+    }
+  }
+
+  // Filter class types based on search
+  const filteredClassTypes = classTypes.filter(classType =>
+    classType.name.toLowerCase().includes(classTypeSearch.toLowerCase()) ||
+    (classType.description && classType.description.toLowerCase().includes(classTypeSearch.toLowerCase()))
+  )
+
+  const getDifficultyColor = (level: string | null) => {
+    switch (level?.toLowerCase()) {
+      case 'beginner':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'intermediate':
+        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+      case 'advanced':
+        return 'bg-red-100 text-red-800 border-red-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
 
   // Calendar functionality
   const getDaysInMonth = (date: Date) => {
@@ -81,6 +138,14 @@ export function BookClass() {
     }
   }
 
+  const handleClassTypeSelect = (classType: ClassType) => {
+    setSelectedClassType(classType)
+    setFormData(prev => ({ ...prev, classType: classType.name }))
+    if (errors.classType) {
+      setErrors((prev: any) => ({ ...prev, classType: '' }))
+    }
+  }
+
   const validateForm = () => {
     const newErrors: any = {}
 
@@ -119,7 +184,8 @@ export function BookClass() {
         special_requests: formData.message,
         emergency_contact: '',
         emergency_phone: '',
-        status: 'confirmed'
+        status: 'confirmed',
+        class_type_id: selectedClassType?.id || null
       }
 
       const { error } = await supabase
@@ -141,6 +207,7 @@ export function BookClass() {
       })
       setSelectedDate('')
       setSelectedTime('')
+      setSelectedClassType(null)
       setShowBookingForm(false)
 
       alert('Booking confirmed! You will receive a confirmation email shortly.')
@@ -221,10 +288,10 @@ export function BookClass() {
                           onClick={() => isDateAvailable(date) && setSelectedDate(formatDate(date))}
                           disabled={!isDateAvailable(date)}
                           className={`w-full h-full rounded-lg text-sm font-medium transition-all duration-200 ${selectedDate === formatDate(date)
-                              ? 'bg-blue-500 text-white shadow-lg'
-                              : isDateAvailable(date)
-                                ? 'hover:bg-blue-50 text-gray-900'
-                                : 'text-gray-300 cursor-not-allowed'
+                            ? 'bg-blue-500 text-white shadow-lg'
+                            : isDateAvailable(date)
+                              ? 'hover:bg-blue-50 text-gray-900'
+                              : 'text-gray-300 cursor-not-allowed'
                             }`}
                         >
                           {date.getDate()}
@@ -246,8 +313,8 @@ export function BookClass() {
                       key={time}
                       onClick={() => setSelectedTime(time)}
                       className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${selectedTime === time
-                          ? 'bg-blue-500 text-white shadow-lg'
-                          : 'bg-gray-50 text-gray-900 hover:bg-blue-50 border border-gray-200'
+                        ? 'bg-blue-500 text-white shadow-lg'
+                        : 'bg-gray-50 text-gray-900 hover:bg-blue-50 border border-gray-200'
                         }`}
                     >
                       {time}
@@ -266,8 +333,8 @@ export function BookClass() {
                 onClick={() => setShowBookingForm(true)}
                 disabled={!canProceedToBooking}
                 className={`px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 ${canProceedToBooking
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
               >
                 Proceed to Booking Details
@@ -307,8 +374,19 @@ export function BookClass() {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Duration:</span>
-                    <span className="font-medium">60-90 minutes</span>
+                    <span className="font-medium">
+                      {selectedClassType?.duration_minutes
+                        ? `${selectedClassType.duration_minutes} minutes`
+                        : '60-90 minutes'
+                      }
+                    </span>
                   </div>
+                  {selectedClassType && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Class Type:</span>
+                      <span className="font-medium">{selectedClassType.name}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -316,6 +394,12 @@ export function BookClass() {
                 {errors.general && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-3">
                     <p className="text-red-600 text-sm">{errors.general}</p>
+                  </div>
+                )}
+
+                {errors.classTypes && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-red-600 text-sm">{errors.classTypes}</p>
                   </div>
                 )}
 
@@ -395,23 +479,98 @@ export function BookClass() {
                   {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
                 </div>
 
+                {/* Enhanced Class Type Selection */}
                 <div>
-                  <label htmlFor="classType" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
                     Preferred Class Type *
                   </label>
-                  <select
-                    id="classType"
-                    name="classType"
-                    value={formData.classType}
-                    onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.classType ? 'border-red-500' : 'border-gray-300'
-                      }`}
-                  >
-                    <option value="">Select class type</option>
-                    {classTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
+
+                  {loadingClassTypes ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                      <span className="ml-2 text-gray-600">Loading class types...</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Search Bar */}
+                      <div className="relative mb-4">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search class types..."
+                          value={classTypeSearch}
+                          onChange={(e) => setClassTypeSearch(e.target.value)}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+
+                      {/* Class Type Cards */}
+                      <div className="grid gap-3 max-h-80 overflow-y-auto">
+                        {filteredClassTypes.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            {classTypeSearch ? 'No class types found matching your search.' : 'No class types available.'}
+                          </div>
+                        ) : (
+                          filteredClassTypes.map((classType) => (
+                            <div
+                              key={classType.id}
+                              onClick={() => handleClassTypeSelect(classType)}
+                              className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${selectedClassType?.id === classType.id
+                                  ? 'border-blue-500 bg-blue-50 shadow-md'
+                                  : 'border-gray-200 hover:border-blue-300'
+                                }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-gray-900 mb-1">{classType.name}</h4>
+                                  {classType.description && (
+                                    <p className="text-sm text-gray-600 mb-2">{classType.description}</p>
+                                  )}
+
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    {classType.difficulty_level && (
+                                      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getDifficultyColor(classType.difficulty_level)}`}>
+                                        {classType.difficulty_level}
+                                      </span>
+                                    )}
+
+                                    {classType.duration_minutes && (
+                                      <span className="flex items-center text-xs text-gray-500">
+                                        <Clock className="w-3 h-3 mr-1" />
+                                        {classType.duration_minutes} min
+                                      </span>
+                                    )}
+
+                                    {classType.max_participants && (
+                                      <span className="flex items-center text-xs text-gray-500">
+                                        <Users className="w-3 h-3 mr-1" />
+                                        Max {classType.max_participants}
+                                      </span>
+                                    )}
+
+                                    {classType.price && (
+                                      <span className="text-sm font-semibold text-green-600">
+                                        ${classType.price}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {selectedClassType?.id === classType.id && (
+                                  <div className="ml-3">
+                                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+
                   {errors.classType && <p className="text-red-500 text-sm mt-1">{errors.classType}</p>}
                 </div>
 

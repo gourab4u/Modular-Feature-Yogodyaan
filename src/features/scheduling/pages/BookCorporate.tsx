@@ -1,15 +1,35 @@
-import { Building, Calendar, Mail, Phone, Star, Users } from 'lucide-react'
-import { useState } from 'react'
+import { Building, Calendar, ChevronDown, ChevronUp, Clock, Mail, Phone, Search, Star, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
 import { useAuth } from '../../auth/contexts/AuthContext'
+
+interface ClassPackage {
+    id: string
+    name: string
+    description: string | null
+    class_count: number
+    price: number
+    validity_days: number
+    class_type_restrictions: string[] | null
+    is_active: boolean
+    type: string | null
+    duration: string | null
+    course_type: string | null
+}
 
 export function BookCorporate() {
     const { user } = useAuth()
     const [step, setStep] = useState(1)
     const [loading, setLoading] = useState(false)
     const [errors, setErrors] = useState<Record<string, string>>({})
+    const [classPackages, setClassPackages] = useState<ClassPackage[]>([])
+    const [loadingPackages, setLoadingPackages] = useState(true)
+    const [packageSearch, setPackageSearch] = useState('')
+    const [selectedPackage, setSelectedPackage] = useState<ClassPackage | null>(null)
+    const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+    const [courseTypeFilter, setCourseTypeFilter] = useState<'all' | 'regular' | 'crash'>('all')
 
     const [formData, setFormData] = useState({
         // Company Info
@@ -22,10 +42,9 @@ export function BookCorporate() {
         phone: '',
 
         // Program Details
-        programType: '',
+        packageType: '',
         participantCount: '',
         frequency: '',
-        duration: '',
         objectives: '',
 
         // Schedule & Logistics
@@ -42,62 +61,114 @@ export function BookCorporate() {
         previousExperience: ''
     })
 
-    const programTypes = [
-        {
-            id: 'desk-yoga',
-            name: 'Desk Yoga Sessions',
-            description: 'Chair-based yoga perfect for office environments',
-            duration: '15-30 min',
-            minParticipants: 5,
-            maxParticipants: 50,
-            price: 150
-        },
-        {
-            id: 'stress-relief',
-            name: 'Stress Relief Workshop',
-            description: 'Comprehensive stress management through yoga and meditation',
-            duration: '45-60 min',
-            minParticipants: 10,
-            maxParticipants: 30,
-            price: 300
-        },
-        {
-            id: 'team-building',
-            name: 'Team Building Yoga',
-            description: 'Interactive sessions designed to build team cohesion',
-            duration: '60-90 min',
-            minParticipants: 8,
-            maxParticipants: 25,
-            price: 400
-        },
-        {
-            id: 'wellness-series',
-            name: 'Corporate Wellness Series',
-            description: 'Multi-week program for comprehensive employee wellness',
-            duration: '4-12 weeks',
-            minParticipants: 15,
-            maxParticipants: 100,
-            price: 2000
-        },
-        {
-            id: 'lunch-learn',
-            name: 'Lunch & Learn Sessions',
-            description: 'Educational workshops during lunch breaks',
-            duration: '30-45 min',
-            minParticipants: 10,
-            maxParticipants: 40,
-            price: 200
-        },
-        {
-            id: 'executive',
-            name: 'Executive Wellness Program',
-            description: 'Premium wellness program for leadership teams',
-            duration: '60 min',
-            minParticipants: 3,
-            maxParticipants: 15,
-            price: 500
+    // Fetch class packages from database
+    useEffect(() => {
+        fetchClassPackages()
+    }, [])
+
+    const fetchClassPackages = async () => {
+        try {
+            setLoadingPackages(true)
+            const { data, error } = await supabase
+                .from('class_packages')
+                .select('*')
+                .eq('is_active', true)
+                .eq('type', 'corporate')
+                .order('price')
+
+            if (error) {
+                throw error
+            }
+
+            setClassPackages(data || [])
+        } catch (error) {
+            console.error('Error fetching class packages:', error)
+            setErrors({ classPackages: 'Failed to load class packages. Please refresh the page.' })
+        } finally {
+            setLoadingPackages(false)
         }
-    ]
+    }
+
+    // Filter class packages based on search and course type filter
+    const filteredPackages = classPackages.filter(pkg => {
+        const matchesSearch = pkg.name.toLowerCase().includes(packageSearch.toLowerCase()) ||
+            (pkg.description && pkg.description.toLowerCase().includes(packageSearch.toLowerCase()))
+
+        const matchesCourseType = courseTypeFilter === 'all' || pkg.course_type === courseTypeFilter
+
+        return matchesSearch && matchesCourseType
+    })
+
+    const toggleCardExpansion = (packageId: string) => {
+        const newExpanded = new Set(expandedCards)
+        if (newExpanded.has(packageId)) {
+            newExpanded.delete(packageId)
+        } else {
+            newExpanded.add(packageId)
+        }
+        setExpandedCards(newExpanded)
+    }
+
+    const truncateDescription = (description: string, maxLength: number = 100) => {
+        if (description.length <= maxLength) return description
+        return description.substring(0, maxLength) + '...'
+    }
+
+    // Save form data to localStorage before redirecting to login
+    const saveFormDataAndRedirect = () => {
+        const formDataToSave = {
+            ...formData,
+            selectedPackage,
+            selectedStep: step,
+            courseTypeFilter,
+            expandedCards: Array.from(expandedCards)
+        }
+        localStorage.setItem('pendingCorporateBookingData', JSON.stringify(formDataToSave))
+        window.location.href = '/login?redirect=/book/corporate'
+    }
+
+    // Restore form data after login
+    useEffect(() => {
+        if (user) {
+            const savedData = localStorage.getItem('pendingCorporateBookingData')
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData)
+                    setFormData({
+                        companyName: parsedData.companyName || '',
+                        industry: parsedData.industry || '',
+                        companySize: parsedData.companySize || '',
+                        contactName: parsedData.contactName || '',
+                        position: parsedData.position || '',
+                        email: parsedData.email || user.email || '',
+                        phone: parsedData.phone || '',
+                        packageType: parsedData.packageType || '',
+                        participantCount: parsedData.participantCount || '',
+                        frequency: parsedData.frequency || '',
+                        objectives: parsedData.objectives || '',
+                        preferredDays: parsedData.preferredDays || [],
+                        preferredTimes: parsedData.preferredTimes || [],
+                        timezone: parsedData.timezone || '',
+                        startDate: parsedData.startDate || '',
+                        location: parsedData.location || '',
+                        budget: parsedData.budget || '',
+                        specialRequests: parsedData.specialRequests || '',
+                        hasWellnessProgram: parsedData.hasWellnessProgram || '',
+                        previousExperience: parsedData.previousExperience || ''
+                    })
+                    setSelectedPackage(parsedData.selectedPackage || null)
+                    setStep(parsedData.selectedStep || 1)
+                    setCourseTypeFilter(parsedData.courseTypeFilter || 'all')
+                    setExpandedCards(new Set(parsedData.expandedCards || []))
+
+                    // Clear saved data
+                    localStorage.removeItem('pendingCorporateBookingData')
+                } catch (error) {
+                    console.error('Error restoring form data:', error)
+                }
+            }
+        }
+    }, [user])
 
     const industries = [
         'Technology', 'Finance', 'Healthcare', 'Education', 'Manufacturing',
@@ -132,6 +203,14 @@ export function BookCorporate() {
         }
     }
 
+    const handlePackageSelect = (classPackage: ClassPackage) => {
+        setSelectedPackage(classPackage)
+        setFormData(prev => ({ ...prev, packageType: classPackage.id }))
+        if (errors.packageType) {
+            setErrors(prev => ({ ...prev, packageType: '' }))
+        }
+    }
+
     const handleArrayToggle = (field: 'preferredDays' | 'preferredTimes', value: string) => {
         setFormData(prev => ({
             ...prev,
@@ -155,7 +234,7 @@ export function BookCorporate() {
                 if (!formData.phone.trim()) newErrors.phone = 'Phone number is required'
                 break
             case 2:
-                if (!formData.programType) newErrors.programType = 'Please select a program type'
+                if (!formData.packageType) newErrors.packageType = 'Please select a package'
                 if (!formData.participantCount) newErrors.participantCount = 'Number of participants is required'
                 if (!formData.frequency) newErrors.frequency = 'Please select frequency'
                 if (!formData.objectives.trim()) newErrors.objectives = 'Please describe your objectives'
@@ -181,16 +260,22 @@ export function BookCorporate() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Check if user is authenticated
+        if (!user) {
+            // Save form data and redirect to login
+            saveFormDataAndRedirect()
+            return
+        }
+
         if (!validateStep(3)) return
 
         try {
             setLoading(true)
 
-            const selectedProgram = programTypes.find(p => p.id === formData.programType)
-
             const bookingData = {
-                user_id: user?.id || null,
-                class_name: `Corporate: ${selectedProgram?.name}`,
+                user_id: user.id,
+                class_name: `Corporate: ${selectedPackage?.name}`,
                 instructor: 'Yogodaan Corporate Team',
                 class_date: formData.startDate,
                 class_time: formData.preferredTimes[0],
@@ -214,7 +299,12 @@ export function BookCorporate() {
                 current_wellness_programs: formData.hasWellnessProgram,
                 timezone: formData.timezone,
                 emergency_contact: formData.contactName,
-                emergency_phone: formData.phone
+                emergency_phone: formData.phone,
+                class_package_id: selectedPackage?.id || null,
+                price: selectedPackage?.price || 0,
+                session_duration: selectedPackage?.duration || '60 min',
+                equipment_needed: false,
+                booking_notes: formData.previousExperience ? `Previous Experience: ${formData.previousExperience}` : null
             }
 
             const { error } = await supabase
@@ -232,12 +322,11 @@ export function BookCorporate() {
     }
 
     const calculateEstimatedPrice = () => {
-        const selectedProgram = programTypes.find(p => p.id === formData.programType)
         const selectedFrequency = frequencies.find(f => f.id === formData.frequency)
 
-        if (!selectedProgram || !selectedFrequency || !formData.participantCount) return 0
+        if (!selectedPackage || !selectedFrequency || !formData.participantCount) return 0
 
-        const basePrice = selectedProgram.price
+        const basePrice = selectedPackage.price
         const participantMultiplier = Math.max(1, parseInt(formData.participantCount) / 20)
         const monthlyPrice = basePrice * participantMultiplier * selectedFrequency.multiplier
 
@@ -252,6 +341,21 @@ export function BookCorporate() {
                     <div className="text-center">
                         <h1 className="text-3xl font-bold text-gray-900">Corporate Wellness Program</h1>
                         <p className="text-gray-600 mt-2">Transform your workplace with customized yoga and wellness solutions</p>
+
+                        {/* Login prompt for unauthenticated users */}
+                        {!user && (
+                            <div className="mt-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                <p className="text-purple-800 text-sm">
+                                    <span className="font-medium">Note:</span> You'll need to log in to complete your booking.
+                                    <button
+                                        onClick={() => window.location.href = '/login'}
+                                        className="ml-2 text-purple-600 underline hover:text-purple-800"
+                                    >
+                                        Log in now
+                                    </button>
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Progress Bar */}
@@ -286,6 +390,12 @@ export function BookCorporate() {
                 {errors.general && (
                     <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
                         <p className="text-red-600 text-sm">{errors.general}</p>
+                    </div>
+                )}
+
+                {errors.classPackages && (
+                    <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p className="text-red-600 text-sm">{errors.classPackages}</p>
                     </div>
                 )}
 
@@ -436,37 +546,174 @@ export function BookCorporate() {
                                 <p className="text-gray-600">Choose the perfect program for your team</p>
                             </div>
 
-                            {/* Program Type Selection */}
+                            {/* Package Selection */}
                             <div className="mb-8">
                                 <label className="block text-sm font-medium text-gray-700 mb-4">
-                                    Program Type *
+                                    Available Corporate Programs *
                                 </label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {programTypes.map((program) => (
-                                        <div
-                                            key={program.id}
-                                            onClick={() => setFormData(prev => ({ ...prev, programType: program.id }))}
-                                            className={`p-6 border-2 rounded-lg cursor-pointer transition-all ${formData.programType === program.id
-                                                ? 'border-purple-500 bg-purple-50'
-                                                : 'border-gray-200 hover:border-gray-300'
-                                                }`}
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="font-semibold text-gray-900">{program.name}</h3>
-                                                <span className="text-purple-600 font-bold">From ${program.price}</span>
+
+                                {loadingPackages ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                                        <span className="ml-2 text-gray-600">Loading programs...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Search Bar and Filter Toggle */}
+                                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                                            {/* Search Bar */}
+                                            <div className="relative flex-1">
+                                                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search programs..."
+                                                    value={packageSearch}
+                                                    onChange={(e) => setPackageSearch(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                />
                                             </div>
-                                            <p className="text-gray-600 text-sm mb-3">{program.description}</p>
-                                            <div className="text-xs text-gray-500 space-y-1">
-                                                <div>Duration: {program.duration}</div>
-                                                <div>Participants: {program.minParticipants}-{program.maxParticipants}</div>
+
+                                            {/* Course Type Filter Toggle */}
+                                            <div className="flex bg-gray-100 rounded-lg p-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCourseTypeFilter('all')}
+                                                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'all'
+                                                        ? 'bg-white text-purple-600 shadow-sm'
+                                                        : 'text-gray-600 hover:text-gray-900'
+                                                        }`}
+                                                >
+                                                    All
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCourseTypeFilter('regular')}
+                                                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'regular'
+                                                        ? 'bg-white text-purple-600 shadow-sm'
+                                                        : 'text-gray-600 hover:text-gray-900'
+                                                        }`}
+                                                >
+                                                    Regular
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCourseTypeFilter('crash')}
+                                                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'crash'
+                                                        ? 'bg-white text-purple-600 shadow-sm'
+                                                        : 'text-gray-600 hover:text-gray-900'
+                                                        }`}
+                                                >
+                                                    Crash
+                                                </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                                {errors.programType && <p className="text-red-500 text-sm mt-1">{errors.programType}</p>}
+
+                                        {/* Package Cards */}
+                                        <div className="grid gap-4 max-h-96 overflow-y-auto">
+                                            {filteredPackages.length === 0 ? (
+                                                <div className="text-center py-8 text-gray-500">
+                                                    {packageSearch ? 'No programs found matching your search.' : 'No programs available.'}
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {filteredPackages.map((pkg) => {
+                                                        const isExpanded = expandedCards.has(pkg.id)
+                                                        const isSelected = selectedPackage?.id === pkg.id
+
+                                                        return (
+                                                            <div
+                                                                key={pkg.id}
+                                                                className={`border-2 rounded-lg transition-all duration-200 hover:shadow-md ${isSelected
+                                                                    ? 'border-purple-500 bg-purple-50 shadow-md'
+                                                                    : 'border-gray-200 hover:border-purple-300'
+                                                                    }`}
+                                                            >
+                                                                <div
+                                                                    onClick={() => handlePackageSelect(pkg)}
+                                                                    className="p-6 cursor-pointer"
+                                                                >
+                                                                    <div className="flex justify-between items-start mb-3">
+                                                                        <h3 className="font-semibold text-gray-900 text-lg">{pkg.name}</h3>
+                                                                        <span className="text-purple-600 font-bold text-xl">₹{pkg.price}</span>
+                                                                    </div>
+
+                                                                    {pkg.description && (
+                                                                        <div className="mb-3">
+                                                                            <p className="text-gray-600 text-sm">
+                                                                                {isExpanded ? pkg.description : truncateDescription(pkg.description)}
+                                                                            </p>
+                                                                            {pkg.description.length > 100 && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation()
+                                                                                        toggleCardExpansion(pkg.id)
+                                                                                    }}
+                                                                                    className="text-purple-600 text-sm font-medium mt-1 flex items-center hover:text-purple-700"
+                                                                                >
+                                                                                    {isExpanded ? (
+                                                                                        <>Show Less <ChevronUp className="w-3 h-3 ml-1" /></>
+                                                                                    ) : (
+                                                                                        <>Show More <ChevronDown className="w-3 h-3 ml-1" /></>
+                                                                                    )}
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div className="flex flex-wrap gap-3 items-center text-sm text-gray-600">
+                                                                        <span className="flex items-center">
+                                                                            <Users className="w-4 h-4 mr-1" />
+                                                                            {pkg.class_count} {pkg.class_count === 1 ? 'Session' : 'Sessions'}
+                                                                        </span>
+
+                                                                        {pkg.course_type === 'crash' && pkg.duration ? (
+                                                                            <span className="flex items-center">
+                                                                                <Clock className="w-4 h-4 mr-1" />
+                                                                                {pkg.duration}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="flex items-center">
+                                                                                <Clock className="w-4 h-4 mr-1" />
+                                                                                {pkg.validity_days} Days Validity
+                                                                            </span>
+                                                                        )}
+
+                                                                        <span className={`text-xs px-2 py-1 rounded ${pkg.course_type === 'crash'
+                                                                            ? 'bg-orange-100 text-orange-800'
+                                                                            : 'bg-green-100 text-green-800'
+                                                                            }`}>
+                                                                            {pkg.course_type === 'crash' ? 'Crash Course' : 'Regular Course'}
+                                                                        </span>
+
+                                                                        {pkg.class_type_restrictions && pkg.class_type_restrictions.length > 0 && (
+                                                                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                                                                                Specific Classes Only
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {isSelected && (
+                                                                        <div className="mt-3 flex justify-end">
+                                                                            <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
+                                                                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+
+                                {errors.packageType && <p className="text-red-500 text-sm mt-1">{errors.packageType}</p>}
                             </div>
 
-                            {/* Participant Count */}
+                            {/* Participant Count and Frequency */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -712,12 +959,12 @@ export function BookCorporate() {
                                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                 >
                                     <option value="">Select budget range</option>
-                                    <option value="under-500">Under $500</option>
-                                    <option value="500-1000">$500 - $1,000</option>
-                                    <option value="1000-2500">$1,000 - $2,500</option>
-                                    <option value="2500-5000">$2,500 - $5,000</option>
-                                    <option value="5000-10000">$5,000 - $10,000</option>
-                                    <option value="over-10000">Over $10,000</option>
+                                    <option value="under-500">Under ₹500</option>
+                                    <option value="500-1000">₹500 - ₹1,000</option>
+                                    <option value="1000-2500">₹1,000 - ₹2,500</option>
+                                    <option value="2500-5000">₹2,500 - ₹5,000</option>
+                                    <option value="5000-10000">₹5,000 - ₹10,000</option>
+                                    <option value="over-10000">Over ₹10,000</option>
                                     <option value="flexible">Flexible/To be discussed</option>
                                 </select>
                             </div>
@@ -738,13 +985,21 @@ export function BookCorporate() {
                             </div>
 
                             {/* Price Estimate */}
-                            {formData.programType && formData.participantCount && formData.frequency && (
+                            {selectedPackage && formData.participantCount && formData.frequency && (
                                 <div className="bg-purple-50 rounded-lg p-6 mb-8">
                                     <h3 className="font-semibold text-gray-900 mb-4">Estimated Investment</h3>
                                     <div className="space-y-2 text-sm">
                                         <div className="flex justify-between">
                                             <span>Program:</span>
-                                            <span>{programTypes.find(p => p.id === formData.programType)?.name}</span>
+                                            <span>{selectedPackage.name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Course Type:</span>
+                                            <span className="capitalize">{selectedPackage.course_type}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Sessions:</span>
+                                            <span>{selectedPackage.class_count}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span>Participants:</span>
@@ -754,10 +1009,21 @@ export function BookCorporate() {
                                             <span>Frequency:</span>
                                             <span>{frequencies.find(f => f.id === formData.frequency)?.name}</span>
                                         </div>
+                                        {selectedPackage.course_type === 'crash' && selectedPackage.duration ? (
+                                            <div className="flex justify-between">
+                                                <span>Duration:</span>
+                                                <span>{selectedPackage.duration}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between">
+                                                <span>Validity:</span>
+                                                <span>{selectedPackage.validity_days} Days</span>
+                                            </div>
+                                        )}
                                         <div className="border-t pt-2 mt-2">
                                             <div className="flex justify-between font-semibold text-lg">
                                                 <span>Estimated Monthly Cost:</span>
-                                                <span className="text-purple-600">${calculateEstimatedPrice()}</span>
+                                                <span className="text-purple-600">₹{calculateEstimatedPrice()}</span>
                                             </div>
                                             <p className="text-xs text-gray-500 mt-1">
                                                 *Final pricing will be customized based on your specific requirements

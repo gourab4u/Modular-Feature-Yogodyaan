@@ -1,8 +1,6 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { AlertCircle, Award, Calendar, Camera, CheckCircle, Clock, Edit2, Facebook, FileText, Globe, Instagram, Mail, Phone, Save, Shield, User, X, XCircle, Youtube } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import ReactQuill from 'react-quill';
-import 'react-quill/dist/quill.snow.css';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../../../shared/components/ui/Button';
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner';
@@ -69,6 +67,52 @@ export function Profile() {
         { id: 'queries', label: 'My Queries', icon: FileText },
         { id: 'settings', label: 'Settings', icon: Edit2 }
     ];
+    // ✅ Move utility functions to the top, before they're used
+    const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'confirmed': return 'bg-green-100 text-green-800';
+            case 'pending': return 'bg-yellow-100 text-yellow-800';
+            case 'responded': return 'bg-blue-100 text-blue-800';
+            case 'cancelled': return 'bg-red-100 text-red-800';
+            case 'new': return 'bg-blue-100 text-blue-800';
+            case 'in_progress': return 'bg-yellow-100 text-yellow-800';
+            case 'completed': return 'bg-green-100 text-green-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+    const getStatusIcon = (status) => {
+        switch (status) {
+            case 'confirmed': return _jsx(CheckCircle, { className: "w-4 h-4" });
+            case 'cancelled': return _jsx(XCircle, { className: "w-4 h-4" });
+            default: return _jsx(AlertCircle, { className: "w-4 h-4" });
+        }
+    };
+    const getExperienceColor = (years) => {
+        if (years === 0)
+            return 'bg-gray-100 text-gray-800';
+        if (years <= 2)
+            return 'bg-green-100 text-green-800';
+        if (years <= 5)
+            return 'bg-yellow-100 text-yellow-800';
+        return 'bg-red-100 text-red-800';
+    };
+    const renderArray = (arr, emptyText = 'None') => {
+        if (!Array.isArray(arr) || arr.length === 0) {
+            return _jsx("span", { className: "text-gray-500", children: emptyText });
+        }
+        return arr.join(', ');
+    };
+    // ✅ Helper to safely render JSONB fields
+    const renderJsonField = (field, key) => {
+        if (!field || typeof field !== 'object')
+            return 'Not provided';
+        return field[key] || 'Not provided';
+    };
     useEffect(() => {
         if (user) {
             fetchProfileData();
@@ -153,53 +197,35 @@ export function Profile() {
             return;
         try {
             setLoading(true);
-            // ✅ Enhanced debugging and error handling
-            console.log('🔍 Fetching data for user:', user.email);
-            const [bookingsResult, queriesResult] = await Promise.all([
-                supabase
-                    .from('bookings')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false }),
-                supabase
-                    .from('contact_messages')
-                    .select('*')
-                    .eq('email', user.email)
-                    .order('created_at', { ascending: false })
-            ]);
-            // Handle bookings
+            // Bookings query remains the same
+            const bookingsResult = await supabase
+                .from('bookings')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false });
+            // Updated queries to filter by user_id properly
+            const queriesResult = await supabase
+                .from('contact_messages')
+                .select('id, name, email, phone, subject, message, status, created_at, user_id')
+                .eq('user_id', user.id) // This should now work with the user_id column
+                .order('created_at', { ascending: false });
             if (bookingsResult.error) {
-                console.error('❌ Bookings error:', bookingsResult.error);
+                console.error('Error fetching bookings:', bookingsResult.error);
                 setUserBookings([]);
             }
             else {
-                console.log('✅ Bookings found:', bookingsResult.data?.length || 0);
                 setUserBookings(bookingsResult.data || []);
             }
-            // Handle contact messages with detailed error checking
             if (queriesResult.error) {
-                console.error('❌ Contact messages error:', queriesResult.error);
-                console.log('Error details:', {
-                    code: queriesResult.error.code,
-                    message: queriesResult.error.message,
-                    details: queriesResult.error.details,
-                    hint: queriesResult.error.hint
-                });
-                // If it's an RLS error, try a different approach
-                if (queriesResult.error.code === '42501' || queriesResult.error.message?.includes('RLS')) {
-                    console.log('🔐 RLS policy might be blocking access, trying alternative...');
-                    // You might need to add RLS policies or use a different approach
-                }
+                console.error('Error fetching queries:', queriesResult.error);
                 setUserQueries([]);
             }
             else {
-                console.log('✅ Contact messages found:', queriesResult.data?.length || 0);
-                console.log('📧 Messages:', queriesResult.data);
-                setUserQueries(queriesResult.data || []);
+                setUserQueries(Array.isArray(queriesResult.data) ? queriesResult.data : []);
             }
         }
         catch (error) {
-            console.error('❌ General error fetching user data:', error);
+            console.error('Error in fetchUserData:', error);
             setUserBookings([]);
             setUserQueries([]);
         }
@@ -207,8 +233,6 @@ export function Profile() {
             setLoading(false);
         }
     };
-    // ✅ Enhanced debug function with RLS checking
-    // ✅ Function to check and suggest RLS policy fixes
     const handleAvatarChange = (e) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -353,48 +377,6 @@ export function Profile() {
             setLoading(false);
         }
     };
-    const formatDate = (dateString) => new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-    });
-    const getStatusColor = (status) => {
-        switch (status) {
-            case 'confirmed': return 'bg-green-100 text-green-800';
-            case 'pending': return 'bg-yellow-100 text-yellow-800';
-            case 'responded': return 'bg-blue-100 text-blue-800';
-            case 'cancelled': return 'bg-red-100 text-red-800';
-            default: return 'bg-gray-100 text-gray-800';
-        }
-    };
-    const getStatusIcon = (status) => {
-        switch (status) {
-            case 'confirmed': return _jsx(CheckCircle, { className: "w-4 h-4" });
-            case 'cancelled': return _jsx(XCircle, { className: "w-4 h-4" });
-            default: return _jsx(AlertCircle, { className: "w-4 h-4" });
-        }
-    };
-    const getExperienceColor = (years) => {
-        if (years === 0)
-            return 'bg-gray-100 text-gray-800';
-        if (years <= 2)
-            return 'bg-green-100 text-green-800';
-        if (years <= 5)
-            return 'bg-yellow-100 text-yellow-800';
-        return 'bg-red-100 text-red-800';
-    };
-    const renderArray = (arr, emptyText = 'None') => {
-        if (!Array.isArray(arr) || arr.length === 0) {
-            return _jsx("span", { className: "text-gray-500", children: emptyText });
-        }
-        return arr.join(', ');
-    };
-    // ✅ Helper to safely render JSONB fields
-    const renderJsonField = (field, key) => {
-        if (!field || typeof field !== 'object')
-            return 'Not provided';
-        return field[key] || 'Not provided';
-    };
     if (!user) {
         return (_jsx("div", { className: "min-h-screen bg-gray-50 flex items-center justify-center", children: _jsxs("div", { className: "text-center", children: [_jsx("div", { className: "w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4", children: _jsx(XCircle, { className: "w-8 h-8 text-red-600" }) }), _jsx("h1", { className: "text-2xl font-bold text-gray-900 mb-4", children: "Access Denied" }), _jsx("p", { className: "text-gray-600 mb-6", children: "Please sign in to view your profile." }), _jsx(Button, { onClick: () => navigate('/login'), children: "Sign In" })] }) }));
     }
@@ -408,14 +390,7 @@ export function Profile() {
                             return (_jsxs("button", { onClick: () => setActiveTab(tab.id), className: `flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
                                     ? 'border-blue-600 text-blue-600'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`, children: [_jsx(Icon, { className: "w-4 h-4" }), _jsx("span", { children: tab.label })] }, tab.id));
-                        }) }) }) }), _jsxs("div", { className: "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8", children: [activeTab === 'overview' && (_jsxs("div", { className: "grid grid-cols-1 lg:grid-cols-3 gap-8", children: [_jsx("div", { className: "lg:col-span-2", children: _jsxs("div", { className: "bg-white rounded-xl shadow-lg p-6 mb-6", children: [_jsx("h2", { className: "text-xl font-semibold text-gray-900 mb-6", children: "Profile Information" }), errors.general && (_jsx("div", { className: "bg-red-50 border border-red-200 rounded-lg p-4 mb-6", children: _jsx("p", { className: "text-red-600 text-sm", children: errors.general }) })), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Full Name" }), editing ? (_jsx("input", { type: "text", name: "full_name", value: profileData.full_name, onChange: handleInputChange, className: `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.full_name ? 'border-red-500' : 'border-gray-300'}`, placeholder: "Enter your full name" })) : (_jsx("p", { className: "text-gray-900 py-2", children: profileData.full_name || 'Not provided' })), errors.full_name && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.full_name })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Email Address" }), _jsx("p", { className: "text-gray-900 py-2", children: profileData.email })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Phone Number" }), editing ? (_jsx("input", { type: "tel", name: "phone", value: profileData.phone, onChange: handleInputChange, className: `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.phone ? 'border-red-500' : 'border-gray-300'}`, placeholder: "Enter your phone number" })) : (_jsx("p", { className: "text-gray-900 py-2", children: profileData.phone || 'Not provided' })), errors.phone && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.phone })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Date of Birth" }), editing ? (_jsx("input", { type: "date", name: "date_of_birth", value: profileData.date_of_birth, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" })) : (_jsx("p", { className: "text-gray-900 py-2", children: profileData.date_of_birth ? formatDate(profileData.date_of_birth) : 'Not provided' }))] }), editing && (_jsxs(_Fragment, { children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Gender" }), _jsxs("select", { name: "gender", value: profileData.gender, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors", children: [_jsx("option", { value: "", children: "Select Gender" }), _jsx("option", { value: "male", children: "Male" }), _jsx("option", { value: "female", children: "Female" }), _jsx("option", { value: "other", children: "Other" }), _jsx("option", { value: "prefer_not_to_say", children: "Prefer not to say" })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Years of Experience" }), _jsx("input", { type: "number", name: "years_of_experience", value: profileData.years_of_experience, onChange: handleInputChange, min: "0", className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors", placeholder: "Years of yoga experience" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Location" }), _jsx("input", { type: "text", name: "location", value: profileData.location, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors", placeholder: "Your location" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Nationality" }), _jsx("input", { type: "text", name: "nationality", value: profileData.nationality, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors", placeholder: "Your nationality" })] })] }))] }), _jsxs("div", { className: "mt-6", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Bio" }), editing ? (_jsx(ReactQuill, { value: profileData.bio, onChange: value => setProfileData(prev => ({ ...prev, bio: value })), className: "bg-white", theme: "snow", placeholder: "Tell us about yourself...", modules: {
-                                                        toolbar: [
-                                                            [{ header: [1, 2, false] }],
-                                                            ['bold', 'italic', 'underline', 'strike'],
-                                                            [{ list: 'ordered' }, { list: 'bullet' }],
-                                                            ['link', 'clean'],
-                                                        ],
-                                                    } })) : (_jsx("div", { className: "text-gray-900 py-2", dangerouslySetInnerHTML: { __html: profileData.bio || '<span class="text-gray-500">No bio provided</span>' } }))] }), !editing && profileData.specialties.length > 0 && (_jsxs("div", { className: "mt-6", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Specialties" }), _jsx("div", { className: "flex flex-wrap gap-2", children: profileData.specialties.map((specialty, index) => (_jsx("span", { className: "bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium", children: specialty }, index))) })] })), _jsx("div", { className: "pt-6 border-t border-gray-200 mt-6", children: _jsxs("div", { className: "flex items-center text-sm text-gray-600", children: [_jsx(Calendar, { className: "w-4 h-4 mr-2" }), "Member since ", formatDate(user.created_at)] }) })] }) }), _jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-6", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900 mb-4", children: "Quick Stats" }), _jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Total Bookings" }), _jsx("span", { className: "font-semibold text-blue-600", children: userBookings.length })] }), _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Queries Sent" }), _jsx("span", { className: "font-semibold text-green-600", children: userQueries.length })] }), _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Experience" }), _jsxs("span", { className: `px-2 py-1 rounded-full text-xs font-medium ${getExperienceColor(profileData.years_of_experience)}`, children: [profileData.years_of_experience, " ", profileData.years_of_experience === 1 ? 'Year' : 'Years'] })] }), _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Profile Status" }), _jsx("span", { className: `px-2 py-1 rounded-full text-xs font-medium ${profileData.profile_completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`, children: profileData.profile_completed ? 'Complete' : 'Incomplete' })] })] })] }), _jsxs("div", { className: "bg-white rounded-xl shadow-lg p-6", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900 mb-4", children: "Recent Activity" }), _jsxs("div", { className: "space-y-3", children: [userBookings.slice(0, 3).map((booking, index) => (_jsxs("div", { className: "flex items-center space-x-3 text-sm", children: [_jsx("div", { className: `w-2 h-2 rounded-full ${getStatusColor(booking.status).replace('text-', 'bg-').replace('100', '500')}` }), _jsxs("div", { className: "flex-1", children: [_jsx("p", { className: "font-medium", children: booking.class_name }), _jsx("p", { className: "text-gray-500", children: formatDate(booking.class_date) })] })] }, index))), userBookings.length === 0 && (_jsx("p", { className: "text-gray-500 text-sm", children: "No recent activity" }))] })] })] })] })), activeTab === 'bookings' && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg overflow-hidden", children: [_jsx("div", { className: "p-6 border-b border-gray-200", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h2", { className: "text-xl font-semibold text-gray-900", children: "My Bookings" }), _jsxs("span", { className: "bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium", children: [userBookings.length, " Total"] })] }) }), loading ? (_jsx("div", { className: "flex justify-center py-12", children: _jsx(LoadingSpinner, { size: "lg" }) })) : userBookings.length === 0 ? (_jsxs("div", { className: "text-center py-12", children: [_jsx(Calendar, { className: "w-12 h-12 text-gray-400 mx-auto mb-4" }), _jsx("h3", { className: "text-lg font-medium text-gray-900 mb-2", children: "No bookings yet" }), _jsx("p", { className: "text-gray-600 mb-6", children: "Start your yoga journey by booking your first class!" }), _jsx(Button, { onClick: () => navigate('/schedule'), children: "Browse Classes" })] })) : (_jsx("div", { className: "divide-y divide-gray-200", children: userBookings.map((booking, index) => (_jsx("div", { className: "p-6 hover:bg-gray-50 transition-colors", children: _jsx("div", { className: "flex items-start justify-between", children: _jsxs("div", { className: "flex-1", children: [_jsxs("div", { className: "flex items-center space-x-3 mb-2", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900", children: booking.class_name }), _jsxs("span", { className: `px-3 py-1 rounded-full text-sm font-medium flex items-center ${getStatusColor(booking.status)}`, children: [getStatusIcon(booking.status), _jsx("span", { className: "ml-1", children: booking.status.charAt(0).toUpperCase() + booking.status.slice(1) })] })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600", children: [_jsxs("div", { className: "flex items-center", children: [_jsx(Calendar, { className: "w-4 h-4 mr-2" }), formatDate(booking.class_date)] }), _jsxs("div", { className: "flex items-center", children: [_jsx(Clock, { className: "w-4 h-4 mr-2" }), booking.class_time] }), _jsxs("div", { className: "flex items-center", children: [_jsx(User, { className: "w-4 h-4 mr-2" }), booking.instructor] })] }), booking.special_requests && (_jsx("div", { className: "mt-3 p-3 bg-blue-50 rounded-lg", children: _jsxs("p", { className: "text-sm text-blue-800", children: [_jsx(FileText, { className: "w-4 h-4 mr-1 inline" }), _jsx("strong", { children: "Special Requests:" }), " ", booking.special_requests] }) }))] }) }) }, index))) }))] })), activeTab === 'queries' && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg overflow-hidden", children: [_jsxs("div", { className: "p-6 border-b border-gray-200", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h2", { className: "text-xl font-semibold text-gray-900", children: "My Messages" }), _jsxs("span", { className: "bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium", children: [userQueries.length, " Total"] })] }), _jsxs("p", { className: "text-sm text-gray-500 mt-2", children: ["Messages sent from: ", _jsx("span", { className: "font-mono", children: user.email })] })] }), loading ? (_jsx("div", { className: "flex justify-center py-12", children: _jsx(LoadingSpinner, { size: "lg" }) })) : userQueries.length === 0 ? (_jsxs("div", { className: "text-center py-12", children: [_jsx(FileText, { className: "w-12 h-12 text-gray-400 mx-auto mb-4" }), _jsx("h3", { className: "text-lg font-medium text-gray-900 mb-2", children: "No messages found" }), _jsxs("p", { className: "text-gray-600 mb-6", children: ["No contact messages were sent from ", _jsx("span", { className: "font-mono text-sm bg-gray-100 px-2 py-1 rounded", children: user.email })] }), _jsx("div", { className: "space-x-3", children: _jsx(Button, { onClick: () => navigate('/contact'), children: "Send Your First Message" }) })] })) : (_jsx("div", { className: "divide-y divide-gray-200", children: userQueries.map((message, index) => (_jsxs("div", { className: "p-6 hover:bg-gray-50 transition-colors", children: [_jsxs("div", { className: "flex items-start justify-between mb-3", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900", children: message.subject }), _jsx("span", { className: `px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(message.status)}`, children: message.status.charAt(0).toUpperCase() + message.status.slice(1) })] }), _jsx("p", { className: "text-gray-700 mb-3", children: message.message }), _jsxs("div", { className: "flex items-center justify-between text-sm text-gray-500", children: [_jsxs("div", { className: "flex items-center", children: [_jsx(Calendar, { className: "w-4 h-4 mr-1" }), "Sent on ", formatDate(message.created_at)] }), _jsxs("div", { className: "text-xs font-mono bg-gray-100 px-2 py-1 rounded", children: ["From: ", message.email] })] })] }, index))) }))] })), activeTab === 'settings' && (_jsx("div", { className: "space-y-6", children: _jsxs("div", { className: "bg-white rounded-xl shadow-lg p-6", children: [_jsx("h2", { className: "text-xl font-semibold text-gray-900 mb-6", children: "Account Settings" }), _jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "border-b border-gray-200 pb-6", children: [_jsx("h3", { className: "text-lg font-medium text-gray-900 mb-4", children: "Emergency Contact" }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Emergency Contact Name" }), editing ? (_jsx("input", { type: "text", value: renderJsonField(profileData.emergency_contact, 'name'), onChange: (e) => {
+                        }) }) }) }), _jsxs("div", { className: "max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8", children: [activeTab === 'overview' && (_jsxs("div", { className: "grid grid-cols-1 lg:grid-cols-3 gap-8", children: [_jsx("div", { className: "lg:col-span-2", children: _jsxs("div", { className: "bg-white rounded-xl shadow-lg p-6 mb-6", children: [_jsx("h2", { className: "text-xl font-semibold text-gray-900 mb-6", children: "Profile Information" }), errors.general && (_jsx("div", { className: "bg-red-50 border border-red-200 rounded-lg p-4 mb-6", children: _jsx("p", { className: "text-red-600 text-sm", children: errors.general }) })), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Full Name" }), editing ? (_jsx("input", { type: "text", name: "full_name", value: profileData.full_name, onChange: handleInputChange, className: `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.full_name ? 'border-red-500' : 'border-gray-300'}`, placeholder: "Enter your full name" })) : (_jsx("p", { className: "text-gray-900 py-2", children: profileData.full_name || 'Not provided' })), errors.full_name && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.full_name })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Email Address" }), _jsx("p", { className: "text-gray-900 py-2", children: profileData.email })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Phone Number" }), editing ? (_jsx("input", { type: "tel", name: "phone", value: profileData.phone, onChange: handleInputChange, className: `w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.phone ? 'border-red-500' : 'border-gray-300'}`, placeholder: "Enter your phone number" })) : (_jsx("p", { className: "text-gray-900 py-2", children: profileData.phone || 'Not provided' })), errors.phone && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.phone })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Date of Birth" }), editing ? (_jsx("input", { type: "date", name: "date_of_birth", value: profileData.date_of_birth, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors" })) : (_jsx("p", { className: "text-gray-900 py-2", children: profileData.date_of_birth ? formatDate(profileData.date_of_birth) : 'Not provided' }))] }), editing && (_jsxs(_Fragment, { children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Gender" }), _jsxs("select", { name: "gender", value: profileData.gender, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors", children: [_jsx("option", { value: "", children: "Select Gender" }), _jsx("option", { value: "male", children: "Male" }), _jsx("option", { value: "female", children: "Female" }), _jsx("option", { value: "other", children: "Other" }), _jsx("option", { value: "prefer_not_to_say", children: "Prefer not to say" })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Years of Experience" }), _jsx("input", { type: "number", name: "years_of_experience", value: profileData.years_of_experience, onChange: handleInputChange, min: "0", className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors", placeholder: "Years of yoga experience" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Location" }), _jsx("input", { type: "text", name: "location", value: profileData.location, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors", placeholder: "Your location" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Nationality" }), _jsx("input", { type: "text", name: "nationality", value: profileData.nationality, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors", placeholder: "Your nationality" })] })] }))] }), _jsxs("div", { className: "mt-6", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Bio" }), editing ? (_jsx("textarea", { name: "bio", rows: 4, value: profileData.bio, onChange: handleInputChange, className: "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none", placeholder: "Tell us about yourself..." })) : (_jsx("p", { className: "text-gray-900 py-2", children: profileData.bio || 'No bio provided' }))] }), !editing && profileData.specialties.length > 0 && (_jsxs("div", { className: "mt-6", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Specialties" }), _jsx("div", { className: "flex flex-wrap gap-2", children: profileData.specialties.map((specialty, index) => (_jsx("span", { className: "bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium", children: specialty }, index))) })] })), _jsx("div", { className: "pt-6 border-t border-gray-200 mt-6", children: _jsxs("div", { className: "flex items-center text-sm text-gray-600", children: [_jsx(Calendar, { className: "w-4 h-4 mr-2" }), "Member since ", formatDate(user.created_at)] }) })] }) }), _jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-6", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900 mb-4", children: "Quick Stats" }), _jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Total Bookings" }), _jsx("span", { className: "font-semibold text-blue-600", children: userBookings.length })] }), _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Queries Sent" }), _jsx("span", { className: "font-semibold text-green-600", children: userQueries.length })] }), _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Experience" }), _jsxs("span", { className: `px-2 py-1 rounded-full text-xs font-medium ${getExperienceColor(profileData.years_of_experience)}`, children: [profileData.years_of_experience, " ", profileData.years_of_experience === 1 ? 'Year' : 'Years'] })] }), _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "text-gray-600", children: "Profile Status" }), _jsx("span", { className: `px-2 py-1 rounded-full text-xs font-medium ${profileData.profile_completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`, children: profileData.profile_completed ? 'Complete' : 'Incomplete' })] })] })] }), _jsxs("div", { className: "bg-white rounded-xl shadow-lg p-6", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900 mb-4", children: "Recent Activity" }), _jsxs("div", { className: "space-y-3", children: [userBookings.slice(0, 3).map((booking, index) => (_jsxs("div", { className: "flex items-center space-x-3 text-sm", children: [_jsx("div", { className: `w-2 h-2 rounded-full ${getStatusColor(booking.status).replace('text-', 'bg-').replace('100', '500')}` }), _jsxs("div", { className: "flex-1", children: [_jsx("p", { className: "font-medium", children: booking.class_name }), _jsx("p", { className: "text-gray-500", children: formatDate(booking.class_date) })] })] }, index))), userBookings.length === 0 && (_jsx("p", { className: "text-gray-500 text-sm", children: "No recent activity" }))] })] })] })] })), activeTab === 'bookings' && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg overflow-hidden", children: [_jsx("div", { className: "p-6 border-b border-gray-200", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h2", { className: "text-xl font-semibold text-gray-900", children: "My Bookings" }), _jsxs("span", { className: "bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium", children: [userBookings.length, " Total"] })] }) }), loading ? (_jsx("div", { className: "flex justify-center py-12", children: _jsx(LoadingSpinner, { size: "lg" }) })) : userBookings.length === 0 ? (_jsxs("div", { className: "text-center py-12", children: [_jsx(Calendar, { className: "w-12 h-12 text-gray-400 mx-auto mb-4" }), _jsx("h3", { className: "text-lg font-medium text-gray-900 mb-2", children: "No bookings yet" }), _jsx("p", { className: "text-gray-600 mb-6", children: "Start your yoga journey by booking your first class!" }), _jsx(Button, { onClick: () => navigate('/schedule'), children: "Browse Classes" })] })) : (_jsx("div", { className: "divide-y divide-gray-200", children: userBookings.map((booking, index) => (_jsx("div", { className: "p-6 hover:bg-gray-50 transition-colors", children: _jsx("div", { className: "flex items-start justify-between", children: _jsxs("div", { className: "flex-1", children: [_jsxs("div", { className: "flex items-center space-x-3 mb-2", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900", children: booking.class_name }), _jsxs("span", { className: `px-3 py-1 rounded-full text-sm font-medium flex items-center ${getStatusColor(booking.status)}`, children: [getStatusIcon(booking.status), _jsx("span", { className: "ml-1", children: booking.status.charAt(0).toUpperCase() + booking.status.slice(1) })] })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600", children: [_jsxs("div", { className: "flex items-center", children: [_jsx(Calendar, { className: "w-4 h-4 mr-2" }), formatDate(booking.class_date)] }), _jsxs("div", { className: "flex items-center", children: [_jsx(Clock, { className: "w-4 h-4 mr-2" }), booking.class_time] }), _jsxs("div", { className: "flex items-center", children: [_jsx(User, { className: "w-4 h-4 mr-2" }), booking.instructor] })] }), booking.special_requests && (_jsx("div", { className: "mt-3 p-3 bg-blue-50 rounded-lg", children: _jsxs("p", { className: "text-sm text-blue-800", children: [_jsx(FileText, { className: "w-4 h-4 mr-1 inline" }), _jsx("strong", { children: "Special Requests:" }), " ", booking.special_requests] }) }))] }) }) }, index))) }))] })), activeTab === 'queries' && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg overflow-hidden", children: [_jsxs("div", { className: "p-6 border-b border-gray-200", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("h2", { className: "text-xl font-semibold text-gray-900", children: "My Messages" }), _jsxs("span", { className: "bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium", children: [userQueries.length, " Total"] })] }), _jsxs("p", { className: "text-sm text-gray-500 mt-2", children: ["Messages sent from: ", _jsx("span", { className: "font-mono", children: user.email })] })] }), loading ? (_jsx("div", { className: "flex justify-center py-12", children: _jsx(LoadingSpinner, { size: "lg" }) })) : userQueries.length === 0 ? (_jsxs("div", { className: "text-center py-12", children: [_jsx(FileText, { className: "w-12 h-12 text-gray-400 mx-auto mb-4" }), _jsx("h3", { className: "text-lg font-medium text-gray-900 mb-2", children: "No messages found" }), _jsx("p", { className: "text-gray-600 mb-6", children: "You haven't sent any contact messages yet." }), _jsx("div", { className: "space-x-3", children: _jsx(Button, { onClick: () => navigate('/contact'), children: "Send Your First Message" }) })] })) : (_jsx("div", { className: "divide-y divide-gray-200", children: userQueries.map((message, index) => (_jsxs("div", { className: "p-6 hover:bg-gray-50 transition-colors", children: [_jsxs("div", { className: "flex items-start justify-between mb-3", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900", children: message.subject }), _jsx("span", { className: `px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(message.status)}`, children: message.status.charAt(0).toUpperCase() + message.status.slice(1) })] }), _jsx("p", { className: "text-gray-700 mb-3 line-clamp-3", children: message.message }), _jsxs("div", { className: "flex items-center justify-between text-sm text-gray-500", children: [_jsxs("div", { className: "flex items-center", children: [_jsx(Calendar, { className: "w-4 h-4 mr-1" }), "Sent on ", formatDate(message.created_at)] }), _jsxs("div", { className: "text-xs font-mono bg-gray-100 px-2 py-1 rounded", children: ["From: ", message.email] })] })] }, message.id || index))) }))] })), activeTab === 'settings' && (_jsx("div", { className: "space-y-6", children: _jsxs("div", { className: "bg-white rounded-xl shadow-lg p-6", children: [_jsx("h2", { className: "text-xl font-semibold text-gray-900 mb-6", children: "Account Settings" }), _jsxs("div", { className: "space-y-6", children: [_jsxs("div", { className: "border-b border-gray-200 pb-6", children: [_jsx("h3", { className: "text-lg font-medium text-gray-900 mb-4", children: "Emergency Contact" }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Emergency Contact Name" }), editing ? (_jsx("input", { type: "text", value: renderJsonField(profileData.emergency_contact, 'name'), onChange: (e) => {
                                                                         setProfileData(prev => ({
                                                                             ...prev,
                                                                             emergency_contact: { ...prev.emergency_contact, name: e.target.value }

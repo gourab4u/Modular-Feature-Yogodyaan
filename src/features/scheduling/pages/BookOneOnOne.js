@@ -1,6 +1,6 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { Calendar, Mail, Phone, Star, User, Video } from 'lucide-react';
-import { useState } from 'react';
+import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
+import { Calendar, ChevronDown, ChevronUp, Clock, Mail, Phone, Search, Star, User, Users, Video } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { Button } from '../../../shared/components/ui/Button';
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner';
 import { supabase } from '../../../shared/lib/supabase';
@@ -10,6 +10,12 @@ export function BookOneOnOne() {
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const [classPackages, setClassPackages] = useState([]);
+    const [loadingPackages, setLoadingPackages] = useState(true);
+    const [packageSearch, setPackageSearch] = useState('');
+    const [selectedPackage, setSelectedPackage] = useState(null);
+    const [expandedCards, setExpandedCards] = useState(new Set());
+    const [courseTypeFilter, setCourseTypeFilter] = useState('all');
     const [formData, setFormData] = useState({
         // Personal Info
         firstName: '',
@@ -18,81 +24,73 @@ export function BookOneOnOne() {
         phone: '',
         timezone: '',
         // Session Details
-        sessionType: '',
+        packageType: '',
         experienceLevel: '',
         goals: '',
         healthConditions: '',
         preferredDays: [],
         preferredTimes: [],
-        // Package Selection
-        packageType: '',
+        // Schedule
         startDate: '',
         // Special Requirements
         specialRequests: '',
         emergencyContact: '',
         emergencyPhone: ''
     });
-    const sessionTypes = [
-        {
-            id: 'hatha',
-            name: 'Hatha Yoga',
-            description: 'Gentle, slow-paced practice focusing on basic postures',
-            duration: '60 min',
-            price: 75
-        },
-        {
-            id: 'vinyasa',
-            name: 'Vinyasa Flow',
-            description: 'Dynamic practice connecting breath with movement',
-            duration: '60 min',
-            price: 85
-        },
-        {
-            id: 'meditation',
-            name: 'Meditation & Breathwork',
-            description: 'Focused session on mindfulness and breathing techniques',
-            duration: '45 min',
-            price: 65
-        },
-        {
-            id: 'therapeutic',
-            name: 'Therapeutic Yoga',
-            description: 'Customized practice for specific health concerns',
-            duration: '75 min',
-            price: 95
+    // Fetch class packages from database
+    useEffect(() => {
+        fetchClassPackages();
+    }, []);
+    const fetchClassPackages = async () => {
+        try {
+            setLoadingPackages(true);
+            const { data, error } = await supabase
+                .from('class_packages')
+                .select('*')
+                .eq('is_active', true)
+                .eq('type', 'individual')
+                .order('price');
+            if (error) {
+                throw error;
+            }
+            setClassPackages(data || []);
         }
-    ];
-    const packages = [
-        {
-            id: 'single',
-            name: 'Single Session',
-            sessions: 1,
-            discount: 0,
-            description: 'Perfect for trying out our service'
-        },
-        {
-            id: 'package4',
-            name: '4-Session Package',
-            sessions: 4,
-            discount: 10,
-            description: 'Great for building consistency',
-            popular: true
-        },
-        {
-            id: 'package8',
-            name: '8-Session Package',
-            sessions: 8,
-            discount: 15,
-            description: 'Best value for long-term practice'
-        },
-        {
-            id: 'monthly',
-            name: 'Monthly Unlimited',
-            sessions: 'unlimited',
-            discount: 20,
-            description: 'Maximum flexibility and support'
+        catch (error) {
+            console.error('Error fetching class packages:', error);
+            setErrors({ classPackages: 'Failed to load class packages. Please refresh the page.' });
         }
-    ];
+        finally {
+            setLoadingPackages(false);
+        }
+    };
+    // Filter class packages based on search and course type filter
+    const filteredPackages = classPackages.filter(pkg => {
+        const matchesSearch = pkg.name.toLowerCase().includes(packageSearch.toLowerCase()) ||
+            (pkg.description && pkg.description.toLowerCase().includes(packageSearch.toLowerCase()));
+        const matchesCourseType = courseTypeFilter === 'all' || pkg.course_type === courseTypeFilter;
+        return matchesSearch && matchesCourseType;
+    });
+    const calculatePricePerClass = (pkg) => {
+        if (pkg.course_type === 'crash') {
+            return null; // Don't show per-class price for crash courses
+        }
+        return Math.round(pkg.price / pkg.class_count);
+    };
+    const toggleCardExpansion = (packageId) => {
+        const newExpanded = new Set(expandedCards);
+        if (newExpanded.has(packageId)) {
+            newExpanded.delete(packageId);
+        }
+        else {
+            newExpanded.add(packageId);
+        }
+        setExpandedCards(newExpanded);
+    };
+    const truncateDescription = (description, maxLength = 100) => {
+        if (description.length <= maxLength)
+            return description;
+        return description.substring(0, maxLength) + '...';
+    };
     const timeSlots = [
         '06:00 AM', '07:00 AM', '08:00 AM', '09:00 AM', '10:00 AM',
         '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM',
@@ -104,6 +102,13 @@ export function BookOneOnOne() {
         setFormData(prev => ({ ...prev, [name]: value }));
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
+        }
+    };
+    const handlePackageSelect = (classPackage) => {
+        setSelectedPackage(classPackage);
+        setFormData(prev => ({ ...prev, packageType: classPackage.id }));
+        if (errors.packageType) {
+            setErrors(prev => ({ ...prev, packageType: '' }));
         }
     };
     const handleArrayToggle = (field, value) => {
@@ -130,22 +135,24 @@ export function BookOneOnOne() {
                     newErrors.timezone = 'Timezone is required';
                 break;
             case 2:
-                if (!formData.sessionType)
-                    newErrors.sessionType = 'Please select a session type';
+                if (!formData.packageType)
+                    newErrors.packageType = 'Please select a package';
                 if (!formData.experienceLevel)
                     newErrors.experienceLevel = 'Please select your experience level';
                 if (!formData.goals.trim())
                     newErrors.goals = 'Please share your goals';
                 break;
             case 3:
+                console.log('Selected package:', selectedPackage);
+                console.log('Package course_type:', selectedPackage?.course_type);
                 if (formData.preferredDays.length === 0)
                     newErrors.preferredDays = 'Please select at least one preferred day';
                 if (formData.preferredTimes.length === 0)
                     newErrors.preferredTimes = 'Please select at least one preferred time';
-                if (!formData.packageType)
-                    newErrors.packageType = 'Please select a package';
                 if (!formData.startDate)
                     newErrors.startDate = 'Please select a start date';
+                console.log('Step 3 validation - Form data:', formData);
+                console.log('Step 3 validation - Errors found:', newErrors);
                 break;
         }
         setErrors(newErrors);
@@ -156,28 +163,79 @@ export function BookOneOnOne() {
             setStep(prev => prev + 1);
         }
     };
-    // Update the handleSubmit function with more debugging:
+    // Save form data to localStorage before redirecting to login
+    const saveFormDataAndRedirect = () => {
+        const formDataToSave = {
+            ...formData,
+            selectedPackage,
+            selectedStep: step,
+            courseTypeFilter,
+            expandedCards: Array.from(expandedCards)
+        };
+        localStorage.setItem('pendingBookingData', JSON.stringify(formDataToSave));
+        window.location.href = '/login?redirect=/book/individual';
+    };
+    // Restore form data after login
+    useEffect(() => {
+        if (user) {
+            const savedData = localStorage.getItem('pendingBookingData');
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    setFormData({
+                        firstName: parsedData.firstName || '',
+                        lastName: parsedData.lastName || '',
+                        email: parsedData.email || user.email || '',
+                        phone: parsedData.phone || '',
+                        timezone: parsedData.timezone || '',
+                        packageType: parsedData.packageType || '',
+                        experienceLevel: parsedData.experienceLevel || '',
+                        goals: parsedData.goals || '',
+                        healthConditions: parsedData.healthConditions || '',
+                        preferredDays: parsedData.preferredDays || [],
+                        preferredTimes: parsedData.preferredTimes || [],
+                        startDate: parsedData.startDate || '',
+                        specialRequests: parsedData.specialRequests || '',
+                        emergencyContact: parsedData.emergencyContact || '',
+                        emergencyPhone: parsedData.emergencyPhone || ''
+                    });
+                    setSelectedPackage(parsedData.selectedPackage || null);
+                    setStep(parsedData.selectedStep || 1);
+                    setCourseTypeFilter(parsedData.courseTypeFilter || 'all');
+                    setExpandedCards(new Set(parsedData.expandedCards || []));
+                    // Clear saved data
+                    localStorage.removeItem('pendingBookingData');
+                }
+                catch (error) {
+                    console.error('Error restoring form data:', error);
+                }
+            }
+        }
+    }, [user]);
     const handleSubmit = async (e) => {
-        console.log('handleSubmit called!'); // Debug log
         e.preventDefault();
-        console.log('Form submission prevented, validating step 3...'); // Debug log
-        if (!validateStep(3)) {
-            console.log('Validation failed!'); // Debug log
+        // Check if user is authenticated
+        if (!user) {
+            // Save form data and redirect to login
+            saveFormDataAndRedirect();
             return;
         }
-        console.log('Validation passed, proceeding with submission...'); // Debug log
+        console.log('handleSubmit called!');
+        console.log('Form submission prevented, validating step 3...');
+        if (!validateStep(3)) {
+            console.log('Validation failed!');
+            return;
+        }
+        console.log('Validation passed, proceeding with submission...');
         try {
             setLoading(true);
-            console.log('Loading set to true'); // Debug log
-            const selectedSession = sessionTypes.find(s => s.id === formData.sessionType);
-            const selectedPackage = packages.find(p => p.id === formData.packageType);
-            console.log('Selected session:', selectedSession); // Debug log
-            console.log('Selected package:', selectedPackage); // Debug log
-            console.log('Form data:', formData); // Debug log
+            console.log('Loading set to true');
+            console.log('Selected package:', selectedPackage);
+            console.log('Form data:', formData);
             const bookingData = {
                 // Required fields from your schema
-                user_id: user?.id || null,
-                class_name: `1-on-1 ${selectedSession?.name}`,
+                user_id: user.id, // Now we know user exists
+                class_name: `1-on-1 ${selectedPackage?.name}`,
                 instructor: 'Yogodaan Instructor',
                 class_date: formData.startDate,
                 class_time: formData.preferredTimes[0],
@@ -198,54 +256,60 @@ export function BookOneOnOne() {
                 preferred_days: formData.preferredDays,
                 preferred_times: formData.preferredTimes,
                 timezone: formData.timezone || null,
-                price: calculatePrice(),
-                session_duration: selectedSession?.duration === '60 min' ? 60 : selectedSession?.duration === '75 min' ? 75 : 45,
+                price: selectedPackage?.price || 0,
+                session_duration: 60, // Default duration
                 participants_count: 1,
                 equipment_needed: false,
+                class_package_id: selectedPackage?.id || null,
                 // Store health conditions in booking_notes
                 booking_notes: formData.healthConditions ? `Health Conditions: ${formData.healthConditions}` : null
             };
-            console.log('Submitting booking data:', bookingData); // Debug log
+            console.log('Submitting booking data:', bookingData);
+            console.log('Auth user:', user);
+            console.log('User ID being sent:', user.id);
+            console.log('Booking data user_id:', bookingData.user_id);
             const { data, error } = await supabase
                 .from('bookings')
                 .insert([bookingData])
                 .select();
             if (error) {
-                console.error('Supabase error:', error); // Debug log
+                console.error('Supabase error:', error);
                 throw error;
             }
-            console.log('Successfully inserted:', data); // Debug log
+            console.log('Successfully inserted:', data);
             setStep(4); // Success step
         }
         catch (error) {
-            console.error('Full error:', error); // Debug log
+            console.error('Full error:', error);
             setErrors({ general: error.message || 'An error occurred while booking your session.' });
         }
         finally {
             setLoading(false);
-            console.log('Loading set to false'); // Debug log
+            console.log('Loading set to false');
         }
     };
-    const calculatePrice = () => {
-        const selectedSession = sessionTypes.find(s => s.id === formData.sessionType);
-        const selectedPackage = packages.find(p => p.id === formData.packageType);
-        if (!selectedSession || !selectedPackage)
-            return 0;
-        if (selectedPackage.id === 'monthly')
-            return 299;
-        const basePrice = selectedSession.price * selectedPackage.sessions;
-        const discount = basePrice * (selectedPackage.discount / 100);
-        return basePrice - discount;
-    };
-    return (_jsxs("div", { className: "min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50", children: [_jsx("div", { className: "bg-white shadow-sm", children: _jsxs("div", { className: "max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6", children: [_jsxs("div", { className: "text-center", children: [_jsx("h1", { className: "text-3xl font-bold text-gray-900", children: "Book Your Personal Yoga Session" }), _jsx("p", { className: "text-gray-600 mt-2", children: "Personalized guidance tailored to your needs" })] }), _jsxs("div", { className: "mt-8", children: [_jsx("div", { className: "flex items-center justify-center space-x-4", children: [1, 2, 3, 4].map((stepNumber) => (_jsxs("div", { className: "flex items-center", children: [_jsx("div", { className: `w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber
+    return (_jsxs("div", { className: "min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50", children: [_jsx("div", { className: "bg-white shadow-sm", children: _jsxs("div", { className: "max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6", children: [_jsxs("div", { className: "text-center", children: [_jsx("h1", { className: "text-3xl font-bold text-gray-900", children: "Book Your Personal Yoga Session" }), _jsx("p", { className: "text-gray-600 mt-2", children: "Personalized guidance tailored to your needs" }), !user && (_jsx("div", { className: "mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4", children: _jsxs("p", { className: "text-blue-800 text-sm", children: [_jsx("span", { className: "font-medium", children: "Note:" }), " You'll need to log in to complete your booking.", _jsx("button", { onClick: () => window.location.href = '/login', className: "ml-2 text-blue-600 underline hover:text-blue-800", children: "Log in now" })] }) }))] }), _jsxs("div", { className: "mt-8", children: [_jsx("div", { className: "flex items-center justify-center space-x-4", children: [1, 2, 3, 4].map((stepNumber) => (_jsxs("div", { className: "flex items-center", children: [_jsx("div", { className: `w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber
                                                     ? 'bg-blue-600 text-white'
-                                                    : 'bg-gray-200 text-gray-600'}`, children: step > stepNumber ? '✓' : stepNumber }), stepNumber < 4 && (_jsx("div", { className: `w-16 h-1 mx-2 ${step > stepNumber ? 'bg-blue-600' : 'bg-gray-200'}` }))] }, stepNumber))) }), _jsxs("div", { className: "flex justify-center space-x-20 mt-2", children: [_jsx("span", { className: "text-xs text-gray-500", children: "Personal Info" }), _jsx("span", { className: "text-xs text-gray-500", children: "Session Type" }), _jsx("span", { className: "text-xs text-gray-500", children: "Schedule" }), _jsx("span", { className: "text-xs text-gray-500", children: "Confirmation" })] })] })] }) }), _jsxs("div", { className: "max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8", children: [errors.general && (_jsx("div", { className: "mb-6 bg-red-50 border border-red-200 rounded-lg p-4", children: _jsx("p", { className: "text-red-600 text-sm", children: errors.general }) })), _jsxs("form", { onSubmit: handleSubmit, children: [step === 1 && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8", children: [_jsxs("div", { className: "text-center mb-8", children: [_jsx(User, { className: "w-12 h-12 text-blue-600 mx-auto mb-4" }), _jsx("h2", { className: "text-2xl font-bold text-gray-900", children: "Personal Information" }), _jsx("p", { className: "text-gray-600", children: "Tell us about yourself" })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "First Name *" }), _jsx("input", { type: "text", name: "firstName", value: formData.firstName, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.firstName ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Enter your first name" }), errors.firstName && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.firstName })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Last Name *" }), _jsx("input", { type: "text", name: "lastName", value: formData.lastName, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.lastName ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Enter your last name" }), errors.lastName && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.lastName })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Email *" }), _jsx("input", { type: "email", name: "email", value: formData.email, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Enter your email" }), errors.email && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.email })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Phone Number *" }), _jsx("input", { type: "tel", name: "phone", value: formData.phone, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.phone ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Enter your phone number" }), errors.phone && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.phone })] }), _jsxs("div", { className: "md:col-span-2", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Timezone *" }), _jsxs("select", { name: "timezone", value: formData.timezone, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.timezone ? 'border-red-300' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select your timezone" }), _jsx("option", { value: "UTC-8", children: "Pacific Time (UTC-8)" }), _jsx("option", { value: "UTC-7", children: "Mountain Time (UTC-7)" }), _jsx("option", { value: "UTC-6", children: "Central Time (UTC-6)" }), _jsx("option", { value: "UTC-5", children: "Eastern Time (UTC-5)" }), _jsx("option", { value: "UTC+0", children: "GMT (UTC+0)" }), _jsx("option", { value: "UTC+1", children: "Central European Time (UTC+1)" }), _jsx("option", { value: "UTC+5:30", children: "India Standard Time (UTC+5:30)" }), _jsx("option", { value: "UTC+8", children: "Singapore Time (UTC+8)" }), _jsx("option", { value: "UTC+9", children: "Japan Time (UTC+9)" })] }), errors.timezone && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.timezone })] })] }), _jsx("div", { className: "flex justify-end mt-8", children: _jsx(Button, { onClick: handleNext, className: "px-8 py-3", children: "Next Step" }) })] })), step === 2 && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8", children: [_jsxs("div", { className: "text-center mb-8", children: [_jsx(Star, { className: "w-12 h-12 text-blue-600 mx-auto mb-4" }), _jsx("h2", { className: "text-2xl font-bold text-gray-900", children: "Session Details" }), _jsx("p", { className: "text-gray-600", children: "Choose your preferred session type" })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-4", children: "Session Type *" }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: sessionTypes.map((session) => (_jsxs("div", { onClick: () => setFormData(prev => ({ ...prev, sessionType: session.id })), className: `p-6 border-2 rounded-lg cursor-pointer transition-all ${formData.sessionType === session.id
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-gray-200 hover:border-gray-300'}`, children: [_jsxs("div", { className: "flex justify-between items-start mb-2", children: [_jsx("h3", { className: "font-semibold text-gray-900", children: session.name }), _jsxs("span", { className: "text-blue-600 font-bold", children: ["$", session.price] })] }), _jsx("p", { className: "text-gray-600 text-sm mb-2", children: session.description }), _jsx("p", { className: "text-gray-500 text-xs", children: session.duration })] }, session.id))) }), errors.sessionType && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.sessionType })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Experience Level *" }), _jsxs("select", { name: "experienceLevel", value: formData.experienceLevel, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.experienceLevel ? 'border-red-300' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select your experience level" }), _jsx("option", { value: "beginner", children: "Beginner (0-6 months)" }), _jsx("option", { value: "intermediate", children: "Intermediate (6 months - 2 years)" }), _jsx("option", { value: "advanced", children: "Advanced (2+ years)" }), _jsx("option", { value: "expert", children: "Expert/Teacher" })] }), errors.experienceLevel && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.experienceLevel })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "What are your goals? *" }), _jsx("textarea", { name: "goals", value: formData.goals, onChange: handleInputChange, rows: 4, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.goals ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Tell us about your yoga goals, what you hope to achieve..." }), errors.goals && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.goals })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Health Conditions or Injuries" }), _jsx("textarea", { name: "healthConditions", value: formData.healthConditions, onChange: handleInputChange, rows: 3, className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: "Please mention any health conditions, injuries, or physical limitations we should be aware of..." })] }), _jsxs("div", { className: "flex justify-between mt-8", children: [_jsx(Button, { variant: "outline", onClick: () => setStep(1), children: "Previous" }), _jsx(Button, { onClick: handleNext, children: "Next Step" })] })] })), step === 3 && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8", children: [_jsxs("div", { className: "text-center mb-8", children: [_jsx(Calendar, { className: "w-12 h-12 text-blue-600 mx-auto mb-4" }), _jsx("h2", { className: "text-2xl font-bold text-gray-900", children: "Schedule & Package" }), _jsx("p", { className: "text-gray-600", children: "Choose your preferred schedule and package" })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-4", children: "Preferred Days *" }), _jsx("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3", children: weekDays.map((day) => (_jsx("button", { type: "button", onClick: () => handleArrayToggle('preferredDays', day), className: `p-3 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredDays.includes(day)
+                                                    : 'bg-gray-200 text-gray-600'}`, children: step > stepNumber ? '✓' : stepNumber }), stepNumber < 4 && (_jsx("div", { className: `w-16 h-1 mx-2 ${step > stepNumber ? 'bg-blue-600' : 'bg-gray-200'}` }))] }, stepNumber))) }), _jsxs("div", { className: "flex justify-center space-x-20 mt-2", children: [_jsx("span", { className: "text-xs text-gray-500", children: "Personal Info" }), _jsx("span", { className: "text-xs text-gray-500", children: "Package" }), _jsx("span", { className: "text-xs text-gray-500", children: "Schedule" }), _jsx("span", { className: "text-xs text-gray-500", children: "Confirmation" })] })] })] }) }), _jsxs("div", { className: "max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8", children: [errors.general && (_jsx("div", { className: "mb-6 bg-red-50 border border-red-200 rounded-lg p-4", children: _jsx("p", { className: "text-red-600 text-sm", children: errors.general }) })), errors.classPackages && (_jsx("div", { className: "mb-6 bg-red-50 border border-red-200 rounded-lg p-4", children: _jsx("p", { className: "text-red-600 text-sm", children: errors.classPackages }) })), _jsxs("form", { onSubmit: handleSubmit, children: [step === 1 && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8", children: [_jsxs("div", { className: "text-center mb-8", children: [_jsx(User, { className: "w-12 h-12 text-blue-600 mx-auto mb-4" }), _jsx("h2", { className: "text-2xl font-bold text-gray-900", children: "Personal Information" }), _jsx("p", { className: "text-gray-600", children: "Tell us about yourself" })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-6", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "First Name *" }), _jsx("input", { type: "text", name: "firstName", value: formData.firstName, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.firstName ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Enter your first name" }), errors.firstName && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.firstName })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Last Name *" }), _jsx("input", { type: "text", name: "lastName", value: formData.lastName, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.lastName ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Enter your last name" }), errors.lastName && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.lastName })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Email *" }), _jsx("input", { type: "email", name: "email", value: formData.email, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Enter your email" }), errors.email && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.email })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Phone Number *" }), _jsx("input", { type: "tel", name: "phone", value: formData.phone, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.phone ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Enter your phone number" }), errors.phone && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.phone })] }), _jsxs("div", { className: "md:col-span-2", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Timezone *" }), _jsxs("select", { name: "timezone", value: formData.timezone, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.timezone ? 'border-red-300' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select your timezone" }), _jsx("option", { value: "UTC-8", children: "Pacific Time (UTC-8)" }), _jsx("option", { value: "UTC-7", children: "Mountain Time (UTC-7)" }), _jsx("option", { value: "UTC-6", children: "Central Time (UTC-6)" }), _jsx("option", { value: "UTC-5", children: "Eastern Time (UTC-5)" }), _jsx("option", { value: "UTC+0", children: "GMT (UTC+0)" }), _jsx("option", { value: "UTC+1", children: "Central European Time (UTC+1)" }), _jsx("option", { value: "UTC+5:30", children: "India Standard Time (UTC+5:30)" }), _jsx("option", { value: "UTC+8", children: "Singapore Time (UTC+8)" }), _jsx("option", { value: "UTC+9", children: "Japan Time (UTC+9)" })] }), errors.timezone && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.timezone })] })] }), _jsx("div", { className: "flex justify-end mt-8", children: _jsx(Button, { onClick: handleNext, className: "px-8 py-3", children: "Next Step" }) })] })), step === 2 && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8", children: [_jsxs("div", { className: "text-center mb-8", children: [_jsx(Star, { className: "w-12 h-12 text-blue-600 mx-auto mb-4" }), _jsx("h2", { className: "text-2xl font-bold text-gray-900", children: "Choose Your Package" }), _jsx("p", { className: "text-gray-600", children: "Select the perfect package for your yoga journey" })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-4", children: "Available Packages *" }), loadingPackages ? (_jsxs("div", { className: "flex items-center justify-center py-8", children: [_jsx("div", { className: "animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" }), _jsx("span", { className: "ml-2 text-gray-600", children: "Loading packages..." })] })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "flex flex-col sm:flex-row gap-4 mb-4", children: [_jsxs("div", { className: "relative flex-1", children: [_jsx(Search, { className: "absolute left-3 top-3 h-4 w-4 text-gray-400" }), _jsx("input", { type: "text", placeholder: "Search packages...", value: packageSearch, onChange: (e) => setPackageSearch(e.target.value), className: "w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" })] }), _jsxs("div", { className: "flex bg-gray-100 rounded-lg p-1", children: [_jsx("button", { type: "button", onClick: () => setCourseTypeFilter('all'), className: `px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'all'
+                                                                            ? 'bg-white text-blue-600 shadow-sm'
+                                                                            : 'text-gray-600 hover:text-gray-900'}`, children: "All" }), _jsx("button", { type: "button", onClick: () => setCourseTypeFilter('regular'), className: `px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'regular'
+                                                                            ? 'bg-white text-blue-600 shadow-sm'
+                                                                            : 'text-gray-600 hover:text-gray-900'}`, children: "Regular" }), _jsx("button", { type: "button", onClick: () => setCourseTypeFilter('crash'), className: `px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'crash'
+                                                                            ? 'bg-white text-blue-600 shadow-sm'
+                                                                            : 'text-gray-600 hover:text-gray-900'}`, children: "Crash" })] })] }), _jsx("div", { className: "grid gap-4 max-h-96 overflow-y-auto", children: filteredPackages.length === 0 ? (_jsx("div", { className: "text-center py-8 text-gray-500", children: packageSearch ? 'No packages found matching your search.' : 'No packages available.' })) : (_jsx("div", { className: "grid grid-cols-1 gap-4", children: filteredPackages.map((pkg) => {
+                                                                const isExpanded = expandedCards.has(pkg.id);
+                                                                const isSelected = selectedPackage?.id === pkg.id;
+                                                                return (_jsx("div", { className: `border-2 rounded-lg transition-all duration-200 hover:shadow-md ${isSelected
+                                                                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                                                                        : 'border-gray-200 hover:border-blue-300'}`, children: _jsxs("div", { onClick: () => handlePackageSelect(pkg), className: "p-6 cursor-pointer", children: [_jsxs("div", { className: "flex justify-between items-start mb-3", children: [_jsx("h3", { className: "font-semibold text-gray-900 text-lg", children: pkg.name }), _jsxs("div", { className: "text-right", children: [_jsxs("span", { className: "text-blue-600 font-bold text-xl", children: ["\u20B9", pkg.price] }), pkg.course_type === 'regular' && calculatePricePerClass(pkg) && (_jsxs("div", { className: "text-sm text-gray-500", children: ["From \u20B9", calculatePricePerClass(pkg), "/class"] }))] })] }), pkg.description && (_jsxs("div", { className: "mb-3", children: [_jsx("p", { className: "text-gray-600 text-sm", children: isExpanded ? pkg.description : truncateDescription(pkg.description) }), pkg.description.length > 100 && (_jsx("button", { type: "button", onClick: (e) => {
+                                                                                            e.stopPropagation();
+                                                                                            toggleCardExpansion(pkg.id);
+                                                                                        }, className: "text-blue-600 text-sm font-medium mt-1 flex items-center hover:text-blue-700", children: isExpanded ? (_jsxs(_Fragment, { children: ["Show Less ", _jsx(ChevronUp, { className: "w-3 h-3 ml-1" })] })) : (_jsxs(_Fragment, { children: ["Show More ", _jsx(ChevronDown, { className: "w-3 h-3 ml-1" })] })) }))] })), _jsxs("div", { className: "flex flex-wrap gap-3 items-center text-sm text-gray-600", children: [_jsxs("span", { className: "flex items-center", children: [_jsx(Users, { className: "w-4 h-4 mr-1" }), pkg.class_count, " ", pkg.class_count === 1 ? 'Class' : 'Classes'] }), pkg.course_type === 'crash' && pkg.duration ? (_jsxs("span", { className: "flex items-center", children: [_jsx(Clock, { className: "w-4 h-4 mr-1" }), pkg.duration] })) : (_jsxs("span", { className: "flex items-center", children: [_jsx(Clock, { className: "w-4 h-4 mr-1" }), pkg.validity_days, " Days Validity"] })), _jsx("span", { className: `text-xs px-2 py-1 rounded ${pkg.course_type === 'crash'
+                                                                                            ? 'bg-orange-100 text-orange-800'
+                                                                                            : 'bg-green-100 text-green-800'}`, children: pkg.course_type === 'crash' ? 'Crash Course' : 'Regular Course' }), pkg.class_type_restrictions && pkg.class_type_restrictions.length > 0 && (_jsx("span", { className: "text-xs bg-gray-100 px-2 py-1 rounded", children: "Specific Classes Only" }))] }), isSelected && (_jsx("div", { className: "mt-3 flex justify-end", children: _jsx("div", { className: "w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center", children: _jsx("div", { className: "w-2 h-2 bg-white rounded-full" }) }) }))] }) }, pkg.id));
+                                                            }) })) })] })), errors.packageType && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.packageType })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Experience Level *" }), _jsxs("select", { name: "experienceLevel", value: formData.experienceLevel, onChange: handleInputChange, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.experienceLevel ? 'border-red-300' : 'border-gray-300'}`, children: [_jsx("option", { value: "", children: "Select your experience level" }), _jsx("option", { value: "beginner", children: "Beginner (0-6 months)" }), _jsx("option", { value: "intermediate", children: "Intermediate (6 months - 2 years)" }), _jsx("option", { value: "advanced", children: "Advanced (2+ years)" }), _jsx("option", { value: "expert", children: "Expert/Teacher" })] }), errors.experienceLevel && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.experienceLevel })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "What are your goals? *" }), _jsx("textarea", { name: "goals", value: formData.goals, onChange: handleInputChange, rows: 4, className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.goals ? 'border-red-300' : 'border-gray-300'}`, placeholder: "Tell us about your yoga goals, what you hope to achieve..." }), errors.goals && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.goals })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Health Conditions or Injuries" }), _jsx("textarea", { name: "healthConditions", value: formData.healthConditions, onChange: handleInputChange, rows: 3, className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: "Please mention any health conditions, injuries, or physical limitations we should be aware of..." })] }), _jsxs("div", { className: "flex justify-between mt-8", children: [_jsx(Button, { variant: "outline", onClick: () => setStep(1), children: "Previous" }), _jsx(Button, { onClick: handleNext, children: "Next Step" })] })] })), step === 3 && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8", children: [_jsxs("div", { className: "text-center mb-8", children: [_jsx(Calendar, { className: "w-12 h-12 text-blue-600 mx-auto mb-4" }), _jsx("h2", { className: "text-2xl font-bold text-gray-900", children: "Schedule Your Sessions" }), _jsx("p", { className: "text-gray-600", children: "Choose your preferred schedule" })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-4", children: "Preferred Days *" }), _jsx("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3", children: weekDays.map((day) => (_jsx("button", { type: "button", onClick: () => handleArrayToggle('preferredDays', day), className: `p-3 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredDays.includes(day)
                                                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                                                         : 'border-gray-200 text-gray-700 hover:border-gray-300'}`, children: day.slice(0, 3) }, day))) }), errors.preferredDays && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.preferredDays })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-4", children: "Preferred Times *" }), _jsx("div", { className: "grid grid-cols-3 md:grid-cols-5 gap-3 max-h-40 overflow-y-auto", children: timeSlots.map((time) => (_jsx("button", { type: "button", onClick: () => handleArrayToggle('preferredTimes', time), className: `p-2 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredTimes.includes(time)
                                                         ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                        : 'border-gray-200 text-gray-700 hover:border-gray-300'}`, children: time }, time))) }), errors.preferredTimes && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.preferredTimes })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-4", children: "Choose Package *" }), _jsx("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: packages.map((pkg) => (_jsxs("div", { onClick: () => setFormData(prev => ({ ...prev, packageType: pkg.id })), className: `relative p-6 border-2 rounded-lg cursor-pointer transition-all ${formData.packageType === pkg.id
-                                                        ? 'border-blue-500 bg-blue-50'
-                                                        : 'border-gray-200 hover:border-gray-300'}`, children: [pkg.popular && (_jsx("div", { className: "absolute -top-2 left-1/2 transform -translate-x-1/2", children: _jsx("span", { className: "bg-blue-600 text-white px-3 py-1 text-xs font-medium rounded-full", children: "Most Popular" }) })), _jsx("h3", { className: "font-semibold text-gray-900 mb-2", children: pkg.name }), _jsx("p", { className: "text-gray-600 text-sm mb-2", children: pkg.description }), _jsxs("div", { className: "flex justify-between items-center", children: [_jsxs("span", { className: "text-gray-500 text-sm", children: [pkg.sessions, " session", pkg.sessions !== 1 && pkg.sessions !== 'unlimited' ? 's' : ''] }), pkg.discount > 0 && (_jsxs("span", { className: "text-green-600 font-medium text-sm", children: [pkg.discount, "% off"] }))] })] }, pkg.id))) }), errors.packageType && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.packageType })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Preferred Start Date *" }), _jsx("input", { type: "date", name: "startDate", value: formData.startDate, onChange: handleInputChange, min: new Date().toISOString().split('T')[0], className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.startDate ? 'border-red-300' : 'border-gray-300'}` }), errors.startDate && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.startDate })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Special Requests" }), _jsx("textarea", { name: "specialRequests", value: formData.specialRequests, onChange: handleInputChange, rows: 3, className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: "Any special requests or preferences..." })] }), formData.sessionType && formData.packageType && (_jsxs("div", { className: "bg-gray-50 rounded-lg p-6 mb-8", children: [_jsx("h3", { className: "font-semibold text-gray-900 mb-4", children: "Price Summary" }), _jsxs("div", { className: "space-y-2 text-sm", children: [_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { children: "Session Type:" }), _jsx("span", { children: sessionTypes.find(s => s.id === formData.sessionType)?.name })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { children: "Package:" }), _jsx("span", { children: packages.find(p => p.id === formData.packageType)?.name })] }), _jsx("div", { className: "border-t pt-2 mt-2", children: _jsxs("div", { className: "flex justify-between font-semibold text-lg", children: [_jsx("span", { children: "Total:" }), _jsxs("span", { className: "text-blue-600", children: ["$", calculatePrice()] })] }) })] })] })), _jsxs("div", { className: "flex justify-between mt-8", children: [_jsx(Button, { variant: "outline", onClick: () => setStep(2), children: "Previous" }), _jsx(Button, { type: "submit", className: "bg-blue-600 hover:bg-blue-700", children: "Submit Booking" })] })] })), step === 4 && !loading && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8 text-center", children: [_jsx("div", { className: "w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6", children: _jsx("svg", { className: "w-8 h-8 text-green-600", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", children: _jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M5 13l4 4L19 7" }) }) }), _jsx("h2", { className: "text-3xl font-bold text-gray-900 mb-4", children: "Booking Submitted!" }), _jsx("p", { className: "text-gray-600 mb-8", children: "Thank you for booking with us! We'll review your request and send you a confirmation email within 24 hours with your session details and payment instructions." }), _jsxs("div", { className: "bg-blue-50 rounded-lg p-6 mb-8", children: [_jsx("h3", { className: "font-semibold text-gray-900 mb-4", children: "What's Next?" }), _jsxs("div", { className: "space-y-3 text-sm text-gray-700 text-left", children: [_jsxs("div", { className: "flex items-center", children: [_jsx(Mail, { className: "w-4 h-4 text-blue-600 mr-2" }), _jsx("span", { children: "You'll receive a confirmation email within 24 hours" })] }), _jsxs("div", { className: "flex items-center", children: [_jsx(Video, { className: "w-4 h-4 text-blue-600 mr-2" }), _jsx("span", { children: "We'll send you the video call link before your session" })] }), _jsxs("div", { className: "flex items-center", children: [_jsx(Phone, { className: "w-4 h-4 text-blue-600 mr-2" }), _jsx("span", { children: "Our team may call to discuss your specific needs" })] })] })] }), _jsx(Button, { onClick: () => window.location.href = '/', children: "Return to Home" })] })), loading && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8 text-center", children: [_jsx(LoadingSpinner, { size: "lg" }), _jsx("p", { className: "text-gray-600 mt-4", children: "Submitting your booking..." })] }))] })] })] }));
+                                                        : 'border-gray-200 text-gray-700 hover:border-gray-300'}`, children: time }, time))) }), errors.preferredTimes && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.preferredTimes })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Preferred Start Date *" }), _jsx("input", { type: "date", name: "startDate", value: formData.startDate, onChange: handleInputChange, min: new Date().toISOString().split('T')[0], className: `w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.startDate ? 'border-red-300' : 'border-gray-300'}` }), errors.startDate && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.startDate })] }), _jsxs("div", { className: "mb-8", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Special Requests" }), _jsx("textarea", { name: "specialRequests", value: formData.specialRequests, onChange: handleInputChange, rows: 3, className: "w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: "Any special requests or preferences..." })] }), selectedPackage && (_jsxs("div", { className: "bg-gray-50 rounded-lg p-6 mb-8", children: [_jsx("h3", { className: "font-semibold text-gray-900 mb-4", children: "Package Summary" }), _jsxs("div", { className: "space-y-2 text-sm", children: [_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { children: "Package:" }), _jsx("span", { children: selectedPackage.name })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { children: "Course Type:" }), _jsx("span", { className: "capitalize", children: selectedPackage.course_type })] }), _jsxs("div", { className: "flex justify-between", children: [_jsx("span", { children: "Classes:" }), _jsxs("span", { children: [selectedPackage.class_count, " ", selectedPackage.class_count === 1 ? 'Class' : 'Classes'] })] }), selectedPackage.course_type === 'crash' && selectedPackage.duration ? (_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { children: "Duration:" }), _jsx("span", { children: selectedPackage.duration })] })) : (_jsxs("div", { className: "flex justify-between", children: [_jsx("span", { children: "Validity:" }), _jsxs("span", { children: [selectedPackage.validity_days, " Days"] })] })), _jsx("div", { className: "border-t pt-2 mt-2", children: _jsxs("div", { className: "flex justify-between font-semibold text-lg", children: [_jsx("span", { children: "Total:" }), _jsxs("span", { className: "text-blue-600", children: ["\u20B9", selectedPackage.price] })] }) })] })] })), _jsxs("div", { className: "flex justify-between mt-8", children: [_jsx(Button, { variant: "outline", onClick: () => setStep(2), children: "Previous" }), _jsx(Button, { type: "submit", className: "bg-blue-600 hover:bg-blue-700", children: "Submit Booking" })] })] })), step === 4 && !loading && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8 text-center", children: [_jsx("div", { className: "w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6", children: _jsx("svg", { className: "w-8 h-8 text-green-600", fill: "none", stroke: "currentColor", viewBox: "0 0 24 24", children: _jsx("path", { strokeLinecap: "round", strokeLinejoin: "round", strokeWidth: 2, d: "M5 13l4 4L19 7" }) }) }), _jsx("h2", { className: "text-3xl font-bold text-gray-900 mb-4", children: "Booking Submitted!" }), _jsx("p", { className: "text-gray-600 mb-8", children: "Thank you for booking with us! We'll review your request and send you a confirmation email within 24 hours with your session details and payment instructions." }), _jsxs("div", { className: "bg-blue-50 rounded-lg p-6 mb-8", children: [_jsx("h3", { className: "font-semibold text-gray-900 mb-4", children: "What's Next?" }), _jsxs("div", { className: "space-y-3 text-sm text-gray-700 text-left", children: [_jsxs("div", { className: "flex items-center", children: [_jsx(Mail, { className: "w-4 h-4 text-blue-600 mr-2" }), _jsx("span", { children: "You'll receive a confirmation email within 24 hours" })] }), _jsxs("div", { className: "flex items-center", children: [_jsx(Video, { className: "w-4 h-4 text-blue-600 mr-2" }), _jsx("span", { children: "We'll send you the video call link before your session" })] }), _jsxs("div", { className: "flex items-center", children: [_jsx(Phone, { className: "w-4 h-4 text-blue-600 mr-2" }), _jsx("span", { children: "Our team may call to discuss your specific needs" })] })] })] }), _jsx(Button, { onClick: () => window.location.href = '/', children: "Return to Home" })] })), loading && (_jsxs("div", { className: "bg-white rounded-xl shadow-lg p-8 text-center", children: [_jsx(LoadingSpinner, { size: "lg" }), _jsx("p", { className: "text-gray-600 mt-4", children: "Submitting your booking..." })] }))] })] })] }));
 }
