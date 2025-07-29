@@ -126,15 +126,15 @@ export function Schedule() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-green-600 text-white">
+      <section className="py-20 bg-gradient-to-br from-cyan-50 via-sky-50 to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 text-gray-900 dark:text-white">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold mb-6">Ready to Join a Class?</h2>
-          <p className="text-xl mb-8 text-blue-100">
+          <h2 className="text-4xl font-bold mb-6 text-gray-900 dark:text-white">Ready to Join a Class?</h2>
+          <p className="text-xl mb-8 text-gray-600 dark:text-slate-300">
             Book your spot in one of our regular classes and start your journey to better health and wellness.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a href="#schedule">
-              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold rounded-lg">
+              <Button size="lg" className="bg-blue-600 text-white hover:bg-blue-700 dark:bg-slate-200 dark:text-slate-800 dark:hover:bg-slate-100 px-8 py-4 text-lg font-semibold rounded-lg">
                 View Schedule Above
               </Button>
             </a>

@@ -54,10 +54,10 @@ export function About() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* Hero Section */}
-      <section className="gradient-bg text-white py-20">
+      <section className="bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 text-gray-900 dark:text-white py-20">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h1 className="text-5xl font-bold mb-6">About Yogodyaan</h1>
-          <p className="text-xl text-emerald-100">
+          <h1 className="text-5xl font-bold mb-6 text-gray-900 dark:text-white">About Yogodyaan</h1>
+          <p className="text-xl text-gray-600 dark:text-slate-300">
             Dedicated to spreading the transformative power of yoga and creating a community
             where everyone can find their path to wellness and inner peace.
           </p>
@@ -97,22 +97,22 @@ export function About() {
       </section>
 
       {/* Values Section */}
-      <section className="py-20 bg-slate-800 dark:bg-slate-800">
+      <section className="py-20 bg-gradient-to-br from-purple-50 via-indigo-50 to-emerald-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Our Values</h2>
-            <p className="text-xl text-slate-300 max-w-3xl mx-auto">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Our Values</h2>
+            <p className="text-xl text-gray-600 dark:text-slate-300 max-w-3xl mx-auto">
               These core values guide everything we do and shape the experience we create for our students.
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {values.map((value, index) => (
-              <div key={index} className="bg-slate-700 border border-slate-600 rounded-xl p-6 text-center hover:bg-slate-600 transition-all duration-300">
+              <div key={index} className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6 text-center hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-300">
                 <div className="flex justify-center mb-4">
                   {value.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">{value.title}</h3>
-                <p className="text-slate-300">{value.description}</p>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">{value.title}</h3>
+                <p className="text-gray-600 dark:text-slate-300">{value.description}</p>
               </div>
             ))}
           </div>
@@ -149,24 +149,24 @@ export function About() {
       </section>
 
       {/* Stats Section */}
-      <section className="gradient-bg text-white py-20">
+      <section className="bg-gradient-to-br from-blue-50 via-emerald-50 to-teal-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 text-gray-900 dark:text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold mb-2">1000+</div>
-              <div className="text-emerald-100">Happy Students</div>
+              <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">1000+</div>
+              <div className="text-gray-600 dark:text-slate-300">Happy Students</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">25+</div>
-              <div className="text-emerald-100">Classes per Week</div>
+              <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">25+</div>
+              <div className="text-gray-600 dark:text-slate-300">Classes per Week</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">5</div>
-              <div className="text-emerald-100">Years of Experience</div>
+              <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">5</div>
+              <div className="text-gray-600 dark:text-slate-300">Years of Experience</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2">3+</div>
-              <div className="text-emerald-100">Certified Instructors</div>
+              <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">3+</div>
+              <div className="text-gray-600 dark:text-slate-300">Certified Instructors</div>
             </div>
           </div>
         </div>

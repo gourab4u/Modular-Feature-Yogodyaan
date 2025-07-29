@@ -138,7 +138,7 @@ export function Contact() {
   return (
     <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 via-white to-emerald-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 py-20">
+      <section className="bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 py-20">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">Begin Your Wellness Journey</h1>
           <p className="text-xl text-gray-600 dark:text-slate-300 leading-relaxed">

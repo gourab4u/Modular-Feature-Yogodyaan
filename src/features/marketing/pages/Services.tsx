@@ -210,23 +210,23 @@ export function Services() {
       </section>
 
       {/* Additional Services */}
-      <section className="py-20 bg-slate-800 dark:bg-slate-800">
+      <section className="py-20 bg-gradient-to-br from-rose-50 via-orange-50 to-amber-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-white mb-4">Why Choose Our Services</h2>
-            <p className="text-xl text-slate-300">
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">Why Choose Our Services</h2>
+            <p className="text-xl text-gray-600 dark:text-slate-300">
               Experience the difference with our comprehensive approach to online yoga
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {additionalServices.map((service, index) => (
-              <div key={index} className="bg-slate-700 border border-slate-600 rounded-xl p-6 shadow-lg hover:shadow-xl hover:bg-slate-600 transition-all duration-300 text-center">
+              <div key={index} className="bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-xl p-6 shadow-lg hover:shadow-xl hover:bg-gray-50 dark:hover:bg-slate-600 transition-all duration-300 text-center">
                 <div className="flex justify-center mb-4">
                   {service.icon}
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-3">{service.title}</h3>
-                <p className="text-slate-300">{service.description}</p>
+                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-3">{service.title}</h3>
+                <p className="text-gray-600 dark:text-slate-300">{service.description}</p>
               </div>
             ))}
           </div>
@@ -293,10 +293,10 @@ export function Services() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-green-600 text-white">
+      <section className="py-20 bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 text-gray-900 dark:text-white">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold mb-6">Ready to Start Your Journey?</h2>
-          <p className="text-xl mb-8 text-blue-100">
+          <h2 className="text-4xl font-bold mb-6 text-gray-900 dark:text-white">Ready to Start Your Journey?</h2>
+          <p className="text-xl mb-8 text-gray-600 dark:text-slate-300">
             Choose the service that best fits your needs and schedule your first session today.
             Transform your wellness routine with professional guidance.
           </p>

@@ -329,22 +329,22 @@ export function BookOneOnOne() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800">
             {/* Header */}
-            <div className="bg-white shadow-sm">
+            <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 shadow-sm">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold text-gray-900">Book Your Personal Yoga Session</h1>
-                        <p className="text-gray-600 mt-2">Personalized guidance tailored to your needs</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Book Your Personal Yoga Session</h1>
+                        <p className="text-gray-600 dark:text-white mt-2">Personalized guidance tailored to your needs</p>
 
                         {/* Login prompt for unauthenticated users */}
                         {!user && (
-                            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                                <p className="text-blue-800 text-sm">
+                            <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                                <p className="text-blue-800 dark:text-blue-200 text-sm">
                                     <span className="font-medium">Note:</span> You'll need to log in to complete your booking.
                                     <button
                                         onClick={() => window.location.href = '/login'}
-                                        className="ml-2 text-blue-600 underline hover:text-blue-800"
+                                        className="ml-2 text-blue-600 dark:text-blue-400 underline hover:text-blue-800 dark:text-blue-200"
                                     >
                                         Log in now
                                     </button>
@@ -360,22 +360,22 @@ export function BookOneOnOne() {
                                 <div key={stepNumber} className="flex items-center">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber
                                         ? 'bg-blue-600 text-white'
-                                        : 'bg-gray-200 text-gray-600'
+                                        : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-white'
                                         }`}>
                                         {step > stepNumber ? '✓' : stepNumber}
                                     </div>
                                     {stepNumber < 4 && (
-                                        <div className={`w-16 h-1 mx-2 ${step > stepNumber ? 'bg-blue-600' : 'bg-gray-200'
+                                        <div className={`w-16 h-1 mx-2 ${step > stepNumber ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-600'
                                             }`} />
                                     )}
                                 </div>
                             ))}
                         </div>
                         <div className="flex justify-center space-x-20 mt-2">
-                            <span className="text-xs text-gray-500">Personal Info</span>
-                            <span className="text-xs text-gray-500">Package</span>
-                            <span className="text-xs text-gray-500">Schedule</span>
-                            <span className="text-xs text-gray-500">Confirmation</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Personal Info</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Package</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Schedule</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Confirmation</span>
                         </div>
                     </div>
                 </div>
@@ -397,16 +397,16 @@ export function BookOneOnOne() {
                 <form onSubmit={handleSubmit}>
                     {/* Step 1: Personal Information */}
                     {step === 1 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <User className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Personal Information</h2>
-                                <p className="text-gray-600">Tell us about yourself</p>
+                                <User className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Personal Information</h2>
+                                <p className="text-gray-600 dark:text-white">Tell us about yourself</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         First Name *
                                     </label>
                                     <input
@@ -414,7 +414,7 @@ export function BookOneOnOne() {
                                         name="firstName"
                                         value={formData.firstName}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.firstName ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.firstName ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Enter your first name"
                                     />
@@ -422,7 +422,7 @@ export function BookOneOnOne() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Last Name *
                                     </label>
                                     <input
@@ -430,7 +430,7 @@ export function BookOneOnOne() {
                                         name="lastName"
                                         value={formData.lastName}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.lastName ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.lastName ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Enter your last name"
                                     />
@@ -438,7 +438,7 @@ export function BookOneOnOne() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Email *
                                     </label>
                                     <input
@@ -446,7 +446,7 @@ export function BookOneOnOne() {
                                         name="email"
                                         value={formData.email}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.email ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Enter your email"
                                     />
@@ -454,7 +454,7 @@ export function BookOneOnOne() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Phone Number *
                                     </label>
                                     <input
@@ -462,7 +462,7 @@ export function BookOneOnOne() {
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.phone ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.phone ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Enter your phone number"
                                     />
@@ -470,14 +470,14 @@ export function BookOneOnOne() {
                                 </div>
 
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Timezone *
                                     </label>
                                     <select
                                         name="timezone"
                                         value={formData.timezone}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.timezone ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.timezone ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select your timezone</option>
@@ -505,23 +505,23 @@ export function BookOneOnOne() {
 
                     {/* Step 2: Package Selection */}
                     {step === 2 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <Star className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Choose Your Package</h2>
-                                <p className="text-gray-600">Select the perfect package for your yoga journey</p>
+                                <Star className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Choose Your Package</h2>
+                                <p className="text-gray-600 dark:text-white">Select the perfect package for your yoga journey</p>
                             </div>
 
                             {/* Package Selection */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
                                     Available Packages *
                                 </label>
 
                                 {loadingPackages ? (
                                     <div className="flex items-center justify-center py-8">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                                        <span className="ml-2 text-gray-600">Loading packages...</span>
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 dark:border-blue-400"></div>
+                                        <span className="ml-2 text-gray-600 dark:text-white">Loading packages...</span>
                                     </div>
                                 ) : (
                                     <>
@@ -535,18 +535,18 @@ export function BookOneOnOne() {
                                                     placeholder="Search packages..."
                                                     value={packageSearch}
                                                     onChange={(e) => setPackageSearch(e.target.value)}
-                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                                 />
                                             </div>
 
                                             {/* Course Type Filter Toggle */}
-                                            <div className="flex bg-gray-100 rounded-lg p-1">
+                                            <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
                                                 <button
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('all')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'all'
-                                                            ? 'bg-white text-blue-600 shadow-sm'
-                                                            : 'text-gray-600 hover:text-gray-900'
+                                                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                            : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     All
@@ -555,8 +555,8 @@ export function BookOneOnOne() {
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('regular')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'regular'
-                                                            ? 'bg-white text-blue-600 shadow-sm'
-                                                            : 'text-gray-600 hover:text-gray-900'
+                                                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                            : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     Regular
@@ -565,8 +565,8 @@ export function BookOneOnOne() {
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('crash')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'crash'
-                                                            ? 'bg-white text-blue-600 shadow-sm'
-                                                            : 'text-gray-600 hover:text-gray-900'
+                                                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                            : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     Crash
@@ -577,7 +577,7 @@ export function BookOneOnOne() {
                                         {/* Package Cards */}
                                         <div className="grid gap-4 max-h-96 overflow-y-auto">
                                             {filteredPackages.length === 0 ? (
-                                                <div className="text-center py-8 text-gray-500">
+                                                <div className="text-center py-8 text-gray-500 dark:text-gray-300">
                                                     {packageSearch ? 'No packages found matching your search.' : 'No packages available.'}
                                                 </div>
                                             ) : (
@@ -590,7 +590,7 @@ export function BookOneOnOne() {
                                                             <div
                                                                 key={pkg.id}
                                                                 className={`border-2 rounded-lg transition-all duration-200 hover:shadow-md ${isSelected
-                                                                        ? 'border-blue-500 bg-blue-50 shadow-md'
+                                                                        ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md'
                                                                         : 'border-gray-200 hover:border-blue-300'
                                                                     }`}
                                                             >
@@ -599,11 +599,11 @@ export function BookOneOnOne() {
                                                                     className="p-6 cursor-pointer"
                                                                 >
                                                                     <div className="flex justify-between items-start mb-3">
-                                                                        <h3 className="font-semibold text-gray-900 text-lg">{pkg.name}</h3>
+                                                                        <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{pkg.name}</h3>
                                                                         <div className="text-right">
-                                                                            <span className="text-blue-600 font-bold text-xl">₹{pkg.price}</span>
+                                                                            <span className="text-blue-600 dark:text-blue-400 font-bold text-xl">₹{pkg.price}</span>
                                                                             {pkg.course_type === 'regular' && calculatePricePerClass(pkg) && (
-                                                                                <div className="text-sm text-gray-500">
+                                                                                <div className="text-sm text-gray-500 dark:text-gray-300">
                                                                                     From ₹{calculatePricePerClass(pkg)}/class
                                                                                 </div>
                                                                             )}
@@ -612,7 +612,7 @@ export function BookOneOnOne() {
 
                                                                     {pkg.description && (
                                                                         <div className="mb-3">
-                                                                            <p className="text-gray-600 text-sm">
+                                                                            <p className="text-gray-600 dark:text-white text-sm">
                                                                                 {isExpanded ? pkg.description : truncateDescription(pkg.description)}
                                                                             </p>
                                                                             {pkg.description.length > 100 && (
@@ -622,7 +622,7 @@ export function BookOneOnOne() {
                                                                                         e.stopPropagation()
                                                                                         toggleCardExpansion(pkg.id)
                                                                                     }}
-                                                                                    className="text-blue-600 text-sm font-medium mt-1 flex items-center hover:text-blue-700"
+                                                                                    className="text-blue-600 dark:text-blue-400 text-sm font-medium mt-1 flex items-center hover:text-blue-700 dark:text-blue-300"
                                                                                 >
                                                                                     {isExpanded ? (
                                                                                         <>Show Less <ChevronUp className="w-3 h-3 ml-1" /></>
@@ -634,7 +634,7 @@ export function BookOneOnOne() {
                                                                         </div>
                                                                     )}
 
-                                                                    <div className="flex flex-wrap gap-3 items-center text-sm text-gray-600">
+                                                                    <div className="flex flex-wrap gap-3 items-center text-sm text-gray-600 dark:text-white">
                                                                         <span className="flex items-center">
                                                                             <Users className="w-4 h-4 mr-1" />
                                                                             {pkg.class_count} {pkg.class_count === 1 ? 'Class' : 'Classes'}
@@ -660,7 +660,7 @@ export function BookOneOnOne() {
                                                                         </span>
 
                                                                         {pkg.class_type_restrictions && pkg.class_type_restrictions.length > 0 && (
-                                                                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                                                                            <span className="text-xs bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">
                                                                                 Specific Classes Only
                                                                             </span>
                                                                         )}
@@ -668,8 +668,8 @@ export function BookOneOnOne() {
 
                                                                     {isSelected && (
                                                                         <div className="mt-3 flex justify-end">
-                                                                            <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                                                                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                                            <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/200 rounded-full flex items-center justify-center">
+                                                                                <div className="w-2 h-2 bg-white dark:bg-slate-700 rounded-full"></div>
                                                                             </div>
                                                                         </div>
                                                                     )}
@@ -688,14 +688,14 @@ export function BookOneOnOne() {
 
                             {/* Experience Level */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Experience Level *
                                 </label>
                                 <select
                                     name="experienceLevel"
                                     value={formData.experienceLevel}
                                     onChange={handleInputChange}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.experienceLevel ? 'border-red-300' : 'border-gray-300'
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.experienceLevel ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                         }`}
                                 >
                                     <option value="">Select your experience level</option>
@@ -709,7 +709,7 @@ export function BookOneOnOne() {
 
                             {/* Goals */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     What are your goals? *
                                 </label>
                                 <textarea
@@ -717,7 +717,7 @@ export function BookOneOnOne() {
                                     value={formData.goals}
                                     onChange={handleInputChange}
                                     rows={4}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.goals ? 'border-red-300' : 'border-gray-300'
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.goals ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                         }`}
                                     placeholder="Tell us about your yoga goals, what you hope to achieve..."
                                 />
@@ -726,7 +726,7 @@ export function BookOneOnOne() {
 
                             {/* Health Conditions */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Health Conditions or Injuries
                                 </label>
                                 <textarea
@@ -734,7 +734,7 @@ export function BookOneOnOne() {
                                     value={formData.healthConditions}
                                     onChange={handleInputChange}
                                     rows={3}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                     placeholder="Please mention any health conditions, injuries, or physical limitations we should be aware of..."
                                 />
                             </div>
@@ -752,16 +752,16 @@ export function BookOneOnOne() {
 
                     {/* Step 3: Schedule */}
                     {step === 3 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <Calendar className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Schedule Your Sessions</h2>
-                                <p className="text-gray-600">Choose your preferred schedule</p>
+                                <Calendar className="w-12 h-12 text-blue-600 dark:text-blue-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Schedule Your Sessions</h2>
+                                <p className="text-gray-600 dark:text-white">Choose your preferred schedule</p>
                             </div>
 
                             {/* Preferred Days */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
                                     Preferred Days *
                                 </label>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -771,8 +771,8 @@ export function BookOneOnOne() {
                                             type="button"
                                             onClick={() => handleArrayToggle('preferredDays', day)}
                                             className={`p-3 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredDays.includes(day)
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                                ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                                                : 'border-gray-200 text-gray-700 dark:text-white hover:border-gray-300 dark:border-slate-600'
                                                 }`}
                                         >
                                             {day.slice(0, 3)}
@@ -784,7 +784,7 @@ export function BookOneOnOne() {
 
                             {/* Preferred Times */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
                                     Preferred Times *
                                 </label>
                                 <div className="grid grid-cols-3 md:grid-cols-5 gap-3 max-h-40 overflow-y-auto">
@@ -794,8 +794,8 @@ export function BookOneOnOne() {
                                             type="button"
                                             onClick={() => handleArrayToggle('preferredTimes', time)}
                                             className={`p-2 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredTimes.includes(time)
-                                                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                                                : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                                ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                                                : 'border-gray-200 text-gray-700 dark:text-white hover:border-gray-300 dark:border-slate-600'
                                                 }`}
                                         >
                                             {time}
@@ -807,7 +807,7 @@ export function BookOneOnOne() {
 
                             {/* Start Date */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Preferred Start Date *
                                 </label>
                                 <input
@@ -816,7 +816,7 @@ export function BookOneOnOne() {
                                     value={formData.startDate}
                                     onChange={handleInputChange}
                                     min={new Date().toISOString().split('T')[0]}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.startDate ? 'border-red-300' : 'border-gray-300'
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.startDate ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                         }`}
                                 />
                                 {errors.startDate && <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>}
@@ -824,7 +824,7 @@ export function BookOneOnOne() {
 
                             {/* Special Requests */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Special Requests
                                 </label>
                                 <textarea
@@ -832,15 +832,15 @@ export function BookOneOnOne() {
                                     value={formData.specialRequests}
                                     onChange={handleInputChange}
                                     rows={3}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                     placeholder="Any special requests or preferences..."
                                 />
                             </div>
 
                             {/* Package Summary */}
                             {selectedPackage && (
-                                <div className="bg-gray-50 rounded-lg p-6 mb-8">
-                                    <h3 className="font-semibold text-gray-900 mb-4">Package Summary</h3>
+                                <div className="bg-gray-50 dark:bg-slate-800 rounded-lg p-6 mb-8">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Package Summary</h3>
                                     <div className="space-y-2 text-sm">
                                         <div className="flex justify-between">
                                             <span>Package:</span>
@@ -868,7 +868,7 @@ export function BookOneOnOne() {
                                         <div className="border-t pt-2 mt-2">
                                             <div className="flex justify-between font-semibold text-lg">
                                                 <span>Total:</span>
-                                                <span className="text-blue-600">₹{selectedPackage.price}</span>
+                                                <span className="text-blue-600 dark:text-blue-400">₹{selectedPackage.price}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -888,31 +888,31 @@ export function BookOneOnOne() {
 
                     {/* Step 4: Confirmation */}
                     {step === 4 && !loading && (
-                        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8 text-center">
                             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
 
-                            <h2 className="text-3xl font-bold text-gray-900 mb-4">Booking Submitted!</h2>
-                            <p className="text-gray-600 mb-8">
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Booking Submitted!</h2>
+                            <p className="text-gray-600 dark:text-white mb-8">
                                 Thank you for booking with us! We'll review your request and send you a confirmation email within 24 hours with your session details and payment instructions.
                             </p>
 
-                            <div className="bg-blue-50 rounded-lg p-6 mb-8">
-                                <h3 className="font-semibold text-gray-900 mb-4">What's Next?</h3>
-                                <div className="space-y-3 text-sm text-gray-700 text-left">
+                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 mb-8">
+                                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">What's Next?</h3>
+                                <div className="space-y-3 text-sm text-gray-700 dark:text-white text-left">
                                     <div className="flex items-center">
-                                        <Mail className="w-4 h-4 text-blue-600 mr-2" />
+                                        <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
                                         <span>You'll receive a confirmation email within 24 hours</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Video className="w-4 h-4 text-blue-600 mr-2" />
+                                        <Video className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
                                         <span>We'll send you the video call link before your session</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Phone className="w-4 h-4 text-blue-600 mr-2" />
+                                        <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400 mr-2" />
                                         <span>Our team may call to discuss your specific needs</span>
                                     </div>
                                 </div>
@@ -925,9 +925,9 @@ export function BookOneOnOne() {
                     )}
 
                     {loading && (
-                        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8 text-center">
                             <LoadingSpinner size="lg" />
-                            <p className="text-gray-600 mt-4">Submitting your booking...</p>
+                            <p className="text-gray-600 dark:text-white mt-4">Submitting your booking...</p>
                         </div>
                     )}
                 </form>

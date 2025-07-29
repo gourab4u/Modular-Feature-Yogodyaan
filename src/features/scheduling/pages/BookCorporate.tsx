@@ -337,22 +337,22 @@ export function BookCorporate() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800">
             {/* Header */}
-            <div className="bg-white shadow-sm">
+            <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 shadow-sm">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold text-gray-900">Corporate Wellness Program</h1>
-                        <p className="text-gray-600 mt-2">Transform your workplace with customized yoga and wellness solutions</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white dark:text-white">Corporate Wellness Program</h1>
+                        <p className="text-gray-600 dark:text-white dark:text-slate-300 mt-2">Transform your workplace with customized yoga and wellness solutions</p>
 
                         {/* Login prompt for unauthenticated users */}
                         {!user && (
-                            <div className="mt-4 bg-purple-50 border border-purple-200 rounded-lg p-4">
-                                <p className="text-purple-800 text-sm">
+                            <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4">
+                                <p className="text-purple-800 dark:text-purple-200 text-sm">
                                     <span className="font-medium">Note:</span> You'll need to log in to complete your booking.
                                     <button
                                         onClick={() => window.location.href = '/login'}
-                                        className="ml-2 text-purple-600 underline hover:text-purple-800"
+                                        className="ml-2 text-purple-600 dark:text-purple-400 dark:text-purple-400 underline hover:text-purple-800 dark:hover:text-purple-200"
                                     >
                                         Log in now
                                     </button>
@@ -368,22 +368,22 @@ export function BookCorporate() {
                                 <div key={stepNumber} className="flex items-center">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber
                                         ? 'bg-purple-600 text-white'
-                                        : 'bg-gray-200 text-gray-600'
+                                        : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-white'
                                         }`}>
                                         {step > stepNumber ? '✓' : stepNumber}
                                     </div>
                                     {stepNumber < 4 && (
-                                        <div className={`w-16 h-1 mx-2 ${step > stepNumber ? 'bg-purple-600' : 'bg-gray-200'
+                                        <div className={`w-16 h-1 mx-2 ${step > stepNumber ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-600'
                                             }`} />
                                     )}
                                 </div>
                             ))}
                         </div>
                         <div className="flex justify-center space-x-20 mt-2">
-                            <span className="text-xs text-gray-500">Company Info</span>
-                            <span className="text-xs text-gray-500">Program Details</span>
-                            <span className="text-xs text-gray-500">Schedule</span>
-                            <span className="text-xs text-gray-500">Confirmation</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Company Info</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Program Details</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Schedule</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Confirmation</span>
                         </div>
                     </div>
                 </div>
@@ -405,16 +405,16 @@ export function BookCorporate() {
                 <form onSubmit={handleSubmit}>
                     {/* Step 1: Company Information */}
                     {step === 1 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <Building className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Company Information</h2>
-                                <p className="text-gray-600">Tell us about your organization</p>
+                                <Building className="w-12 h-12 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Company Information</h2>
+                                <p className="text-gray-600 dark:text-white">Tell us about your organization</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Company Name *
                                     </label>
                                     <input
@@ -422,7 +422,7 @@ export function BookCorporate() {
                                         name="companyName"
                                         value={formData.companyName}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.companyName ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 bg-white dark:bg-slate-700 text-gray-900 dark:text-white ${errors.companyName ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Enter your company name"
                                     />
@@ -430,14 +430,14 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Industry *
                                     </label>
                                     <select
                                         name="industry"
                                         value={formData.industry}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.industry ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 bg-white dark:bg-slate-700 text-gray-900 dark:text-white ${errors.industry ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select industry</option>
@@ -449,14 +449,14 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Company Size *
                                     </label>
                                     <select
                                         name="companySize"
                                         value={formData.companySize}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.companySize ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.companySize ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select company size</option>
@@ -468,7 +468,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Contact Person *
                                     </label>
                                     <input
@@ -476,7 +476,7 @@ export function BookCorporate() {
                                         name="contactName"
                                         value={formData.contactName}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.contactName ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.contactName ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Full name"
                                     />
@@ -484,7 +484,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Position/Title *
                                     </label>
                                     <input
@@ -492,7 +492,7 @@ export function BookCorporate() {
                                         name="position"
                                         value={formData.position}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.position ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.position ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Your position/title"
                                     />
@@ -500,7 +500,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Email *
                                     </label>
                                     <input
@@ -508,7 +508,7 @@ export function BookCorporate() {
                                         name="email"
                                         value={formData.email}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.email ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.email ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Email address"
                                     />
@@ -516,7 +516,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Phone Number *
                                     </label>
                                     <input
@@ -524,7 +524,7 @@ export function BookCorporate() {
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.phone ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.phone ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Phone number"
                                     />
@@ -542,23 +542,23 @@ export function BookCorporate() {
 
                     {/* Step 2: Program Details */}
                     {step === 2 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <Star className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Program Details</h2>
-                                <p className="text-gray-600">Choose the perfect program for your team</p>
+                                <Star className="w-12 h-12 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Program Details</h2>
+                                <p className="text-gray-600 dark:text-white">Choose the perfect program for your team</p>
                             </div>
 
                             {/* Package Selection */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
                                     Available Corporate Programs *
                                 </label>
 
                                 {loadingPackages ? (
                                     <div className="flex items-center justify-center py-8">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-                                        <span className="ml-2 text-gray-600">Loading programs...</span>
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 dark:border-purple-400"></div>
+                                        <span className="ml-2 text-gray-600 dark:text-white">Loading programs...</span>
                                     </div>
                                 ) : (
                                     <>
@@ -572,18 +572,18 @@ export function BookCorporate() {
                                                     placeholder="Search programs..."
                                                     value={packageSearch}
                                                     onChange={(e) => setPackageSearch(e.target.value)}
-                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                                 />
                                             </div>
 
                                             {/* Course Type Filter Toggle */}
-                                            <div className="flex bg-gray-100 rounded-lg p-1">
+                                            <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
                                                 <button
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('all')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'all'
-                                                        ? 'bg-white text-purple-600 shadow-sm'
-                                                        : 'text-gray-600 hover:text-gray-900'
+                                                        ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     All
@@ -592,8 +592,8 @@ export function BookCorporate() {
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('regular')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'regular'
-                                                        ? 'bg-white text-purple-600 shadow-sm'
-                                                        : 'text-gray-600 hover:text-gray-900'
+                                                        ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     Regular
@@ -602,8 +602,8 @@ export function BookCorporate() {
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('crash')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'crash'
-                                                        ? 'bg-white text-purple-600 shadow-sm'
-                                                        : 'text-gray-600 hover:text-gray-900'
+                                                        ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     Crash
@@ -614,7 +614,7 @@ export function BookCorporate() {
                                         {/* Package Cards */}
                                         <div className="grid gap-4 max-h-96 overflow-y-auto">
                                             {filteredPackages.length === 0 ? (
-                                                <div className="text-center py-8 text-gray-500">
+                                                <div className="text-center py-8 text-gray-500 dark:text-gray-300">
                                                     {packageSearch ? 'No programs found matching your search.' : 'No programs available.'}
                                                 </div>
                                             ) : (
@@ -627,7 +627,7 @@ export function BookCorporate() {
                                                             <div
                                                                 key={pkg.id}
                                                                 className={`border-2 rounded-lg transition-all duration-200 hover:shadow-md ${isSelected
-                                                                    ? 'border-purple-500 bg-purple-50 shadow-md'
+                                                                    ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 shadow-md'
                                                                     : 'border-gray-200 hover:border-purple-300'
                                                                     }`}
                                                             >
@@ -636,13 +636,13 @@ export function BookCorporate() {
                                                                     className="p-6 cursor-pointer"
                                                                 >
                                                                     <div className="flex justify-between items-start mb-3">
-                                                                        <h3 className="font-semibold text-gray-900 text-lg">{pkg.name}</h3>
-                                                                        <span className="text-purple-600 font-bold text-xl">₹{pkg.price}</span>
+                                                                        <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{pkg.name}</h3>
+                                                                        <span className="text-purple-600 dark:text-purple-400 font-bold text-xl">₹{pkg.price}</span>
                                                                     </div>
 
                                                                     {pkg.description && (
                                                                         <div className="mb-3">
-                                                                            <p className="text-gray-600 text-sm">
+                                                                            <p className="text-gray-600 dark:text-white text-sm">
                                                                                 {isExpanded ? pkg.description : truncateDescription(pkg.description)}
                                                                             </p>
                                                                             {pkg.description.length > 100 && (
@@ -652,7 +652,7 @@ export function BookCorporate() {
                                                                                         e.stopPropagation()
                                                                                         toggleCardExpansion(pkg.id)
                                                                                     }}
-                                                                                    className="text-purple-600 text-sm font-medium mt-1 flex items-center hover:text-purple-700"
+                                                                                    className="text-purple-600 dark:text-purple-400 text-sm font-medium mt-1 flex items-center hover:text-purple-700 dark:text-purple-300"
                                                                                 >
                                                                                     {isExpanded ? (
                                                                                         <>Show Less <ChevronUp className="w-3 h-3 ml-1" /></>
@@ -664,7 +664,7 @@ export function BookCorporate() {
                                                                         </div>
                                                                     )}
 
-                                                                    <div className="flex flex-wrap gap-3 items-center text-sm text-gray-600">
+                                                                    <div className="flex flex-wrap gap-3 items-center text-sm text-gray-600 dark:text-white">
                                                                         <span className="flex items-center">
                                                                             <Users className="w-4 h-4 mr-1" />
                                                                             {pkg.class_count} {pkg.class_count === 1 ? 'Session' : 'Sessions'}
@@ -690,7 +690,7 @@ export function BookCorporate() {
                                                                         </span>
 
                                                                         {pkg.class_type_restrictions && pkg.class_type_restrictions.length > 0 && (
-                                                                            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                                                                            <span className="text-xs bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">
                                                                                 Specific Classes Only
                                                                             </span>
                                                                         )}
@@ -698,8 +698,8 @@ export function BookCorporate() {
 
                                                                     {isSelected && (
                                                                         <div className="mt-3 flex justify-end">
-                                                                            <div className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center">
-                                                                                <div className="w-2 h-2 bg-white rounded-full"></div>
+                                                                            <div className="w-5 h-5 bg-purple-50 dark:bg-purple-900/200 rounded-full flex items-center justify-center">
+                                                                                <div className="w-2 h-2 bg-white dark:bg-slate-700 rounded-full"></div>
                                                                             </div>
                                                                         </div>
                                                                     )}
@@ -719,7 +719,7 @@ export function BookCorporate() {
                             {/* Participant Count and Frequency */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Expected Number of Participants *
                                     </label>
                                     <input
@@ -729,7 +729,7 @@ export function BookCorporate() {
                                         onChange={handleInputChange}
                                         min="1"
                                         max="500"
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.participantCount ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.participantCount ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Number of participants"
                                     />
@@ -737,14 +737,14 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Session Frequency *
                                     </label>
                                     <select
                                         name="frequency"
                                         value={formData.frequency}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.frequency ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.frequency ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select frequency</option>
@@ -758,7 +758,7 @@ export function BookCorporate() {
 
                             {/* Objectives */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Program Objectives *
                                 </label>
                                 <textarea
@@ -766,7 +766,7 @@ export function BookCorporate() {
                                     value={formData.objectives}
                                     onChange={handleInputChange}
                                     rows={4}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.objectives ? 'border-red-300' : 'border-gray-300'
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.objectives ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                         }`}
                                     placeholder="What do you hope to achieve with this program? (e.g., reduce stress, improve team bonding, enhance productivity...)"
                                 />
@@ -775,7 +775,7 @@ export function BookCorporate() {
 
                             {/* Current Wellness Program */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Does your company currently have a wellness program?
                                 </label>
                                 <div className="flex space-x-4">
@@ -806,7 +806,7 @@ export function BookCorporate() {
 
                             {/* Previous Experience */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Previous Yoga/Wellness Experience
                                 </label>
                                 <textarea
@@ -814,7 +814,7 @@ export function BookCorporate() {
                                     value={formData.previousExperience}
                                     onChange={handleInputChange}
                                     rows={3}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                     placeholder="Tell us about any previous yoga or wellness programs your team has participated in..."
                                 />
                             </div>
@@ -832,16 +832,16 @@ export function BookCorporate() {
 
                     {/* Step 3: Schedule & Logistics */}
                     {step === 3 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <Calendar className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Schedule & Logistics</h2>
-                                <p className="text-gray-600">Set up your program schedule</p>
+                                <Calendar className="w-12 h-12 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Schedule & Logistics</h2>
+                                <p className="text-gray-600 dark:text-white">Set up your program schedule</p>
                             </div>
 
                             {/* Preferred Days */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
                                     Preferred Days *
                                 </label>
                                 <div className="grid grid-cols-5 gap-3">
@@ -851,8 +851,8 @@ export function BookCorporate() {
                                             type="button"
                                             onClick={() => handleArrayToggle('preferredDays', day)}
                                             className={`p-3 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredDays.includes(day)
-                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                                : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                                ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                                                : 'border-gray-200 text-gray-700 dark:text-white hover:border-gray-300 dark:border-slate-600'
                                                 }`}
                                         >
                                             {day.slice(0, 3)}
@@ -864,7 +864,7 @@ export function BookCorporate() {
 
                             {/* Preferred Times */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
                                     Preferred Times *
                                 </label>
                                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
@@ -874,8 +874,8 @@ export function BookCorporate() {
                                             type="button"
                                             onClick={() => handleArrayToggle('preferredTimes', time)}
                                             className={`p-3 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredTimes.includes(time)
-                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                                : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                                ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                                                : 'border-gray-200 text-gray-700 dark:text-white hover:border-gray-300 dark:border-slate-600'
                                                 }`}
                                         >
                                             {time}
@@ -888,14 +888,14 @@ export function BookCorporate() {
                             {/* Timezone and Start Date */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Timezone *
                                     </label>
                                     <select
                                         name="timezone"
                                         value={formData.timezone}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.timezone ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.timezone ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select timezone</option>
@@ -913,7 +913,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Preferred Start Date *
                                     </label>
                                     <input
@@ -922,7 +922,7 @@ export function BookCorporate() {
                                         value={formData.startDate}
                                         onChange={handleInputChange}
                                         min={new Date().toISOString().split('T')[0]}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.startDate ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.startDate ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     />
                                     {errors.startDate && <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>}
@@ -931,14 +931,14 @@ export function BookCorporate() {
 
                             {/* Location */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Session Location *
                                 </label>
                                 <select
                                     name="location"
                                     value={formData.location}
                                     onChange={handleInputChange}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.location ? 'border-red-300' : 'border-gray-300'
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.location ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                         }`}
                                 >
                                     <option value="">Select location preference</option>
@@ -952,14 +952,14 @@ export function BookCorporate() {
 
                             {/* Budget Range */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Budget Range (Monthly)
                                 </label>
                                 <select
                                     name="budget"
                                     value={formData.budget}
                                     onChange={handleInputChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                 >
                                     <option value="">Select budget range</option>
                                     <option value="under-500">Under ₹500</option>
@@ -974,7 +974,7 @@ export function BookCorporate() {
 
                             {/* Special Requests */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Special Requirements or Requests
                                 </label>
                                 <textarea
@@ -982,15 +982,15 @@ export function BookCorporate() {
                                     value={formData.specialRequests}
                                     onChange={handleInputChange}
                                     rows={4}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                     placeholder="Any specific requirements, equipment needs, accessibility considerations, or special requests..."
                                 />
                             </div>
 
                             {/* Price Estimate */}
                             {selectedPackage && formData.participantCount && formData.frequency && (
-                                <div className="bg-purple-50 rounded-lg p-6 mb-8">
-                                    <h3 className="font-semibold text-gray-900 mb-4">Estimated Investment</h3>
+                                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6 mb-8">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Estimated Investment</h3>
                                     <div className="space-y-2 text-sm">
                                         <div className="flex justify-between">
                                             <span>Program:</span>
@@ -1026,9 +1026,9 @@ export function BookCorporate() {
                                         <div className="border-t pt-2 mt-2">
                                             <div className="flex justify-between font-semibold text-lg">
                                                 <span>Estimated Monthly Cost:</span>
-                                                <span className="text-purple-600">₹{calculateEstimatedPrice()}</span>
+                                                <span className="text-purple-600 dark:text-purple-400">₹{calculateEstimatedPrice()}</span>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">
+                                            <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
                                                 *Final pricing will be customized based on your specific requirements
                                             </p>
                                         </div>
@@ -1049,35 +1049,35 @@ export function BookCorporate() {
 
                     {/* Step 4: Success */}
                     {step === 4 && !loading && (
-                        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8 text-center">
                             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
 
-                            <h2 className="text-3xl font-bold text-gray-900 mb-4">Request Submitted Successfully!</h2>
-                            <p className="text-gray-600 mb-8">
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Request Submitted Successfully!</h2>
+                            <p className="text-gray-600 dark:text-white mb-8">
                                 Thank you for your interest in our Corporate Wellness Program! Our team will review your requirements and get back to you within 1 business day with a customized proposal.
                             </p>
 
-                            <div className="bg-purple-50 rounded-lg p-6 mb-8">
-                                <h3 className="font-semibold text-gray-900 mb-4">What Happens Next?</h3>
-                                <div className="space-y-3 text-sm text-gray-700 text-left">
+                            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6 mb-8">
+                                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">What Happens Next?</h3>
+                                <div className="space-y-3 text-sm text-gray-700 dark:text-white text-left">
                                     <div className="flex items-center">
-                                        <Users className="w-4 h-4 text-purple-600 mr-2" />
+                                        <Users className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
                                         <span>Our corporate wellness specialist will review your requirements</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Mail className="w-4 h-4 text-purple-600 mr-2" />
+                                        <Mail className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
                                         <span>You'll receive a detailed proposal within 1 business day</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Phone className="w-4 h-4 text-purple-600 mr-2" />
+                                        <Phone className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
                                         <span>We'll schedule a consultation call to discuss your program</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Calendar className="w-4 h-4 text-purple-600 mr-2" />
+                                        <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
                                         <span>Once approved, we'll coordinate the program schedule</span>
                                     </div>
                                 </div>
@@ -1101,9 +1101,9 @@ export function BookCorporate() {
                     )}
 
                     {loading && (
-                        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8 text-center">
                             <LoadingSpinner size="lg" />
-                            <p className="text-gray-600 mt-4">Submitting your corporate wellness request...</p>
+                            <p className="text-gray-600 dark:text-white mt-4">Submitting your corporate wellness request...</p>
                         </div>
                     )}
                 </form>

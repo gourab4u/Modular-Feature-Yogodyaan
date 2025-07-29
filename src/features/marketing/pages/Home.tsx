@@ -294,10 +294,10 @@ export function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-green-600 text-white">
+      <section className="py-20 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 text-gray-900 dark:text-white">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-4xl font-bold mb-6">Begin Your Wellness Journey</h2>
-          <p className="text-xl mb-8 text-blue-100">
+          <h2 className="text-4xl font-bold mb-6 text-gray-900 dark:text-white">Begin Your Wellness Journey</h2>
+          <p className="text-xl mb-8 text-gray-600 dark:text-slate-300">
             Join thousands of professionals worldwide who have discovered the transformative power of yoga.
             Schedule your first class today and take the first step towards a healthier, more balanced life.
           </p>

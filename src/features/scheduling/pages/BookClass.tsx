@@ -92,7 +92,7 @@ export function BookClass() {
       case 'advanced':
         return 'bg-red-100 text-red-800 border-red-200'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-gray-100 text-gray-800 dark:text-white border-gray-200 dark:border-slate-600'
     }
   }
 
@@ -221,23 +221,23 @@ export function BookClass() {
   const canProceedToBooking = selectedDate && selectedTime
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-700 dark:bg-slate-900">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 via-white to-green-50 py-20">
+      <section className="bg-gradient-to-br from-blue-50 via-white to-green-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 py-20">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">Book Your Private Group Class</h1>
-          <p className="text-xl text-gray-600 leading-relaxed mb-8">
+          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">Book Your Private Group Class</h1>
+          <p className="text-xl text-gray-600 dark:text-white leading-relaxed mb-8">
             Create a memorable yoga experience for your group! Whether it's for your team, family, friends, or special occasion,
             we'll design a personalized session that brings everyone together in wellness and mindfulness.
           </p>
 
           {/* Group Classes Motivation */}
-          <div className="bg-white rounded-xl shadow-lg p-6 mx-auto max-w-2xl border-l-4 border-blue-500">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mx-auto max-w-2xl border-l-4 border-blue-500 dark:border-blue-400">
             <div className="flex items-center justify-center mb-4">
               <Users className="w-8 h-8 text-blue-500 mr-3" />
-              <h3 className="text-xl font-semibold text-gray-900">Strengthen Bonds Through Yoga</h3>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">Strengthen Bonds Through Yoga</h3>
             </div>
-            <p className="text-gray-600 leading-relaxed">
+            <p className="text-gray-600 dark:text-white leading-relaxed">
               Whether it's team building, celebrating a special occasion, or simply sharing mindfulness with loved ones,
               our private group sessions create lasting memories while nurturing wellness together.
             </p>
@@ -250,10 +250,10 @@ export function BookClass() {
           <div className="space-y-12">
             {/* Calendar */}
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-8">Select Date</h2>
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Select Date</h2>
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-semibold text-gray-900">
+                  <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
                     {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </h3>
                   <div className="flex space-x-2">
@@ -274,7 +274,7 @@ export function BookClass() {
 
                 <div className="grid grid-cols-7 gap-2 mb-4">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                    <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                    <div key={day} className="text-center text-sm font-medium text-gray-500 dark:text-gray-300 py-2">
                       {day}
                     </div>
                   ))}
@@ -288,10 +288,10 @@ export function BookClass() {
                           onClick={() => isDateAvailable(date) && setSelectedDate(formatDate(date))}
                           disabled={!isDateAvailable(date)}
                           className={`w-full h-full rounded-lg text-sm font-medium transition-all duration-200 ${selectedDate === formatDate(date)
-                            ? 'bg-blue-500 text-white shadow-lg'
+                            ? 'bg-blue-500 dark:bg-blue-600 text-white shadow-lg'
                             : isDateAvailable(date)
-                              ? 'hover:bg-blue-50 text-gray-900'
-                              : 'text-gray-300 cursor-not-allowed'
+                              ? 'hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-900 dark:text-white'
+                              : 'text-gray-300 dark:text-gray-500 cursor-not-allowed'
                             }`}
                         >
                           {date.getDate()}
@@ -305,23 +305,23 @@ export function BookClass() {
 
             {/* Time Selection */}
             <div>
-              <h2 className="text-3xl font-bold text-gray-900 mb-8">Select Time</h2>
-              <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Select Time</h2>
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
                 <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
                   {timeSlots.map((time) => (
                     <button
                       key={time}
                       onClick={() => setSelectedTime(time)}
                       className={`p-3 rounded-lg text-sm font-medium transition-all duration-200 ${selectedTime === time
-                        ? 'bg-blue-500 text-white shadow-lg'
-                        : 'bg-gray-50 text-gray-900 hover:bg-blue-50 border border-gray-200'
+                        ? 'bg-blue-500 dark:bg-blue-600 text-white shadow-lg'
+                        : 'bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white hover:bg-blue-50 dark:hover:bg-blue-900/20 border border-gray-200 dark:border-slate-600'
                         }`}
                     >
                       {time}
                     </button>
                   ))}
                 </div>
-                <p className="text-sm text-gray-500 mt-4">
+                <p className="text-sm text-gray-500 dark:text-gray-300 mt-4">
                   * All times are in your local timezone. We'll coordinate the actual session time based on your location.
                 </p>
               </div>
@@ -333,8 +333,8 @@ export function BookClass() {
                 onClick={() => setShowBookingForm(true)}
                 disabled={!canProceedToBooking}
                 className={`px-8 py-4 text-lg font-semibold rounded-lg transition-all duration-300 ${canProceedToBooking
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white hover:scale-105'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  ? 'bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 text-white hover:scale-105'
+                  : 'bg-gray-300 text-gray-500 dark:text-gray-300 cursor-not-allowed'
                   }`}
               >
                 Proceed to Booking Details
@@ -344,7 +344,7 @@ export function BookClass() {
         ) : (
           /* Booking Form */
           <div className="max-w-2xl mx-auto">
-            <div className="bg-white rounded-xl shadow-lg p-8">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8">
               <div className="flex items-center mb-8">
                 <button
                   onClick={() => setShowBookingForm(false)}
@@ -353,27 +353,27 @@ export function BookClass() {
                   <ChevronLeft className="w-5 h-5 mr-1" />
                   Back
                 </button>
-                <h2 className="text-3xl font-bold text-gray-900">Confirm Booking</h2>
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Confirm Booking</h2>
               </div>
 
               {/* Booking Summary */}
-              <div className="bg-blue-50 rounded-lg p-6 mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Booking Summary</h3>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 mb-8">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Booking Summary</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Service:</span>
+                    <span className="text-gray-600 dark:text-white">Service:</span>
                     <span className="font-medium">Private Group Class</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Date:</span>
+                    <span className="text-gray-600 dark:text-white">Date:</span>
                     <span className="font-medium">{new Date(selectedDate).toLocaleDateString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Time:</span>
+                    <span className="text-gray-600 dark:text-white">Time:</span>
                     <span className="font-medium">{selectedTime}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Duration:</span>
+                    <span className="text-gray-600 dark:text-white">Duration:</span>
                     <span className="font-medium">
                       {selectedClassType?.duration_minutes
                         ? `${selectedClassType.duration_minutes} minutes`
@@ -383,7 +383,7 @@ export function BookClass() {
                   </div>
                   {selectedClassType && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Class Type:</span>
+                      <span className="text-gray-600 dark:text-white">Class Type:</span>
                       <span className="font-medium">{selectedClassType.name}</span>
                     </div>
                   )}
@@ -404,7 +404,7 @@ export function BookClass() {
                 )}
 
                 <div>
-                  <label htmlFor="groupSize" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="groupSize" className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                     Group Size *
                   </label>
                   <select
@@ -412,7 +412,7 @@ export function BookClass() {
                     name="groupSize"
                     value={formData.groupSize}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.groupSize ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.groupSize ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                       }`}
                   >
                     <option value="">Select group size</option>
@@ -426,7 +426,7 @@ export function BookClass() {
                 </div>
 
                 <div>
-                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                     Full Name *
                   </label>
                   <input
@@ -435,7 +435,7 @@ export function BookClass() {
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.fullName ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.fullName ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                       }`}
                     placeholder="Enter your full name"
                   />
@@ -443,7 +443,7 @@ export function BookClass() {
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                     Email Address *
                   </label>
                   <input
@@ -452,7 +452,7 @@ export function BookClass() {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.email ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.email ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                       }`}
                     placeholder="Enter your email address"
                   />
@@ -460,7 +460,7 @@ export function BookClass() {
                 </div>
 
                 <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                     Country *
                   </label>
                   <select
@@ -468,7 +468,7 @@ export function BookClass() {
                     name="country"
                     value={formData.country}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.country ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.country ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                       }`}
                   >
                     <option value="">Select your country</option>
@@ -481,14 +481,14 @@ export function BookClass() {
 
                 {/* Enhanced Class Type Selection */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-white mb-3">
                     Preferred Class Type *
                   </label>
 
                   {loadingClassTypes ? (
                     <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                      <span className="ml-2 text-gray-600">Loading class types...</span>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 dark:border-blue-400"></div>
+                      <span className="ml-2 text-gray-600 dark:text-white">Loading class types...</span>
                     </div>
                   ) : (
                     <>
@@ -500,14 +500,14 @@ export function BookClass() {
                           placeholder="Search class types..."
                           value={classTypeSearch}
                           onChange={(e) => setClassTypeSearch(e.target.value)}
-                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                         />
                       </div>
 
                       {/* Class Type Cards */}
                       <div className="grid gap-3 max-h-80 overflow-y-auto">
                         {filteredClassTypes.length === 0 ? (
-                          <div className="text-center py-8 text-gray-500">
+                          <div className="text-center py-8 text-gray-500 dark:text-gray-300">
                             {classTypeSearch ? 'No class types found matching your search.' : 'No class types available.'}
                           </div>
                         ) : (
@@ -516,15 +516,15 @@ export function BookClass() {
                               key={classType.id}
                               onClick={() => handleClassTypeSelect(classType)}
                               className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${selectedClassType?.id === classType.id
-                                  ? 'border-blue-500 bg-blue-50 shadow-md'
-                                  : 'border-gray-200 hover:border-blue-300'
+                                  ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md'
+                                  : 'border-gray-200 dark:border-slate-600 hover:border-blue-300 dark:border-blue-500'
                                 }`}
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-gray-900 mb-1">{classType.name}</h4>
+                                  <h4 className="font-semibold text-gray-900 dark:text-white mb-1">{classType.name}</h4>
                                   {classType.description && (
-                                    <p className="text-sm text-gray-600 mb-2">{classType.description}</p>
+                                    <p className="text-sm text-gray-600 dark:text-white mb-2">{classType.description}</p>
                                   )}
 
                                   <div className="flex flex-wrap gap-2 items-center">
@@ -535,14 +535,14 @@ export function BookClass() {
                                     )}
 
                                     {classType.duration_minutes && (
-                                      <span className="flex items-center text-xs text-gray-500">
+                                      <span className="flex items-center text-xs text-gray-500 dark:text-gray-300">
                                         <Clock className="w-3 h-3 mr-1" />
                                         {classType.duration_minutes} min
                                       </span>
                                     )}
 
                                     {classType.max_participants && (
-                                      <span className="flex items-center text-xs text-gray-500">
+                                      <span className="flex items-center text-xs text-gray-500 dark:text-gray-300">
                                         <Users className="w-3 h-3 mr-1" />
                                         Max {classType.max_participants}
                                       </span>
@@ -558,8 +558,8 @@ export function BookClass() {
 
                                 {selectedClassType?.id === classType.id && (
                                   <div className="ml-3">
-                                    <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                                      <div className="w-2 h-2 bg-white rounded-full"></div>
+                                    <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/200 rounded-full flex items-center justify-center">
+                                      <div className="w-2 h-2 bg-white dark:bg-slate-800 rounded-full"></div>
                                     </div>
                                   </div>
                                 )}
@@ -575,7 +575,7 @@ export function BookClass() {
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
                     Special Requirements & Goals
                   </label>
                   <textarea
@@ -585,14 +585,14 @@ export function BookClass() {
                     value={formData.message}
                     onChange={handleInputChange}
                     placeholder="Tell us about your group's experience level, specific goals, occasion details, or any special requirements..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                   />
                 </div>
 
                 <Button
                   type="submit"
                   loading={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300"
+                  className="w-full bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold transition-all duration-300"
                 >
                   {loading ? 'Confirming Booking...' : 'Confirm Booking'}
                 </Button>
