@@ -21,6 +21,7 @@ const ClassTypeManager = React.lazy(() => import('./Modules/ClassTypeManager'));
 const ArticleWorkflow = React.lazy(() => import('./Modules/ArticleWorkflow'));
 const UserProfile = React.lazy(() => import('./Modules/UserProfile'));
 const NewsletterManagement = React.lazy(() => import('./Modules/NewsletterManagement'));
+const TeachingDashboard = React.lazy(() => import('./Modules/TeachingDashboard'));
 
 interface User {
   id: string;
@@ -60,6 +61,7 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
     ArticleWorkflow,
     UserProfile,
     NewsletterManagement,
+    TeachingDashboard,
   };
 
   // Get the first available module for default tab

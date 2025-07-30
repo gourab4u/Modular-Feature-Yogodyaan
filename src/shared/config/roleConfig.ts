@@ -29,6 +29,7 @@ export type DashboardModule =
   | 'article_workflow'
   | 'forms'
   | 'newsletterManagement'
+  | 'teaching_dashboard'
 
 export interface ModuleConfig {
   id: DashboardModule | string;
@@ -68,17 +69,18 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
   ],
 
   instructor: [
-    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 1 },
-    { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 2 }
+    { id: 'teaching_dashboard', title: 'Teaching Dashboard', component: 'TeachingDashboard', icon: 'graduation-cap', order: 1 },
+    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 2 },
+    { id: 'user_profile', title: 'User Profile', component: 'UserProfile', icon: 'user', order: 3 }
   ],
 
   yoga_acharya: [
-    { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 1 },
-    { id: 'class_assignment', title: 'Class Management', component: 'ClassAssignmentManager', icon: 'edit', order: 2 },
-    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 3 },
-    { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 4 },
-    { id: 'class_type_manager', title: 'Class & Package Manager', component: 'ClassTypeManager', icon: 'layers', order: 5 },
-    { id: 'class_assignment', title: 'Class Assignment', component: 'ClassAssignmentManager', icon: 'edit', order: 6 },
+    { id: 'teaching_dashboard', title: 'Teaching Dashboard', component: 'TeachingDashboard', icon: 'graduation-cap', order: 1 },
+    { id: 'instructor_management', title: 'Instructor Management', component: 'InstructorManagement', icon: 'teacher', order: 2 },
+    { id: 'class_assignment', title: 'Class Management', component: 'ClassAssignmentManager', icon: 'edit', order: 3 },
+    { id: 'article_management', title: 'Article Management', component: 'ArticleManagement', icon: 'book', order: 4 },
+    { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 5 },
+    { id: 'class_type_manager', title: 'Class & Package Manager', component: 'ClassTypeManager', icon: 'layers', order: 6 },
   ],
 
   energy_exchange_lead: [

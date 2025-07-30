@@ -17,6 +17,7 @@ export function Header() {
 
   // Combine curator status from both contexts for backward compatibility
   const isMantraCurator = authMantraCurator || adminMantraCurator;
+  
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -127,6 +128,7 @@ export function Header() {
                         <LayoutDashboard size={16} className="mr-2" />
                         Dashboard
                       </Link>
+
 
                       {isMantraCurator && (
                         <Link
