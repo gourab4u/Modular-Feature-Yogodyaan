@@ -1,7 +1,6 @@
-import { BookOpen, ChevronDown, ChevronUp, LayoutDashboard, LogOut, Menu, User, UserCircle, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, LayoutDashboard, LogOut, Menu, User, UserCircle, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { useAdmin as useAdminContext } from '../../../features/admin/contexts/AdminContext';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { NotificationDropdown } from '../../../features/notifications/components/NotificationDropdown';
 import { Button } from '../ui/Button';
@@ -10,13 +9,9 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const { user, isMantraCurator: authMantraCurator, signOut } = useAuth();
-  const { isAdmin, isMantraCurator: adminMantraCurator } = useAdminContext();
+  const { user, signOut } = useAuth();
   const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Combine curator status from both contexts for backward compatibility
-  const isMantraCurator = authMantraCurator || adminMantraCurator;
   
 
   const navigation = [
@@ -130,27 +125,6 @@ export function Header() {
                       </Link>
 
 
-                      {isMantraCurator && (
-                        <Link
-                          to="/admin/dashboard"
-                          onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
-                        >
-                          <BookOpen size={16} className="mr-2" />
-                          Manage Articles
-                        </Link>
-                      )}
-
-                      {isAdmin && (
-                        <Link
-                          to="/admin/dashboard"
-                          onClick={() => setIsDropdownOpen(false)}
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors"
-                        >
-                          <LayoutDashboard size={16} className="mr-2" />
-                          Admin Dashboard
-                        </Link>
-                      )}
 
                       <hr className="my-1" />
 
@@ -240,27 +214,6 @@ export function Header() {
                       <span>Dashboard</span>
                     </Link>
 
-                    {isMantraCurator && (
-                      <Link
-                        to="/admin/dashboard"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 transition-colors py-2"
-                      >
-                        <BookOpen size={16} />
-                        <span>Manage Articles</span>
-                      </Link>
-                    )}
-
-                    {isAdmin && (
-                      <Link
-                        to="/admin/dashboard"
-                        onClick={() => setIsMenuOpen(false)}
-                        className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 transition-colors py-2"
-                      >
-                        <LayoutDashboard size={16} />
-                        <span>Admin Dashboard</span>
-                      </Link>
-                    )}
 
                     <Button
                       variant="outline"

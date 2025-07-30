@@ -1,15 +1,13 @@
-import { AlertCircle, Award, Calendar, Camera, CheckCircle, Clock, Edit2, Facebook, FileText, Globe, Instagram, Mail, Phone, Save, Shield, User, X, XCircle, Youtube } from 'lucide-react'
+import { AlertCircle, Award, Calendar, Camera, CheckCircle, Clock, Edit2, Facebook, FileText, Globe, Instagram, Mail, Phone, Save, User, X, XCircle, Youtube } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
-import { useAdmin } from '../../admin/contexts/AdminContext'
 import { useAuth } from '../../auth/contexts/AuthContext'
 
 export function Profile() {
   const { user } = useAuth()
-  const { isAdmin } = useAdmin()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -458,12 +456,6 @@ export function Profile() {
                       <Phone className="w-4 h-4 mr-2" />
                       {profileData.phone}
                     </p>
-                  )}
-                  {isAdmin && (
-                    <span className="bg-white bg-opacity-20 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Admin
-                    </span>
                   )}
                 </div>
                 {profileData.years_of_experience > 0 && (

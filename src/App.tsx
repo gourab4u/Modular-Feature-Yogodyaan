@@ -3,7 +3,6 @@ import { ScrollToTop } from './shared/components/ScrollToTop';
 import { UserRole } from './shared/config/roleConfig';
 import { User as CustomUserType } from './shared/types/user';
 // Context imports - updated paths
-import { AdminProvider } from './features/admin/contexts/AdminContext';
 import { AuthProvider, useAuth } from './features/auth/contexts/AuthContext';
 import { NotificationProvider } from './features/notifications/contexts/NotificationContext';
 import { ThemeProvider } from './shared/contexts/ThemeContext';
@@ -11,14 +10,11 @@ import { ThemeProvider } from './shared/contexts/ThemeContext';
 import { Footer } from './shared/components/layout/Footer';
 import { Header } from './shared/components/layout/Header';
 // Auth components - updated paths
-import { ProtectedAdminRoute } from './features/auth/components/ProtectedAdminRoute';
 import { ProtectedRoute } from './features/auth/components/ProtectedRoute';
 // Dashboard component - new import
 import UniversalDashboard from './features/dashboard/components/UniversalDashboard';
 // Page imports - updated paths
-import { AdminDashboard } from './features/admin/pages/AdminDashboard';
 import { AuthCallback } from './features/auth/components/AuthCallback';
-import { AdminLogin } from './features/auth/pages/AdminLogin';
 import { Login } from './features/auth/pages/Login';
 import { ArticleView } from './features/learning/pages/ArticleView';
 import { Learning } from './features/learning/pages/Learning';
@@ -43,9 +39,7 @@ function App() {
         <ScrollToTop />
         <AuthProvider>
           <NotificationProvider>
-            <AdminProvider>
-              <AppRoutes />
-            </AdminProvider>
+            <AppRoutes />
           </NotificationProvider>
         </AuthProvider>
       </Router>
@@ -71,17 +65,6 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Admin Routes - Keep existing admin routes for backward compatibility */}
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedAdminRoute>
-            <AdminDashboard />
-          </ProtectedAdminRoute>
-        }
-      />
-
       {/* Universal Dashboard Route - New modular dashboard */}
       <Route
         path="/dashboard/*"

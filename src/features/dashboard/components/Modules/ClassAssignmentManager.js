@@ -1,10 +1,15 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { AlertTriangle, Calendar, DollarSign, Plus, Save, Users, X, Filter, List, BarChart3, TrendingUp, ChevronDown, Search, Download, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Calendar, DollarSign, Plus, Save, Users, X, Filter, List, BarChart3, TrendingUp, ChevronDown, Search, Download, RefreshCw, Trash2, CheckSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '../../../../shared/components/ui/Button';
 import ClockSelector from '../../../../shared/components/ui/ClockSelector';
 import { LoadingSpinner } from '../../../../shared/components/ui/LoadingSpinner';
 import { supabase } from '../../../../shared/lib/supabase';
+import { getWeekdayName, formatTimeWithAMPM } from '../../../../shared/utils/timezoneUtils';
+import { TimezoneSelector } from '../../../../shared/components/ui/TimezoneSelector';
+import { WeekdaySelector } from '../../../../shared/components/ui/WeekdaySelector';
+import { ManualCalendarSelector } from '../../../../shared/components/ui/ManualCalendarSelector';
+import { BookingSelector } from '../../../../shared/components/ui/BookingSelector';
 export function ClassAssignmentManager() {
     const [assignments, setAssignments] = useState([]);
     const [weeklySchedules, setWeeklySchedules] = useState([]);
@@ -14,6 +19,13 @@ export function ClassAssignmentManager() {
     const [loading, setLoading] = useState(true);
     const [showAssignForm, setShowAssignForm] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [loadingStates, setLoadingStates] = useState({
+        creatingAssignment: false,
+        updatingStatus: false,
+        deletingAssignment: false,
+        checkingConflicts: false,
+        fetchingData: false
+    });
     const [errors, setErrors] = useState({});
     const [conflictWarning, setConflictWarning] = useState(null);
     // Enhanced dashboard state
@@ -29,6 +41,9 @@ export function ClassAssignmentManager() {
         classTypes: [],
         packages: []
     });
+    // Selection state for multi-delete
+    const [selectedAssignments, setSelectedAssignments] = useState(new Set());
+    const [isSelectMode, setIsSelectMode] = useState(false);
     // Derived data
     const instructors = userProfiles;
     // Calendar view state
@@ -67,11 +82,31 @@ export function ClassAssignmentManager() {
         package_id: '',
         // Generated/calculated fields
         timeline_description: '',
-        total_classes: 0
+        total_classes: 0,
+        // New timezone support
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+        // New assignment method fields
+        monthly_assignment_method: 'weekly_recurrence',
+        // Weekly recurrence fields
+        weekly_days: [1, 3, 5], // Default: Mon, Wed, Fri
+        // Manual calendar selections
+        manual_selections: [],
+        // Booking reference fields
+        booking_id: '',
+        client_name: '',
+        client_email: ''
     });
     useEffect(() => {
         fetchData();
     }, []);
+    // Timezone support
+    const [timeZoneInfo] = useState(() => {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const now = new Date();
+        const offset = -now.getTimezoneOffset() / 60;
+        const isDST = now.getTimezoneOffset() < new Date(now.getFullYear(), 0, 1).getTimezoneOffset();
+        return { timeZone: tz, offset, isDST };
+    });
     // Auto-calculate end dates and timeline descriptions when relevant fields change
     useEffect(() => {
         updateTimelineInfo();
@@ -104,17 +139,25 @@ export function ClassAssignmentManager() {
                 }
                 break;
             case 'monthly':
-                if (formData.start_date && formData.end_date) {
-                    const dayDesc = formData.day_of_month === -1 ? 'last day' : `${formData.day_of_month}${getOrdinalSuffix(formData.day_of_month)}`;
-                    description = `Monthly recurring on ${dayDesc} of each month from ${formatDate(formData.start_date)} recurring till ${formatDate(formData.end_date)}`;
-                    totalClasses = calculateMonthlyClasses(formData.start_date, formData.end_date);
+                const selectedPackage = packages.find(pkg => pkg.id === formData.package_id);
+                const packageName = selectedPackage?.name || 'Selected Package';
+                const packageClassCount = selectedPackage?.class_count || 0;
+                totalClasses = packageClassCount;
+                if (formData.monthly_assignment_method === 'weekly_recurrence' && formData.weekly_days.length > 0) {
+                    const dayNames = formData.weekly_days.map(day => getWeekdayName(day, 'long')).join(', ');
+                    const timeRange = formData.start_time && formData.end_time
+                        ? `${formatTimeWithAMPM(formData.start_time)} - ${formatTimeWithAMPM(formData.end_time)}`
+                        : 'selected time';
+                    description = `${packageName}: Weekly recurrence on ${dayNames} at ${timeRange} (${packageClassCount} classes total)`;
                 }
-                else if (formData.start_date) {
-                    const dayDesc = formData.day_of_month === -1 ? 'last day' : `${formData.day_of_month}${getOrdinalSuffix(formData.day_of_month)}`;
-                    description = `Monthly recurring on ${dayDesc} starting ${formatDate(formData.start_date)} - select end date (till end of year)`;
+                else if (formData.monthly_assignment_method === 'manual_calendar' && formData.manual_selections.length > 0) {
+                    description = `${packageName}: ${formData.manual_selections.length} manually selected class slots (${packageClassCount} classes required)`;
+                }
+                else if (formData.package_id) {
+                    description = `${packageName}: ${packageClassCount} classes - Select assignment method (Weekly Recurrence or Manual Calendar)`;
                 }
                 else {
-                    description = 'Set up monthly recurring classes with start date and recurring till date';
+                    description = 'Select a package and assignment method for monthly classes';
                 }
                 break;
             case 'crash_course':
@@ -165,19 +208,7 @@ export function ClassAssignmentManager() {
         const weeks = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24 * 7));
         return Math.max(1, weeks);
     };
-    const calculateMonthlyClasses = (startDate, endDate) => {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-        // If a package is selected, multiply by classes per month
-        if (formData.package_id) {
-            const selectedPackage = packages.find(pkg => pkg.id === formData.package_id);
-            if (selectedPackage && selectedPackage.class_count) {
-                return Math.max(1, months * selectedPackage.class_count);
-            }
-        }
-        return Math.max(1, months);
-    };
+    // Removed unused calculateMonthlyClasses function
     const calculateCourseClasses = (duration, unit, frequency) => {
         const totalWeeks = unit === 'weeks' ? duration : duration * 4; // Approximate weeks
         switch (frequency) {
@@ -215,62 +246,73 @@ export function ClassAssignmentManager() {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const { data: classTypesData } = await supabase.from('class_types').select('id, name, difficulty_level');
-            const { data: packagesData } = await supabase.from('class_packages').select('id, name, description, duration, price, class_count, validity_days, type, course_type').eq('is_active', true).eq('is_archived', false);
-            const { data: roles } = await supabase
-                .from('roles')
-                .select('id, name')
-                .in('name', ['instructor', 'yoga_acharya']);
-            const roleIds = roles?.map(r => r.id) || [];
+            setLoadingStates(prev => ({ ...prev, fetchingData: true }));
+            // Execute all independent queries in parallel
+            const [classTypesResult, packagesResult, rolesResult, assignmentsResult, weeklySchedulesResult] = await Promise.all([
+                supabase.from('class_types').select('id, name, difficulty_level'),
+                supabase.from('class_packages').select('id, name, description, duration, price, class_count, validity_days, type, course_type, is_active').eq('is_active', true).eq('is_archived', false),
+                supabase.from('roles').select('id, name').in('name', ['instructor', 'yoga_acharya']),
+                supabase.from('class_assignments').select('*').eq('schedule_type', 'adhoc').order('assigned_at', { ascending: false }),
+                supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true })
+            ]);
+            const classTypesData = classTypesResult.data || [];
+            const packagesData = packagesResult.data || [];
+            const roles = rolesResult.data || [];
+            const assignmentsData = assignmentsResult.data || [];
+            const weeklySchedulesData = weeklySchedulesResult.data || [];
+            // Now fetch user roles and profiles based on role data
+            const roleIds = roles.map(r => r.id);
+            if (roleIds.length === 0) {
+                // No instructor roles found, return empty data
+                setClassTypes(classTypesData);
+                setPackages(packagesData);
+                setUserProfiles([]);
+                setAssignments([]);
+                setWeeklySchedules([]);
+                return;
+            }
+            // First get user roles
             const { data: userRoles } = await supabase
                 .from('user_roles')
                 .select('user_id, role_id')
                 .in('role_id', roleIds);
-            const userIds = [...new Set(userRoles?.map(ur => ur.user_id) || [])];
-            const { data: profiles } = await supabase
-                .from('profiles')
-                .select('user_id, full_name, email')
-                .in('user_id', userIds);
-            const profilesWithRoles = (profiles || []).map(profile => {
-                const userRoleIds = (userRoles || []).filter(ur => ur.user_id === profile.user_id).map(ur => ur.role_id);
-                const profileRoles = (roles || []).filter(role => userRoleIds.includes(role.id)).map(role => ({ roles: { name: role.name } }));
-                return {
-                    ...profile,
-                    user_roles: profileRoles
-                };
+            // Then get profiles for those users
+            const userIds = [...new Set((userRoles || []).map(ur => ur.user_id))];
+            const { data: profiles } = userIds.length > 0
+                ? await supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds)
+                : { data: [] };
+            // Build profiles with roles more efficiently
+            const userRoleMap = new Map();
+            (userRoles || []).forEach(ur => {
+                if (!userRoleMap.has(ur.user_id)) {
+                    userRoleMap.set(ur.user_id, []);
+                }
+                userRoleMap.get(ur.user_id)?.push(ur.role_id);
             });
-            // Fetch all assignments (all are now 'adhoc' in schedule_type, differentiated by package_id vs class_type_id)
-            const { data: assignmentsData } = await supabase
-                .from('class_assignments')
-                .select('*')
-                .eq('schedule_type', 'adhoc')
-                .order('assigned_at', { ascending: false });
-            // Fetch weekly schedules
-            const { data: weeklySchedulesData } = await supabase
-                .from('class_schedules')
-                .select('*')
-                .eq('is_active', true)
-                .order('day_of_week', { ascending: true });
-            const enrichedAssignments = (assignmentsData || []).map(assignment => {
-                const classType = classTypesData?.find(ct => ct.id === assignment.class_type_id);
-                const instructorProfile = profilesWithRoles.find(p => p.user_id === assignment.instructor_id);
-                return {
-                    ...assignment,
-                    class_type: classType,
-                    instructor_profile: instructorProfile
-                };
-            });
-            const enrichedWeeklySchedules = (weeklySchedulesData || []).map(schedule => {
-                const classType = classTypesData?.find(ct => ct.id === schedule.class_type_id);
-                const instructorProfile = profilesWithRoles.find(p => p.user_id === schedule.instructor_id);
-                return {
-                    ...schedule,
-                    class_type: classType,
-                    instructor_profile: instructorProfile
-                };
-            });
-            setClassTypes(classTypesData || []);
-            setPackages(packagesData || []);
+            const roleMap = new Map(roles.map(role => [role.id, role.name]));
+            const profilesWithRoles = (profiles || []).map(profile => ({
+                ...profile,
+                user_roles: (userRoleMap.get(profile.user_id) || [])
+                    .map(roleId => ({ roles: { name: roleMap.get(roleId) || '' } }))
+                    .filter(role => role.roles.name)
+            }));
+            // Build lookup maps for better performance
+            const classTypeMap = new Map(classTypesData.map(ct => [ct.id, ct]));
+            const profileMap = new Map(profilesWithRoles.map(p => [p.user_id, p]));
+            // Enrich data more efficiently
+            const enrichedAssignments = assignmentsData.map(assignment => ({
+                ...assignment,
+                class_type: classTypeMap.get(assignment.class_type_id),
+                instructor_profile: profileMap.get(assignment.instructor_id)
+            }));
+            const enrichedWeeklySchedules = weeklySchedulesData.map(schedule => ({
+                ...schedule,
+                class_type: classTypeMap.get(schedule.class_type_id),
+                instructor_profile: profileMap.get(schedule.instructor_id)
+            }));
+            // Update state
+            setClassTypes(classTypesData);
+            setPackages(packagesData);
             setUserProfiles(profilesWithRoles);
             setAssignments(enrichedAssignments);
             setWeeklySchedules(enrichedWeeklySchedules);
@@ -280,6 +322,7 @@ export function ClassAssignmentManager() {
         }
         finally {
             setLoading(false);
+            setLoadingStates(prev => ({ ...prev, fetchingData: false }));
         }
     };
     const checkForConflicts = () => {
@@ -287,64 +330,136 @@ export function ClassAssignmentManager() {
             setConflictWarning(null);
             return;
         }
+        setLoadingStates(prev => ({ ...prev, checkingConflicts: true }));
         const proposedStart = timeToMinutes(formData.start_time);
         const proposedEnd = timeToMinutes(formData.end_time);
-        const proposedDate = new Date(formData.date);
-        const proposedDayOfWeek = proposedDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
-        // Check for conflicts with existing adhoc assignments
-        const conflictingAssignment = assignments.find(assignment => {
-            // Only check assignments that are not cancelled
+        const proposedDate = createDateInTimeZone(formData.date);
+        const proposedDayOfWeek = proposedDate.getDay();
+        const instructor = userProfiles.find(p => p.user_id === formData.instructor_id);
+        // Enhanced conflict detection
+        const conflicts = [];
+        // 1. Check instructor conflicts with existing assignments
+        const instructorConflicts = assignments.filter(assignment => {
             if (assignment.class_status === 'cancelled')
                 return false;
-            // Check if same instructor and same date
-            if (assignment.instructor_id === formData.instructor_id && assignment.date === formData.date) {
-                if (assignment.start_time && assignment.end_time) {
-                    const existingStart = timeToMinutes(assignment.start_time);
-                    const existingEnd = timeToMinutes(assignment.end_time);
-                    // Check if times overlap
-                    return (proposedStart < existingEnd && proposedEnd > existingStart);
-                }
+            if (assignment.instructor_id !== formData.instructor_id)
+                return false;
+            if (assignment.date !== formData.date)
+                return false;
+            if (assignment.start_time && assignment.end_time) {
+                const existingStart = timeToMinutes(assignment.start_time);
+                const existingEnd = timeToMinutes(assignment.end_time);
+                return (proposedStart < existingEnd && proposedEnd > existingStart);
             }
             return false;
         });
-        // Check for conflicts with weekly schedules
-        const conflictingWeeklySchedule = weeklySchedules.find(schedule => {
-            // Only check active schedules
+        // 2. Check instructor conflicts with weekly schedules
+        const scheduleConflicts = weeklySchedules.filter(schedule => {
             if (!schedule.is_active)
                 return false;
-            // Check if same instructor and same day of week
-            if (schedule.instructor_id === formData.instructor_id && schedule.day_of_week === proposedDayOfWeek) {
-                if (schedule.start_time && schedule.end_time) {
-                    const existingStart = timeToMinutes(schedule.start_time);
-                    const existingEnd = timeToMinutes(schedule.end_time);
-                    // Check if times overlap
-                    return (proposedStart < existingEnd && proposedEnd > existingStart);
-                }
+            if (schedule.instructor_id !== formData.instructor_id)
+                return false;
+            if (schedule.day_of_week !== proposedDayOfWeek)
+                return false;
+            if (schedule.start_time && schedule.end_time) {
+                const existingStart = timeToMinutes(schedule.start_time);
+                const existingEnd = timeToMinutes(schedule.end_time);
+                return (proposedStart < existingEnd && proposedEnd > existingStart);
             }
             return false;
         });
-        const instructor = userProfiles.find(p => p.user_id === formData.instructor_id);
-        if (conflictingAssignment) {
-            const conflictTime = `${formatTime(conflictingAssignment.start_time)} - ${formatTime(conflictingAssignment.end_time)}`;
-            setConflictWarning({
+        // 3. Check for timing issues
+        const duration = proposedEnd - proposedStart;
+        if (duration < 30) {
+            conflicts.push({
                 hasConflict: true,
-                conflictingClass: conflictingAssignment,
-                message: `${instructor?.full_name || 'This instructor'} already has an adhoc class scheduled from ${conflictTime} on ${formatDate(formData.date)}`
+                message: 'Class duration is less than 30 minutes',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider extending the class duration to at least 30 minutes']
             });
         }
-        else if (conflictingWeeklySchedule) {
-            const conflictTime = `${formatTime(conflictingWeeklySchedule.start_time)} - ${formatTime(conflictingWeeklySchedule.end_time)}`;
-            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const dayName = dayNames[proposedDayOfWeek];
+        if (duration > 180) {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Class duration is more than 3 hours',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider breaking this into multiple sessions', 'Add breaks for long sessions']
+            });
+        }
+        // 4. Check for early morning or late evening classes
+        const startHour = Math.floor(proposedStart / 60);
+        if (startHour < 6) {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Early morning class (before 6 AM)',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider scheduling after 6 AM for better attendance']
+            });
+        }
+        if (startHour >= 22) {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Late evening class (after 10 PM)',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider scheduling before 10 PM for better attendance']
+            });
+        }
+        // 5. Check weekend scheduling
+        const isWeekend = proposedDayOfWeek === 0 || proposedDayOfWeek === 6;
+        if (isWeekend && formData.assignment_type === 'weekly') {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Weekend recurring classes may have lower attendance',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider weekday scheduling for regular classes']
+            });
+        }
+        // Process conflicts and set the most severe one
+        if (instructorConflicts.length > 0) {
+            const conflict = instructorConflicts[0];
             setConflictWarning({
                 hasConflict: true,
-                conflictingClass: conflictingWeeklySchedule, // Type assertion since we're reusing the interface
-                message: `${instructor?.full_name || 'This instructor'} has a weekly recurring class scheduled from ${conflictTime} every ${dayName}`
+                conflictingClass: conflict,
+                conflictType: 'instructor',
+                severity: 'error',
+                message: `${instructor?.full_name || 'This instructor'} already has a class scheduled from ${formatTimeWithTimeZone(conflict.start_time || '')} to ${formatTimeWithTimeZone(conflict.end_time || '')} on ${formatDateWithTimeZone(proposedDate)}`,
+                suggestions: [
+                    'Choose a different time slot',
+                    'Select a different instructor',
+                    'Reschedule the conflicting class'
+                ]
             });
+        }
+        else if (scheduleConflicts.length > 0) {
+            const conflict = scheduleConflicts[0];
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            setConflictWarning({
+                hasConflict: true,
+                conflictingClass: conflict,
+                conflictType: 'instructor',
+                severity: 'error',
+                message: `${instructor?.full_name || 'This instructor'} has a recurring class on ${dayNames[conflict.day_of_week]} from ${formatTimeWithTimeZone(conflict.start_time || '')} to ${formatTimeWithTimeZone(conflict.end_time || '')}`,
+                suggestions: [
+                    'Choose a different day or time',
+                    'Select a different instructor',
+                    'Modify the recurring schedule'
+                ]
+            });
+        }
+        else if (conflicts.length > 0) {
+            // Show the first warning-level conflict
+            const warningConflict = conflicts.find(c => c.severity === 'warning') || conflicts[0];
+            setConflictWarning(warningConflict);
         }
         else {
             setConflictWarning(null);
         }
+        setLoadingStates(prev => ({ ...prev, checkingConflicts: false }));
     };
     const getAvailableInstructors = () => {
         if (!formData.date || !formData.start_time || !formData.end_time) {
@@ -390,18 +505,59 @@ export function ClassAssignmentManager() {
             setErrors((prev) => ({ ...prev, [field]: '' }));
         }
     };
-    // Helper function to convert time to minutes
+    // Helper function to convert time to minutes with error handling
     const timeToMinutes = (timeString) => {
-        if (!timeString)
+        if (!timeString || !timeString.includes(':'))
             return 0;
         const [hours, minutes] = timeString.split(':').map(Number);
-        return hours * 60 + minutes;
+        if (isNaN(hours) || isNaN(minutes))
+            return 0;
+        return Math.max(0, Math.min(24 * 60, hours * 60 + minutes));
     };
-    // Helper function to convert minutes to time string
+    // Helper function to convert minutes to time string with bounds checking
     const minutesToTime = (minutes) => {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
+        const clampedMinutes = Math.max(0, Math.min(24 * 60 - 1, minutes));
+        const hours = Math.floor(clampedMinutes / 60);
+        const mins = clampedMinutes % 60;
         return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    };
+    // Timezone-aware date functions
+    const createDateInTimeZone = (dateString, timeString) => {
+        const date = new Date(dateString);
+        if (timeString && timeString.includes(':')) {
+            const [hours, minutes] = timeString.split(':').map(Number);
+            if (!isNaN(hours) && !isNaN(minutes)) {
+                date.setHours(hours, minutes, 0, 0);
+            }
+        }
+        return date;
+    };
+    const formatDateWithTimeZone = (date) => {
+        return date.toLocaleDateString('en-US', {
+            timeZone: timeZoneInfo.timeZone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+    };
+    const formatTimeWithTimeZone = (timeString) => {
+        try {
+            const [hours, minutes] = timeString.split(':').map(Number);
+            if (isNaN(hours) || isNaN(minutes))
+                return '—';
+            const date = new Date();
+            date.setHours(hours, minutes);
+            return date.toLocaleTimeString('en-US', {
+                timeZone: timeZoneInfo.timeZone,
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        }
+        catch (error) {
+            console.error('Error formatting time with timezone:', timeString, error);
+            return '—';
+        }
     };
     const handleStartTimeChange = (time) => {
         handleInputChange('start_time', time);
@@ -470,10 +626,40 @@ export function ClassAssignmentManager() {
                     newErrors.package_id = 'Package is required';
                 if (!formData.start_date)
                     newErrors.start_date = 'Start date is required';
-                if (!formData.end_date)
-                    newErrors.end_date = 'End date is required';
+                // Validate based on assignment method
+                if (formData.monthly_assignment_method === 'weekly_recurrence') {
+                    if (!formData.weekly_days || formData.weekly_days.length === 0) {
+                        newErrors.weekly_days = 'Please select at least one day of the week';
+                    }
+                    if (!formData.end_date)
+                        newErrors.end_date = 'End date is required for weekly recurrence';
+                }
+                else if (formData.monthly_assignment_method === 'manual_calendar') {
+                    const selectedPackage = packages.find(pkg => pkg.id === formData.package_id);
+                    const requiredCount = selectedPackage?.class_count || 0;
+                    if (!formData.manual_selections || formData.manual_selections.length === 0) {
+                        newErrors.manual_selections = 'Please select class dates and times from the calendar';
+                    }
+                    else if (formData.manual_selections.length !== requiredCount) {
+                        newErrors.manual_selections = `Please select exactly ${requiredCount} class slots to match the package requirement`;
+                    }
+                }
                 if (formData.start_date && formData.end_date && formData.start_date >= formData.end_date) {
                     newErrors.end_date = 'End date must be after start date';
+                }
+                // Validate package exists and is regular type
+                if (formData.package_id) {
+                    const selectedPackage = packages.find(pkg => pkg.id === formData.package_id);
+                    if (!selectedPackage) {
+                        newErrors.package_id = 'Selected package not found';
+                    }
+                    else if (selectedPackage.course_type !== 'regular') {
+                        newErrors.package_id = 'Please select a regular package for monthly assignments';
+                    }
+                }
+                // Validate day of month
+                if (formData.day_of_month < -1 || formData.day_of_month === 0 || formData.day_of_month > 31) {
+                    newErrors.day_of_month = 'Invalid day of month selected';
                 }
                 break;
             case 'crash_course':
@@ -483,6 +669,34 @@ export function ClassAssignmentManager() {
                     newErrors.start_date = 'Start date is required';
                 if (formData.course_duration_value < 1)
                     newErrors.course_duration_value = 'Duration must be at least 1';
+                if (formData.course_duration_value > 12)
+                    newErrors.course_duration_value = 'Duration cannot exceed 12 months';
+                // Validate package exists and is crash course type
+                if (formData.package_id) {
+                    const selectedPackage = packages.find(pkg => pkg.id === formData.package_id);
+                    if (!selectedPackage) {
+                        newErrors.package_id = 'Selected package not found';
+                    }
+                    else if (selectedPackage.course_type !== 'crash') {
+                        newErrors.package_id = 'Please select a crash course package';
+                    }
+                }
+                break;
+            case 'package':
+                if (!formData.package_id)
+                    newErrors.package_id = 'Package is required';
+                if (!formData.start_date)
+                    newErrors.start_date = 'Start date is required';
+                // Validate package exists
+                if (formData.package_id) {
+                    const selectedPackage = packages.find(pkg => pkg.id === formData.package_id);
+                    if (!selectedPackage) {
+                        newErrors.package_id = 'Selected package not found';
+                    }
+                    else if (!selectedPackage.is_active) {
+                        newErrors.package_id = 'Selected package is no longer active';
+                    }
+                }
                 break;
         }
         // Validate that end time is after start time
@@ -559,6 +773,7 @@ export function ClassAssignmentManager() {
             return;
         try {
             setSaving(true);
+            setLoadingStates(prev => ({ ...prev, creatingAssignment: true }));
             const currentUser = await supabase.auth.getUser();
             const currentUserId = currentUser.data.user?.id || '';
             switch (formData.assignment_type) {
@@ -569,7 +784,7 @@ export function ClassAssignmentManager() {
                     await createWeeklySchedule(currentUserId);
                     break;
                 case 'monthly':
-                    await createMonthlyAssignments(currentUserId);
+                    await createPackageAssignments(currentUserId);
                     break;
                 case 'crash_course':
                     await createCrashCourseAssignments(currentUserId);
@@ -592,6 +807,7 @@ export function ClassAssignmentManager() {
         }
         finally {
             setSaving(false);
+            setLoadingStates(prev => ({ ...prev, creatingAssignment: false }));
         }
     };
     const resetForm = () => {
@@ -623,7 +839,19 @@ export function ClassAssignmentManager() {
             package_id: '',
             // Generated/calculated fields
             timeline_description: '',
-            total_classes: 0
+            total_classes: 0,
+            // New timezone support
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+            // New assignment method fields
+            monthly_assignment_method: 'weekly_recurrence',
+            // Weekly recurrence fields
+            weekly_days: [1, 3, 5], // Default: Mon, Wed, Fri
+            // Manual calendar selections
+            manual_selections: [],
+            // Booking reference fields
+            booking_id: '',
+            client_name: '',
+            client_email: ''
         });
     };
     const createAdhocAssignment = async (currentUserId) => {
@@ -640,7 +868,13 @@ export function ClassAssignmentManager() {
             assigned_at: new Date().toISOString(),
             class_status: 'scheduled',
             payment_status: 'pending',
-            payment_date: null
+            payment_date: null,
+            // Booking reference fields
+            booking_id: formData.booking_id || null,
+            client_name: formData.client_name || null,
+            client_email: formData.client_email || null,
+            timezone: formData.timezone,
+            created_in_timezone: formData.timezone
         };
         console.log('Creating adhoc assignment:', assignment);
         const { error } = await supabase.from('class_assignments').insert([assignment]);
@@ -672,61 +906,7 @@ export function ClassAssignmentManager() {
             throw error;
         }
     };
-    const createMonthlyAssignments = async (currentUserId) => {
-        const assignments = [];
-        const startDate = new Date(formData.start_date);
-        const endDate = new Date(formData.end_date);
-        // Get the selected package to determine classes per month
-        const selectedPackage = packages.find(pkg => pkg.id === formData.package_id);
-        const classesPerMonth = selectedPackage?.class_count || 1;
-        // Generate all monthly occurrences
-        const currentDate = new Date(startDate);
-        while (currentDate <= endDate) {
-            // Create multiple classes for this month based on package class_count
-            for (let classIndex = 0; classIndex < classesPerMonth; classIndex++) {
-                // Calculate the actual date for this class in the month
-                let classDate = new Date(currentDate);
-                if (formData.day_of_month === -1) {
-                    // Last day of month
-                    classDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-                }
-                else {
-                    // Specific day of month, but distribute classes throughout the month
-                    const baseDay = formData.day_of_month;
-                    const dayOffset = Math.floor((classIndex * 7) % 28); // Spread classes weekly within month
-                    const targetDay = baseDay + dayOffset;
-                    classDate.setDate(Math.min(targetDay, new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()));
-                    // If the day doesn't exist in this month, adjust
-                    if (classDate.getMonth() !== currentDate.getMonth()) {
-                        classDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-                    }
-                }
-                assignments.push({
-                    package_id: formData.package_id,
-                    date: classDate.toISOString().split('T')[0],
-                    start_time: formData.start_time,
-                    end_time: formData.end_time,
-                    instructor_id: formData.instructor_id,
-                    payment_amount: formData.payment_amount / classesPerMonth, // Divide payment across classes
-                    notes: `Regular Package (Monthly recurring - Class ${classIndex + 1}/${classesPerMonth}): ${formData.notes || 'Auto-generated'}`,
-                    schedule_type: 'adhoc',
-                    assigned_by: currentUserId,
-                    assigned_at: new Date().toISOString(),
-                    class_status: 'scheduled',
-                    payment_status: 'pending',
-                    payment_date: null
-                });
-            }
-            // Move to next month
-            currentDate.setMonth(currentDate.getMonth() + 1);
-        }
-        console.log('Creating monthly assignments:', assignments.length, 'classes', `(${classesPerMonth} classes per month)`);
-        const { error } = await supabase.from('class_assignments').insert(assignments);
-        if (error) {
-            console.error('Monthly assignments creation error:', error);
-            throw error;
-        }
-    };
+    // Removed old createMonthlyAssignments function - now using createPackageAssignments
     const createCrashCourseAssignments = async (currentUserId) => {
         const assignments = [];
         const startDate = new Date(formData.start_date);
@@ -772,10 +952,229 @@ export function ClassAssignmentManager() {
             throw error;
         }
     };
-    const createPackageAssignments = async (_currentUserId) => {
-        // TODO: Implement package assignment logic
-        console.log('Package assignments not yet implemented');
-        throw new Error('Package assignments are not yet implemented. Please implement based on your package structure.');
+    const createPackageAssignments = async (currentUserId) => {
+        if (!formData.package_id) {
+            throw new Error('Package selection is required for package assignments');
+        }
+        const selectedPackage = packages.find(pkg => pkg.id === formData.package_id);
+        if (!selectedPackage) {
+            throw new Error('Selected package not found');
+        }
+        const assignments = [];
+        if (formData.monthly_assignment_method === 'weekly_recurrence') {
+            // Weekly recurrence method
+            assignments.push(...await createWeeklyRecurrenceAssignments(selectedPackage, currentUserId));
+        }
+        else if (formData.monthly_assignment_method === 'manual_calendar') {
+            // Manual calendar selection method
+            assignments.push(...await createManualCalendarAssignments(selectedPackage, currentUserId));
+        }
+        if (assignments.length === 0) {
+            throw new Error('No valid assignments were created. Please check your selections.');
+        }
+        console.log('Creating package assignments:', assignments.length, 'classes via', formData.monthly_assignment_method);
+        const { error } = await supabase.from('class_assignments').insert(assignments);
+        if (error) {
+            console.error('Package assignments creation error:', error);
+            throw error;
+        }
+    };
+    const createWeeklyRecurrenceAssignments = async (selectedPackage, currentUserId) => {
+        const assignments = [];
+        const startDate = new Date(formData.start_date);
+        const endDate = formData.end_date ? new Date(formData.end_date) : new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate());
+        // Validate weekly days selection
+        if (!formData.weekly_days || formData.weekly_days.length === 0) {
+            throw new Error('Please select at least one day of the week for recurring classes');
+        }
+        let assignmentCount = 0;
+        let currentDate = new Date(startDate);
+        const maxAssignments = selectedPackage.class_count;
+        // Continue creating assignments until we hit the class count or end date
+        while (assignmentCount < maxAssignments && currentDate <= endDate) {
+            // Check if current day is in selected weekdays
+            const currentDayOfWeek = currentDate.getDay(); // 0 = Sunday, 6 = Saturday
+            if (formData.weekly_days.includes(currentDayOfWeek)) {
+                assignments.push({
+                    package_id: formData.package_id,
+                    class_type_id: formData.class_type_id || null,
+                    date: currentDate.toISOString().split('T')[0],
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    instructor_id: formData.instructor_id,
+                    payment_amount: formData.payment_amount,
+                    notes: formData.notes,
+                    schedule_type: 'adhoc',
+                    assignment_method: 'weekly_recurrence',
+                    recurrence_days: formData.weekly_days,
+                    timezone: formData.timezone,
+                    created_in_timezone: formData.timezone,
+                    assigned_by: currentUserId,
+                    assigned_at: new Date().toISOString(),
+                    class_status: 'scheduled',
+                    payment_status: 'pending',
+                    payment_date: null,
+                    // Booking reference fields
+                    booking_id: formData.booking_id || null,
+                    client_name: formData.client_name || null,
+                    client_email: formData.client_email || null
+                });
+                assignmentCount++;
+                // Break if we've reached the required class count
+                if (assignmentCount >= maxAssignments) {
+                    break;
+                }
+            }
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        if (assignmentCount === 0) {
+            throw new Error('No classes could be scheduled with the selected days and date range. Please adjust your selection.');
+        }
+        if (assignmentCount < maxAssignments) {
+            const remaining = maxAssignments - assignmentCount;
+            console.warn(`Only ${assignmentCount} out of ${maxAssignments} classes could be scheduled. ${remaining} classes remaining.`);
+        }
+        return assignments;
+    };
+    const createManualCalendarAssignments = async (selectedPackage, currentUserId) => {
+        const assignments = [];
+        // Validate manual selections
+        if (!formData.manual_selections || formData.manual_selections.length === 0) {
+            throw new Error('Please select dates and times from the calendar for manual assignment');
+        }
+        if (formData.manual_selections.length !== selectedPackage.class_count) {
+            throw new Error(`Please select exactly ${selectedPackage.class_count} class slots to match the package requirement`);
+        }
+        // Create assignments from manual selections
+        for (const selection of formData.manual_selections) {
+            assignments.push({
+                package_id: formData.package_id,
+                class_type_id: formData.class_type_id || null,
+                date: selection.date,
+                start_time: selection.start_time,
+                end_time: selection.end_time,
+                instructor_id: formData.instructor_id,
+                payment_amount: formData.payment_amount,
+                notes: formData.notes,
+                schedule_type: 'adhoc',
+                assignment_method: 'manual_calendar',
+                timezone: selection.timezone,
+                created_in_timezone: formData.timezone,
+                assigned_by: currentUserId,
+                assigned_at: new Date().toISOString(),
+                class_status: 'scheduled',
+                payment_status: 'pending',
+                payment_date: null,
+                // Booking reference fields
+                booking_id: formData.booking_id || null,
+                client_name: formData.client_name || null,
+                client_email: formData.client_email || null
+            });
+        }
+        return assignments;
+    };
+    // Delete assignment function
+    const deleteAssignment = async (assignmentId, assignmentTitle) => {
+        const confirmed = window.confirm(`Are you sure you want to delete this class assignment?\n\n${assignmentTitle}\n\nThis action cannot be undone.`);
+        if (!confirmed)
+            return;
+        try {
+            setLoadingStates(prev => ({ ...prev, deletingAssignment: true }));
+            const { error } = await supabase
+                .from('class_assignments')
+                .delete()
+                .eq('id', assignmentId);
+            if (error) {
+                console.error('Delete assignment error:', error);
+                throw error;
+            }
+            // Refresh data to update the UI
+            await fetchData();
+            // Show success message
+            alert('Class assignment deleted successfully');
+        }
+        catch (err) {
+            console.error('Delete error:', err);
+            alert(`Failed to delete assignment: ${err.message}`);
+        }
+        finally {
+            setLoadingStates(prev => ({ ...prev, deletingAssignment: false }));
+        }
+    };
+    // Helper function to get assignment title for deletion confirmation
+    const getAssignmentTitle = (assignment) => {
+        const instructor = assignment.instructor_profile?.full_name || 'Unknown Instructor';
+        const classType = assignment.class_type?.name || 'Unknown Class';
+        const date = assignment.date;
+        const time = assignment.start_time && assignment.end_time
+            ? `${formatTimeWithTimeZone(assignment.start_time)} - ${formatTimeWithTimeZone(assignment.end_time)}`
+            : 'Unknown Time';
+        return `${classType} with ${instructor} on ${formatDateWithTimeZone(new Date(date))} at ${time}`;
+    };
+    // Multi-delete functionality
+    const toggleAssignmentSelection = (assignmentId) => {
+        const newSelected = new Set(selectedAssignments);
+        if (newSelected.has(assignmentId)) {
+            newSelected.delete(assignmentId);
+        }
+        else {
+            newSelected.add(assignmentId);
+        }
+        setSelectedAssignments(newSelected);
+    };
+    const selectAllFilteredAssignments = () => {
+        const allIds = new Set(filteredAssignments.map(a => a.id));
+        setSelectedAssignments(allIds);
+    };
+    const clearAllSelections = () => {
+        setSelectedAssignments(new Set());
+    };
+    const toggleSelectMode = () => {
+        setIsSelectMode(!isSelectMode);
+        if (isSelectMode) {
+            clearAllSelections();
+        }
+    };
+    const deleteSelectedAssignments = async () => {
+        if (selectedAssignments.size === 0)
+            return;
+        const selectedList = Array.from(selectedAssignments);
+        const assignmentTitles = selectedList
+            .map(id => {
+            const assignment = assignments.find(a => a.id === id);
+            return assignment ? getAssignmentTitle(assignment) : 'Unknown Assignment';
+        })
+            .slice(0, 3) // Show first 3 assignments
+            .join('\n• ');
+        const additionalCount = selectedList.length > 3 ? `\n...and ${selectedList.length - 3} more` : '';
+        const confirmed = window.confirm(`Are you sure you want to delete ${selectedList.length} class assignment${selectedList.length > 1 ? 's' : ''}?\n\n• ${assignmentTitles}${additionalCount}\n\nThis action cannot be undone.`);
+        if (!confirmed)
+            return;
+        try {
+            setLoadingStates(prev => ({ ...prev, deletingAssignment: true }));
+            const { error } = await supabase
+                .from('class_assignments')
+                .delete()
+                .in('id', selectedList);
+            if (error) {
+                console.error('Bulk delete assignments error:', error);
+                throw error;
+            }
+            // Clear selections and refresh data
+            clearAllSelections();
+            setIsSelectMode(false);
+            await fetchData();
+            // Show success message
+            alert(`${selectedList.length} class assignment${selectedList.length > 1 ? 's' : ''} deleted successfully`);
+        }
+        catch (err) {
+            console.error('Bulk delete error:', err);
+            alert(`Failed to delete assignments: ${err.message}`);
+        }
+        finally {
+            setLoadingStates(prev => ({ ...prev, deletingAssignment: false }));
+        }
     };
     const availableInstructors = getAvailableInstructors();
     // Filter and search functionality
@@ -883,34 +1282,43 @@ export function ClassAssignmentManager() {
                                                 ? 'border-blue-500 text-blue-600'
                                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`, children: [_jsx(Calendar, { className: "w-4 h-4 inline mr-2" }), "Calendar View"] }), _jsxs("button", { onClick: () => setActiveView('analytics'), className: `py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'analytics'
                                                 ? 'border-blue-500 text-blue-600'
-                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`, children: [_jsx(BarChart3, { className: "w-4 h-4 inline mr-2" }), "Analytics"] })] }) }), _jsxs("div", { className: "p-6", children: [activeView === 'list' && (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex justify-between items-center", children: [_jsxs("h3", { className: "text-lg font-semibold text-gray-900", children: ["Assignments (", filteredAssignments.length, ")"] }), _jsxs("div", { className: "flex space-x-2", children: [_jsxs(Button, { variant: "outline", size: "sm", children: [_jsx(Download, { className: "w-4 h-4 mr-2" }), "Export"] }), _jsxs(Button, { variant: "outline", size: "sm", onClick: () => fetchData(), children: [_jsx(RefreshCw, { className: "w-4 h-4 mr-2" }), "Refresh"] })] })] }), loading ? (_jsx("div", { className: "flex justify-center py-12", children: _jsx(LoadingSpinner, { size: "lg" }) })) : (_jsx("div", { className: "overflow-hidden", children: filteredAssignments.length === 0 ? (_jsxs("div", { className: "text-center py-12", children: [_jsx(Calendar, { className: "mx-auto h-12 w-12 text-gray-400" }), _jsx("h3", { className: "mt-2 text-sm font-medium text-gray-900", children: "No assignments found" }), _jsx("p", { className: "mt-1 text-sm text-gray-500", children: "Try adjusting your filters or create a new assignment." }), _jsx("div", { className: "mt-6", children: _jsxs(Button, { onClick: () => setShowAssignForm(true), children: [_jsx(Plus, { className: "w-4 h-4 mr-2" }), "Create Assignment"] }) })] })) : (_jsx("div", { className: "grid gap-4", children: filteredAssignments.map(assignment => (_jsx("div", { className: "bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center space-x-4", children: [_jsx("div", { className: `w-3 h-3 rounded-full ${assignment.class_status === 'completed' ? 'bg-green-500' :
+                                                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`, children: [_jsx(BarChart3, { className: "w-4 h-4 inline mr-2" }), "Analytics"] })] }) }), _jsxs("div", { className: "p-6", children: [activeView === 'list' && (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex justify-between items-center", children: [_jsxs("h3", { className: "text-lg font-semibold text-gray-900", children: ["Assignments (", filteredAssignments.length, ")", selectedAssignments.size > 0 && (_jsxs("span", { className: "ml-2 text-sm text-blue-600", children: ["(", selectedAssignments.size, " selected)"] }))] }), _jsxs("div", { className: "flex space-x-2", children: [_jsxs(Button, { variant: isSelectMode ? "primary" : "outline", size: "sm", onClick: toggleSelectMode, children: [_jsx(CheckSquare, { className: "w-4 h-4 mr-2" }), isSelectMode ? 'Exit Select' : 'Select'] }), _jsxs(Button, { variant: "outline", size: "sm", children: [_jsx(Download, { className: "w-4 h-4 mr-2" }), "Export"] }), _jsxs(Button, { variant: "outline", size: "sm", onClick: () => fetchData(), disabled: loadingStates.fetchingData, children: [_jsx(RefreshCw, { className: `w-4 h-4 mr-2 ${loadingStates.fetchingData ? 'animate-spin' : ''}` }), loadingStates.fetchingData ? 'Refreshing...' : 'Refresh'] })] })] }), isSelectMode && (_jsxs("div", { className: "bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center space-x-4", children: [_jsxs("div", { className: "flex items-center space-x-2", children: [_jsx("input", { type: "checkbox", checked: selectedAssignments.size === filteredAssignments.length && filteredAssignments.length > 0, onChange: (e) => {
+                                                                            if (e.target.checked) {
+                                                                                selectAllFilteredAssignments();
+                                                                            }
+                                                                            else {
+                                                                                clearAllSelections();
+                                                                            }
+                                                                        }, className: "h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded" }), _jsxs("label", { className: "text-sm text-gray-700", children: ["Select All (", filteredAssignments.length, ")"] })] }), _jsx(Button, { variant: "outline", size: "sm", onClick: clearAllSelections, disabled: selectedAssignments.size === 0, children: "Clear Selection" })] }), _jsxs("div", { className: "flex items-center space-x-2", children: [_jsxs("span", { className: "text-sm text-gray-600", children: [selectedAssignments.size, " assignment", selectedAssignments.size !== 1 ? 's' : '', " selected"] }), _jsxs(Button, { variant: "outline", size: "sm", onClick: deleteSelectedAssignments, disabled: selectedAssignments.size === 0 || loadingStates.deletingAssignment, className: "text-red-600 hover:text-red-800 hover:bg-red-50 border-red-300", children: [_jsx(Trash2, { className: "w-4 h-4 mr-2" }), loadingStates.deletingAssignment ? 'Deleting...' : 'Delete Selected'] })] })] })), loading ? (_jsx("div", { className: "flex justify-center py-12", children: _jsx(LoadingSpinner, { size: "lg" }) })) : (_jsx("div", { className: "overflow-hidden", children: filteredAssignments.length === 0 ? (_jsxs("div", { className: "text-center py-12", children: [_jsx(Calendar, { className: "mx-auto h-12 w-12 text-gray-400" }), _jsx("h3", { className: "mt-2 text-sm font-medium text-gray-900", children: "No assignments found" }), _jsx("p", { className: "mt-1 text-sm text-gray-500", children: "Try adjusting your filters or create a new assignment." }), _jsx("div", { className: "mt-6", children: _jsxs(Button, { onClick: () => setShowAssignForm(true), children: [_jsx(Plus, { className: "w-4 h-4 mr-2" }), "Create Assignment"] }) })] })) : (_jsx("div", { className: "grid gap-4", children: filteredAssignments.map(assignment => (_jsx("div", { className: "bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center space-x-4", children: [isSelectMode && (_jsx("input", { type: "checkbox", checked: selectedAssignments.has(assignment.id), onChange: () => toggleAssignmentSelection(assignment.id), className: "w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2" })), _jsx("div", { className: `w-3 h-3 rounded-full ${assignment.class_status === 'completed' ? 'bg-green-500' :
                                                                                 assignment.class_status === 'cancelled' ? 'bg-red-500' :
                                                                                     'bg-blue-500'}` }), _jsxs("div", { children: [_jsxs("div", { className: "flex items-center space-x-2", children: [_jsx("span", { className: "font-medium text-gray-900", children: formatDate(assignment.date) }), _jsxs("span", { className: "text-sm text-gray-500", children: [formatTime(assignment.start_time), " - ", formatTime(assignment.end_time)] }), _jsx("span", { className: `inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAssignmentType(assignment) === 'crash_course' ? 'bg-orange-100 text-orange-800' :
                                                                                                 getAssignmentType(assignment) === 'monthly' ? 'bg-green-100 text-green-800' :
                                                                                                     'bg-blue-100 text-blue-800'}`, children: getAssignmentType(assignment) === 'crash_course' ? 'Crash Course' :
                                                                                                 getAssignmentType(assignment) === 'monthly' ? 'Monthly Package' :
-                                                                                                    'Adhoc' })] }), _jsxs("div", { className: "flex items-center space-x-4 mt-1", children: [_jsxs("span", { className: "text-sm text-gray-600", children: [_jsx(Users, { className: "w-4 h-4 inline mr-1" }), assignment.instructor_profile?.full_name || 'Unassigned'] }), _jsx("span", { className: "text-sm text-gray-600", children: assignment.class_type?.name || 'No class type' }), _jsxs("span", { className: "text-sm font-medium text-gray-900", children: ["\u20B9", assignment.payment_amount?.toLocaleString()] })] })] })] }), _jsx("div", { className: "flex items-center space-x-3", children: _jsxs("select", { value: assignment.payment_status || 'pending', onChange: async (e) => {
-                                                                            const updated = e.target.value;
-                                                                            const updateData = { payment_status: updated };
-                                                                            if (updated === 'paid') {
-                                                                                updateData.payment_date = new Date().toISOString().split('T')[0];
-                                                                            }
-                                                                            else if (updated === 'pending' || updated === 'cancelled') {
-                                                                                updateData.payment_date = null;
-                                                                            }
-                                                                            const { error } = await supabase
-                                                                                .from('class_assignments')
-                                                                                .update(updateData)
-                                                                                .eq('id', assignment.id);
-                                                                            if (error) {
-                                                                                console.error('Status update error:', error);
-                                                                            }
-                                                                            else {
-                                                                                fetchData();
-                                                                            }
-                                                                        }, className: `text-xs border rounded px-2 py-1 ${assignment.payment_status === 'cancelled' ? 'text-red-600 bg-red-50 border-red-200' :
-                                                                            assignment.payment_status === 'paid' ? 'text-green-600 bg-green-50 border-green-200' :
-                                                                                'text-yellow-600 bg-yellow-50 border-yellow-200'}`, children: [_jsx("option", { value: "pending", children: "Pending" }), _jsx("option", { value: "paid", children: "Paid" }), _jsx("option", { value: "cancelled", children: "Cancelled" })] }) })] }) }, assignment.id))) })) }))] })), activeView === 'calendar' && (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex justify-between items-center", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900", children: "Weekly Calendar View" }), _jsxs("div", { className: "flex space-x-2", children: [_jsx("button", { onClick: () => {
+                                                                                                    'Adhoc' })] }), _jsxs("div", { className: "flex items-center space-x-4 mt-1", children: [_jsxs("span", { className: "text-sm text-gray-600", children: [_jsx(Users, { className: "w-4 h-4 inline mr-1" }), assignment.instructor_profile?.full_name || 'Unassigned'] }), _jsx("span", { className: "text-sm text-gray-600", children: assignment.class_type?.name || 'No class type' }), _jsxs("span", { className: "text-sm font-medium text-gray-900", children: ["\u20B9", assignment.payment_amount?.toLocaleString()] })] })] })] }), _jsxs("div", { className: "flex items-center space-x-3", children: [_jsxs("select", { value: assignment.payment_status || 'pending', onChange: async (e) => {
+                                                                                const updated = e.target.value;
+                                                                                const updateData = { payment_status: updated };
+                                                                                if (updated === 'paid') {
+                                                                                    updateData.payment_date = new Date().toISOString().split('T')[0];
+                                                                                }
+                                                                                else if (updated === 'pending' || updated === 'cancelled') {
+                                                                                    updateData.payment_date = null;
+                                                                                }
+                                                                                setLoadingStates(prev => ({ ...prev, updatingStatus: true }));
+                                                                                const { error } = await supabase
+                                                                                    .from('class_assignments')
+                                                                                    .update(updateData)
+                                                                                    .eq('id', assignment.id);
+                                                                                if (error) {
+                                                                                    console.error('Status update error:', error);
+                                                                                }
+                                                                                else {
+                                                                                    fetchData();
+                                                                                }
+                                                                                setLoadingStates(prev => ({ ...prev, updatingStatus: false }));
+                                                                            }, className: `text-xs border rounded px-2 py-1 ${assignment.payment_status === 'cancelled' ? 'text-red-600 bg-red-50 border-red-200' :
+                                                                                assignment.payment_status === 'paid' ? 'text-green-600 bg-green-50 border-green-200' :
+                                                                                    'text-yellow-600 bg-yellow-50 border-yellow-200'}`, disabled: loadingStates.updatingStatus, children: [_jsx("option", { value: "pending", children: "Pending" }), _jsx("option", { value: "paid", children: "Paid" }), _jsx("option", { value: "cancelled", children: "Cancelled" })] }), _jsx("button", { onClick: () => deleteAssignment(assignment.id, getAssignmentTitle(assignment)), disabled: loadingStates.deletingAssignment, className: "p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed", title: "Delete Assignment", children: _jsx(Trash2, { className: "w-4 h-4" }) })] })] }) }, assignment.id))) })) }))] })), activeView === 'calendar' && (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { className: "flex justify-between items-center", children: [_jsx("h3", { className: "text-lg font-semibold text-gray-900", children: "Weekly Calendar View" }), _jsxs("div", { className: "flex space-x-2", children: [_jsx("button", { onClick: () => {
                                                                     const currentWeek = new Date(currentWeekStart);
                                                                     currentWeek.setDate(currentWeek.getDate() - 7);
                                                                     setCurrentWeekStart(new Date(currentWeek));
@@ -923,9 +1331,9 @@ export function ClassAssignmentManager() {
                                                                 date.setDate(date.getDate() + i);
                                                                 const isToday = date.toDateString() === new Date().toDateString();
                                                                 return (_jsxs("div", { className: `p-3 text-center border-r last:border-r-0 ${isToday ? 'bg-blue-50' : ''}`, children: [_jsx("div", { className: `text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-700'}`, children: date.toLocaleDateString('en-US', { weekday: 'short' }) }), _jsx("div", { className: `text-lg font-semibold ${isToday ? 'text-blue-700' : 'text-gray-900'}`, children: date.getDate() }), _jsx("div", { className: "text-xs text-gray-500", children: date.toLocaleDateString('en-US', { month: 'short' }) })] }, i));
-                                                            })] }), _jsx("div", { className: "max-h-96 overflow-y-auto", children: Array.from({ length: 14 }, (_, hourIndex) => {
-                                                            const hour = hourIndex + 8; // Start from 8 AM
-                                                            return (_jsxs("div", { className: "grid grid-cols-8 border-b border-gray-100 min-h-[60px]", children: [_jsxs("div", { className: "p-2 text-xs text-gray-500 border-r bg-gray-25 flex items-start", children: [hour, ":00"] }), Array.from({ length: 7 }, (_, dayIndex) => {
+                                                            })] }), _jsx("div", { className: "max-h-96 overflow-y-auto", children: Array.from({ length: 24 }, (_, hourIndex) => {
+                                                            const hour = hourIndex; // Start from 12 AM (0:00)
+                                                            return (_jsxs("div", { className: "grid grid-cols-8 border-b border-gray-100 min-h-[60px]", children: [_jsx("div", { className: "p-2 text-xs text-gray-500 border-r bg-gray-25 flex items-start", children: formatTimeWithAMPM(`${hour.toString().padStart(2, '0')}:00`) }), Array.from({ length: 7 }, (_, dayIndex) => {
                                                                         const date = new Date(currentWeekStart);
                                                                         date.setDate(date.getDate() + dayIndex);
                                                                         const dateString = date.toISOString().split('T')[0];
@@ -944,9 +1352,15 @@ export function ClassAssignmentManager() {
                                                                                 const duration = assignment.start_time && assignment.end_time
                                                                                     ? timeToMinutes(assignment.end_time) - timeToMinutes(assignment.start_time)
                                                                                     : 60;
-                                                                                return (_jsxs("div", { className: "mb-1 p-1 bg-blue-100 border-l-2 border-blue-500 rounded text-xs cursor-pointer hover:bg-blue-200 transition-colors", style: {
+                                                                                return (_jsxs("div", { className: "mb-1 p-1 bg-blue-100 border-l-2 border-blue-500 rounded text-xs cursor-pointer hover:bg-blue-200 transition-colors relative group", style: {
                                                                                         height: `${Math.max(duration / 60 * 60, 20)}px`
-                                                                                    }, title: `${assignment.class_type?.name || 'Class'} - ${startTime}-${endTime}\nInstructor: ${assignment.instructor_profile?.full_name || assignment.instructor_profile?.email || 'N/A'}`, children: [_jsx("div", { className: "font-medium text-blue-800 truncate", children: assignment.class_type?.name || 'Class' }), _jsxs("div", { className: "text-blue-600 truncate", children: [startTime, "-", endTime] }), _jsx("div", { className: "text-blue-500 truncate", children: assignment.instructor_profile?.full_name?.split(' ')[0] || 'Instructor' }), assignment.payment_status && (_jsx("div", { className: `text-xs px-1 rounded ${assignment.payment_status === 'paid'
+                                                                                    }, title: `${assignment.class_type?.name || 'Class'} - ${startTime}-${endTime}\nInstructor: ${assignment.instructor_profile?.full_name || assignment.instructor_profile?.email || 'N/A'}`, children: [isSelectMode && (_jsx("input", { type: "checkbox", checked: selectedAssignments.has(assignment.id), onChange: (e) => {
+                                                                                                e.stopPropagation();
+                                                                                                toggleAssignmentSelection(assignment.id);
+                                                                                            }, className: "absolute top-1 left-1 w-3 h-3 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-1 z-10" })), _jsx("button", { onClick: (e) => {
+                                                                                                e.stopPropagation();
+                                                                                                deleteAssignment(assignment.id, getAssignmentTitle(assignment));
+                                                                                            }, className: "absolute top-0 right-0 p-0.5 text-red-600 hover:text-red-800 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity", disabled: loadingStates.deletingAssignment, title: "Delete Assignment", children: _jsx(Trash2, { className: "w-3 h-3" }) }), _jsx("div", { className: "font-medium text-blue-800 truncate", children: assignment.class_type?.name || 'Class' }), _jsxs("div", { className: "text-blue-600 truncate", children: [startTime, "-", endTime] }), _jsx("div", { className: "text-blue-500 truncate", children: assignment.instructor_profile?.full_name?.split(' ')[0] || 'Instructor' }), assignment.payment_status && (_jsx("div", { className: `text-xs px-1 rounded ${assignment.payment_status === 'paid'
                                                                                                 ? 'bg-green-200 text-green-800'
                                                                                                 : assignment.payment_status === 'pending'
                                                                                                     ? 'bg-yellow-200 text-yellow-800'
@@ -992,9 +1406,19 @@ export function ClassAssignmentManager() {
                                                         formData.payment_type === 'monthly' ? 'Monthly payment amount' :
                                                             formData.payment_type === 'per_member' ? 'Rate per student per month' :
                                                                 formData.payment_type === 'per_class_total' ? 'Total amount per class' :
-                                                                    'Total course amount' }), errors.payment_amount && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.payment_amount })] })] }), formData.total_classes > 0 && formData.payment_amount > 0 && (_jsxs("div", { className: "bg-gray-50 border border-gray-200 rounded-lg p-4", children: [_jsxs("div", { className: "flex items-center gap-2 mb-2", children: [_jsx(DollarSign, { className: "w-4 h-4 text-gray-600" }), _jsx("span", { className: "font-medium text-gray-800", children: "Payment Summary" })] }), _jsxs("div", { className: "text-sm text-gray-700", children: [formData.payment_type === 'per_class' && (_jsxs("p", { children: [_jsx("strong", { children: "Per Class:" }), " \u20B9", formData.payment_amount, " \u00D7 ", formData.total_classes, " classes =", _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", (formData.payment_amount * formData.total_classes).toLocaleString()] })] })), formData.payment_type === 'monthly' && (_jsxs("p", { children: [_jsx("strong", { children: "Monthly:" }), " \u20B9", formData.payment_amount, " per month \u00D7 estimated ", Math.ceil(formData.total_classes / 4), " months =", _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", (formData.payment_amount * Math.ceil(formData.total_classes / 4)).toLocaleString()] })] })), formData.payment_type === 'total_duration' && (_jsxs("p", { children: [_jsx("strong", { children: "Total Duration:" }), _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", formData.payment_amount.toLocaleString()] }), ' ', "for entire course (", formData.total_classes, " classes)"] })), formData.payment_type === 'per_member' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Per Student Monthly Rate:" }), " \u20B9", formData.payment_amount, " per student per month"] }), _jsxs("div", { className: "mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs", children: [_jsx("p", { className: "text-blue-700", children: _jsx("strong", { children: "Monthly Payment Calculation:" }) }), _jsx("p", { className: "text-blue-800 font-medium", children: "Formula: Students enrolled \u00D7 Monthly rate \u00D7 Weekly classes in month" }), _jsxs("div", { className: "mt-2 space-y-1", children: [_jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 1:" }), " 5 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 5 * 4).toLocaleString()] })] }), _jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 2:" }), " 7 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 7 * 4).toLocaleString()] })] }), _jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 3:" }), " 10 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 10 * 4).toLocaleString()] })] })] }), _jsx("p", { className: "text-blue-500 text-xs mt-2", children: "* Payment calculated monthly based on enrolled students that month" })] })] })), formData.payment_type === 'per_class_total' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Total Per Class:" }), " \u20B9", formData.payment_amount, " per class (fixed amount)"] }), _jsxs("div", { className: "mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs", children: [_jsx("p", { className: "text-orange-700", children: _jsx("strong", { children: "Fixed Class Payment:" }) }), _jsxs("p", { className: "text-orange-600", children: ["\u2022 Instructor receives \u20B9", formData.payment_amount.toLocaleString(), " per class regardless of attendance"] }), _jsxs("p", { className: "text-orange-600", children: ["\u2022 Total for ", formData.total_classes, " classes: ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * formData.total_classes).toLocaleString()] })] }), _jsx("p", { className: "text-orange-500 text-xs mt-1", children: "* Payment is fixed per class, independent of member count" })] })] }))] })] })), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700", children: "Notes (Optional)" }), _jsx("textarea", { value: formData.notes, onChange: (e) => handleInputChange('notes', e.target.value), className: "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", rows: 3, placeholder: "Add any additional notes..." })] }), _jsxs("div", { className: "flex justify-end space-x-2", children: [_jsx(Button, { type: "button", variant: "outline", onClick: () => {
+                                                                    'Total course amount' }), errors.payment_amount && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.payment_amount })] })] }), formData.total_classes > 0 && formData.payment_amount > 0 && (_jsxs("div", { className: "bg-gray-50 border border-gray-200 rounded-lg p-4", children: [_jsxs("div", { className: "flex items-center gap-2 mb-2", children: [_jsx(DollarSign, { className: "w-4 h-4 text-gray-600" }), _jsx("span", { className: "font-medium text-gray-800", children: "Payment Summary" })] }), _jsxs("div", { className: "text-sm text-gray-700", children: [formData.payment_type === 'per_class' && (_jsxs("p", { children: [_jsx("strong", { children: "Per Class:" }), " \u20B9", formData.payment_amount, " \u00D7 ", formData.total_classes, " classes =", _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", (formData.payment_amount * formData.total_classes).toLocaleString()] })] })), formData.payment_type === 'monthly' && (_jsxs("p", { children: [_jsx("strong", { children: "Monthly:" }), " \u20B9", formData.payment_amount, " per month \u00D7 estimated ", Math.ceil(formData.total_classes / 4), " months =", _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", (formData.payment_amount * Math.ceil(formData.total_classes / 4)).toLocaleString()] })] })), formData.payment_type === 'total_duration' && (_jsxs("p", { children: [_jsx("strong", { children: "Total Duration:" }), _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", formData.payment_amount.toLocaleString()] }), ' ', "for entire course (", formData.total_classes, " classes)"] })), formData.payment_type === 'per_member' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Per Student Monthly Rate:" }), " \u20B9", formData.payment_amount, " per student per month"] }), _jsxs("div", { className: "mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs", children: [_jsx("p", { className: "text-blue-700", children: _jsx("strong", { children: "Monthly Payment Calculation:" }) }), _jsx("p", { className: "text-blue-800 font-medium", children: "Formula: Students enrolled \u00D7 Monthly rate \u00D7 Weekly classes in month" }), _jsxs("div", { className: "mt-2 space-y-1", children: [_jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 1:" }), " 5 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 5 * 4).toLocaleString()] })] }), _jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 2:" }), " 7 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 7 * 4).toLocaleString()] })] }), _jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 3:" }), " 10 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 10 * 4).toLocaleString()] })] })] }), _jsx("p", { className: "text-blue-500 text-xs mt-2", children: "* Payment calculated monthly based on enrolled students that month" })] })] })), formData.payment_type === 'per_class_total' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Total Per Class:" }), " \u20B9", formData.payment_amount, " per class (fixed amount)"] }), _jsxs("div", { className: "mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs", children: [_jsx("p", { className: "text-orange-700", children: _jsx("strong", { children: "Fixed Class Payment:" }) }), _jsxs("p", { className: "text-orange-600", children: ["\u2022 Instructor receives \u20B9", formData.payment_amount.toLocaleString(), " per class regardless of attendance"] }), _jsxs("p", { className: "text-orange-600", children: ["\u2022 Total for ", formData.total_classes, " classes: ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * formData.total_classes).toLocaleString()] })] }), _jsx("p", { className: "text-orange-500 text-xs mt-1", children: "* Payment is fixed per class, independent of member count" })] })] }))] })] })), _jsx("div", { children: _jsx(BookingSelector, { selectedBookingId: formData.booking_id, onBookingSelect: (bookingId, clientName, clientEmail) => {
+                                            handleInputChange('booking_id', bookingId);
+                                            handleInputChange('client_name', clientName);
+                                            handleInputChange('client_email', clientEmail);
+                                        }, disabled: saving || loadingStates.creatingAssignment }) }), formData.client_name && (_jsxs("div", { className: "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4", children: [_jsxs("div", { className: "flex items-center space-x-2 mb-2", children: [_jsx(Users, { className: "w-4 h-4 text-blue-600" }), _jsx("span", { className: "font-medium text-blue-900 dark:text-blue-100 text-sm", children: "Client Information" })] }), _jsxs("div", { className: "space-y-1 text-sm", children: [_jsxs("div", { className: "flex items-center space-x-2", children: [_jsx("span", { className: "font-medium text-blue-800 dark:text-blue-200", children: "Name:" }), _jsx("span", { className: "text-blue-700 dark:text-blue-300", children: formData.client_name })] }), _jsxs("div", { className: "flex items-center space-x-2", children: [_jsx("span", { className: "font-medium text-blue-800 dark:text-blue-200", children: "Email:" }), _jsx("span", { className: "text-blue-700 dark:text-blue-300", children: formData.client_email })] }), formData.booking_id && (_jsxs("div", { className: "flex items-center space-x-2", children: [_jsx("span", { className: "font-medium text-blue-800 dark:text-blue-200", children: "Booking ID:" }), _jsx("span", { className: "text-blue-700 dark:text-blue-300 font-mono text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded", children: formData.booking_id })] }))] })] })), _jsx("div", { children: _jsx(TimezoneSelector, { value: formData.timezone, onChange: (timezone) => handleInputChange('timezone', timezone), disabled: saving || loadingStates.creatingAssignment, showCurrentTime: true }) }), (formData.assignment_type === 'monthly' || formData.assignment_type === 'package') && formData.package_id && (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-3", children: "Assignment Method" }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsx("div", { className: `border-2 rounded-lg p-4 cursor-pointer transition-all ${formData.monthly_assignment_method === 'weekly_recurrence'
+                                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                                                : 'border-gray-200 hover:border-gray-300'}`, onClick: () => handleInputChange('monthly_assignment_method', 'weekly_recurrence'), children: _jsxs("div", { className: "flex items-center space-x-3", children: [_jsx("input", { type: "radio", name: "assignment_method", value: "weekly_recurrence", checked: formData.monthly_assignment_method === 'weekly_recurrence', onChange: () => handleInputChange('monthly_assignment_method', 'weekly_recurrence'), className: "text-blue-600" }), _jsxs("div", { children: [_jsx("h4", { className: "font-medium text-gray-900", children: "Weekly Recurrence" }), _jsx("p", { className: "text-sm text-gray-600", children: "Select specific weekdays and times for recurring classes" })] })] }) }), _jsx("div", { className: `border-2 rounded-lg p-4 cursor-pointer transition-all ${formData.monthly_assignment_method === 'manual_calendar'
+                                                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                                                                : 'border-gray-200 hover:border-gray-300'}`, onClick: () => handleInputChange('monthly_assignment_method', 'manual_calendar'), children: _jsxs("div", { className: "flex items-center space-x-3", children: [_jsx("input", { type: "radio", name: "assignment_method", value: "manual_calendar", checked: formData.monthly_assignment_method === 'manual_calendar', onChange: () => handleInputChange('monthly_assignment_method', 'manual_calendar'), className: "text-blue-600" }), _jsxs("div", { children: [_jsx("h4", { className: "font-medium text-gray-900", children: "Manual Calendar" }), _jsx("p", { className: "text-sm text-gray-600", children: "Manually select each class date and time from calendar" })] })] }) })] })] }), formData.monthly_assignment_method === 'weekly_recurrence' && (_jsxs("div", { className: "space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-3", children: "Select Days of Week" }), _jsx(WeekdaySelector, { selectedDays: formData.weekly_days, onSelectionChange: (days) => handleInputChange('weekly_days', days), disabled: saving || loadingStates.creatingAssignment })] }), formData.weekly_days.length > 0 && (_jsxs("div", { className: "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4", children: [_jsxs("div", { className: "flex items-center space-x-2 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 text-blue-600" }), _jsx("span", { className: "font-medium text-blue-900 text-sm", children: "Recurrence Preview" })] }), _jsxs("p", { className: "text-sm text-blue-700", children: ["Classes will be scheduled on", ' ', _jsx("span", { className: "font-medium", children: formData.weekly_days.map(day => getWeekdayName(day, 'long')).join(', ') }), ' ', "at", ' ', _jsx("span", { className: "font-medium", children: formData.start_time && formData.end_time
+                                                                        ? `${formatTimeWithAMPM(formData.start_time)} - ${formatTimeWithAMPM(formData.end_time)}`
+                                                                        : 'selected time' }), ' ', "until ", packages.find(p => p.id === formData.package_id)?.class_count || 0, " classes are completed."] })] }))] })), formData.monthly_assignment_method === 'manual_calendar' && (_jsx("div", { children: _jsx(ManualCalendarSelector, { selections: formData.manual_selections, onSelectionsChange: (selections) => handleInputChange('manual_selections', selections), timezone: formData.timezone, requiredCount: packages.find(p => p.id === formData.package_id)?.class_count || 0, minDate: formData.start_date || new Date().toISOString().split('T')[0], maxDate: formData.end_date }) }))] })), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700", children: "Notes (Optional)" }), _jsx("textarea", { value: formData.notes, onChange: (e) => handleInputChange('notes', e.target.value), className: "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", rows: 3, placeholder: "Add any additional notes..." })] }), _jsxs("div", { className: "flex justify-end space-x-2", children: [_jsx(Button, { type: "button", variant: "outline", onClick: () => {
                                                 setShowAssignForm(false);
                                                 setConflictWarning(null);
-                                            }, children: "Cancel" }), _jsxs(Button, { type: "submit", disabled: saving || conflictWarning?.hasConflict, children: [_jsx(Save, { className: "w-4 h-4 mr-2" }), saving ? 'Saving...' : 'Assign Class'] })] })] })] }) }))] }));
+                                            }, children: "Cancel" }), _jsxs(Button, { type: "submit", disabled: saving || loadingStates.creatingAssignment || conflictWarning?.hasConflict, children: [_jsx(Save, { className: "w-4 h-4 mr-2" }), saving || loadingStates.creatingAssignment ? 'Creating Assignment...' : 'Assign Class'] })] })] })] }) }))] }));
 }
 export default ClassAssignmentManager;

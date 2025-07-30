@@ -1,9 +1,14 @@
-import { AlertTriangle, Calendar, DollarSign, Plus, Save, Users, X, Filter, List, BarChart3, TrendingUp, ChevronDown, Search, Download, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Calendar, DollarSign, Plus, Save, Users, X, Filter, List, BarChart3, TrendingUp, ChevronDown, Search, Download, RefreshCw, Trash2, CheckSquare } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../../shared/components/ui/Button'
 import ClockSelector from '../../../../shared/components/ui/ClockSelector'
 import { LoadingSpinner } from '../../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../../shared/lib/supabase'
+import { getWeekdayName, formatTimeWithAMPM } from '../../../../shared/utils/timezoneUtils'
+import { TimezoneSelector } from '../../../../shared/components/ui/TimezoneSelector'
+import { WeekdaySelector } from '../../../../shared/components/ui/WeekdaySelector'
+import { ManualCalendarSelector } from '../../../../shared/components/ui/ManualCalendarSelector'
+import { BookingSelector } from '../../../../shared/components/ui/BookingSelector'
 
 interface ClassAssignment {
     id: string
@@ -67,18 +72,107 @@ interface ConflictDetails {
     hasConflict: boolean
     conflictingClass?: ClassAssignment | ClassSchedule
     message?: string
+    conflictType?: 'instructor' | 'resource' | 'capacity' | 'timing'
+    severity?: 'warning' | 'error'
+    suggestions?: string[]
+}
+
+interface ClassType {
+    id: string
+    name: string
+    difficulty_level: string
+}
+
+interface Package {
+    id: string
+    name: string
+    description?: string
+    duration: string
+    price: number
+    class_count: number
+    validity_days?: number
+    type?: string
+    course_type: 'regular' | 'crash'
+    is_active: boolean
+}
+
+interface FormData {
+    assignment_type: 'adhoc' | 'weekly' | 'monthly' | 'crash_course' | 'package'
+    class_type_id: string
+    instructor_id: string
+    payment_amount: number
+    payment_type: 'per_class' | 'monthly' | 'total_duration' | 'per_member' | 'per_class_total'
+    notes: string
+    date: string
+    start_time: string
+    end_time: string
+    duration: number
+    start_date: string
+    end_date: string
+    day_of_week: number
+    day_of_month: number
+    course_duration_value: number
+    course_duration_unit: 'weeks' | 'months'
+    class_frequency: 'daily' | 'weekly' | 'specific'
+    specific_days: number[]
+    package_id: string
+    timeline_description: string
+    total_classes: number
+
+    // New timezone support
+    timezone: string
+
+    // New assignment method fields
+    monthly_assignment_method: 'weekly_recurrence' | 'manual_calendar'
+
+    // Weekly recurrence fields
+    weekly_days: number[] // [1,3,5] for Mon,Wed,Fri (0=Sunday, 6=Saturday)
+
+    // Manual calendar selections
+    manual_selections: ManualClassSelection[]
+    
+    // Booking reference fields
+    booking_id: string
+    client_name: string
+    client_email: string
+}
+
+interface ManualClassSelection {
+    date: string
+    start_time: string
+    end_time: string
+    timezone: string
+}
+
+// Removed unused ClassAssignmentTemplate interface
+
+interface ValidationErrors {
+    [key: string]: string
+}
+
+interface TimeZoneInfo {
+    timeZone: string
+    offset: number
+    isDST: boolean
 }
 
 export function ClassAssignmentManager() {
     const [assignments, setAssignments] = useState<ClassAssignment[]>([])
     const [weeklySchedules, setWeeklySchedules] = useState<ClassSchedule[]>([])
-    const [classTypes, setClassTypes] = useState<any[]>([])
-    const [packages, setPackages] = useState<any[]>([])
+    const [classTypes, setClassTypes] = useState<ClassType[]>([])
+    const [packages, setPackages] = useState<Package[]>([])
     const [userProfiles, setUserProfiles] = useState<UserProfile[]>([])
     const [loading, setLoading] = useState(true)
     const [showAssignForm, setShowAssignForm] = useState(false)
     const [saving, setSaving] = useState(false)
-    const [errors, setErrors] = useState<any>({})
+    const [loadingStates, setLoadingStates] = useState({
+        creatingAssignment: false,
+        updatingStatus: false,
+        deletingAssignment: false,
+        checkingConflicts: false,
+        fetchingData: false
+    })
+    const [errors, setErrors] = useState<ValidationErrors>({})
     const [conflictWarning, setConflictWarning] = useState<ConflictDetails | null>(null)
 
     // Enhanced dashboard state
@@ -95,6 +189,10 @@ export function ClassAssignmentManager() {
         packages: [] as string[]
     })
 
+    // Selection state for multi-delete
+    const [selectedAssignments, setSelectedAssignments] = useState<Set<string>>(new Set())
+    const [isSelectMode, setIsSelectMode] = useState(false)
+
     // Derived data
     const instructors = userProfiles
 
@@ -105,10 +203,10 @@ export function ClassAssignmentManager() {
         const diff = d.getDate() - day
         return new Date(d.setDate(diff))
     }
-    
+
     const [currentWeekStart, setCurrentWeekStart] = useState(() => getWeekStart(new Date()))
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<FormData>({
         // Assignment type selection
         assignment_type: 'adhoc', // 'adhoc', 'weekly', 'monthly', 'crash_course', 'package'
 
@@ -142,12 +240,38 @@ export function ClassAssignmentManager() {
 
         // Generated/calculated fields
         timeline_description: '',
-        total_classes: 0
+        total_classes: 0,
+
+        // New timezone support
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+
+        // New assignment method fields
+        monthly_assignment_method: 'weekly_recurrence',
+
+        // Weekly recurrence fields
+        weekly_days: [1, 3, 5], // Default: Mon, Wed, Fri
+
+        // Manual calendar selections
+        manual_selections: [],
+        
+        // Booking reference fields
+        booking_id: '',
+        client_name: '',
+        client_email: ''
     })
 
     useEffect(() => {
         fetchData()
     }, [])
+
+    // Timezone support
+    const [timeZoneInfo] = useState<TimeZoneInfo>(() => {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+        const now = new Date()
+        const offset = -now.getTimezoneOffset() / 60
+        const isDST = now.getTimezoneOffset() < new Date(now.getFullYear(), 0, 1).getTimezoneOffset()
+        return { timeZone: tz, offset, isDST }
+    })
 
     // Auto-calculate end dates and timeline descriptions when relevant fields change
     useEffect(() => {
@@ -184,15 +308,23 @@ export function ClassAssignmentManager() {
                 break
 
             case 'monthly':
-                if (formData.start_date && formData.end_date) {
-                    const dayDesc = formData.day_of_month === -1 ? 'last day' : `${formData.day_of_month}${getOrdinalSuffix(formData.day_of_month)}`
-                    description = `Monthly recurring on ${dayDesc} of each month from ${formatDate(formData.start_date)} recurring till ${formatDate(formData.end_date)}`
-                    totalClasses = calculateMonthlyClasses(formData.start_date, formData.end_date)
-                } else if (formData.start_date) {
-                    const dayDesc = formData.day_of_month === -1 ? 'last day' : `${formData.day_of_month}${getOrdinalSuffix(formData.day_of_month)}`
-                    description = `Monthly recurring on ${dayDesc} starting ${formatDate(formData.start_date)} - select end date (till end of year)`
+                const selectedPackage = packages.find(pkg => pkg.id === formData.package_id)
+                const packageName = selectedPackage?.name || 'Selected Package'
+                const packageClassCount = selectedPackage?.class_count || 0
+                totalClasses = packageClassCount
+
+                if (formData.monthly_assignment_method === 'weekly_recurrence' && formData.weekly_days.length > 0) {
+                    const dayNames = formData.weekly_days.map(day => getWeekdayName(day, 'long')).join(', ')
+                    const timeRange = formData.start_time && formData.end_time 
+                        ? `${formatTimeWithAMPM(formData.start_time)} - ${formatTimeWithAMPM(formData.end_time)}`
+                        : 'selected time'
+                    description = `${packageName}: Weekly recurrence on ${dayNames} at ${timeRange} (${packageClassCount} classes total)`
+                } else if (formData.monthly_assignment_method === 'manual_calendar' && formData.manual_selections.length > 0) {
+                    description = `${packageName}: ${formData.manual_selections.length} manually selected class slots (${packageClassCount} classes required)`
+                } else if (formData.package_id) {
+                    description = `${packageName}: ${packageClassCount} classes - Select assignment method (Weekly Recurrence or Manual Calendar)`
                 } else {
-                    description = 'Set up monthly recurring classes with start date and recurring till date'
+                    description = 'Select a package and assignment method for monthly classes'
                 }
                 break
 
@@ -250,21 +382,7 @@ export function ClassAssignmentManager() {
         return Math.max(1, weeks)
     }
 
-    const calculateMonthlyClasses = (startDate: string, endDate: string) => {
-        const start = new Date(startDate)
-        const end = new Date(endDate)
-        const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1
-        
-        // If a package is selected, multiply by classes per month
-        if (formData.package_id) {
-            const selectedPackage = packages.find(pkg => pkg.id === formData.package_id)
-            if (selectedPackage && selectedPackage.class_count) {
-                return Math.max(1, months * selectedPackage.class_count)
-            }
-        }
-        
-        return Math.max(1, months)
-    }
+    // Removed unused calculateMonthlyClasses function
 
     const calculateCourseClasses = (duration: number, unit: string, frequency: string) => {
         const totalWeeks = unit === 'weeks' ? duration : duration * 4 // Approximate weeks
@@ -306,71 +424,93 @@ export function ClassAssignmentManager() {
     const fetchData = async () => {
         try {
             setLoading(true)
+            setLoadingStates(prev => ({ ...prev, fetchingData: true }))
 
-            const { data: classTypesData } = await supabase.from('class_types').select('id, name, difficulty_level')
-            const { data: packagesData } = await supabase.from('class_packages').select('id, name, description, duration, price, class_count, validity_days, type, course_type').eq('is_active', true).eq('is_archived', false)
-            const { data: roles } = await supabase
-                .from('roles')
-                .select('id, name')
-                .in('name', ['instructor', 'yoga_acharya'])
+            // Execute all independent queries in parallel
+            const [
+                classTypesResult,
+                packagesResult,
+                rolesResult,
+                assignmentsResult,
+                weeklySchedulesResult
+            ] = await Promise.all([
+                supabase.from('class_types').select('id, name, difficulty_level'),
+                supabase.from('class_packages').select('id, name, description, duration, price, class_count, validity_days, type, course_type, is_active').eq('is_active', true).eq('is_archived', false),
+                supabase.from('roles').select('id, name').in('name', ['instructor', 'yoga_acharya']),
+                supabase.from('class_assignments').select('*').eq('schedule_type', 'adhoc').order('assigned_at', { ascending: false }),
+                supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true })
+            ])
 
-            const roleIds = roles?.map(r => r.id) || []
+            const classTypesData = classTypesResult.data || []
+            const packagesData = packagesResult.data || []
+            const roles = rolesResult.data || []
+            const assignmentsData = assignmentsResult.data || []
+            const weeklySchedulesData = weeklySchedulesResult.data || []
+
+            // Now fetch user roles and profiles based on role data
+            const roleIds = roles.map(r => r.id)
+
+            if (roleIds.length === 0) {
+                // No instructor roles found, return empty data
+                setClassTypes(classTypesData)
+                setPackages(packagesData)
+                setUserProfiles([])
+                setAssignments([])
+                setWeeklySchedules([])
+                return
+            }
+
+            // First get user roles
             const { data: userRoles } = await supabase
                 .from('user_roles')
                 .select('user_id, role_id')
                 .in('role_id', roleIds)
 
-            const userIds = [...new Set(userRoles?.map(ur => ur.user_id) || [])]
-            const { data: profiles } = await supabase
-                .from('profiles')
-                .select('user_id, full_name, email')
-                .in('user_id', userIds)
+            // Then get profiles for those users
+            const userIds = [...new Set((userRoles || []).map(ur => ur.user_id))]
+            const { data: profiles } = userIds.length > 0
+                ? await supabase.from('profiles').select('user_id, full_name, email').in('user_id', userIds)
+                : { data: [] }
 
-            const profilesWithRoles = (profiles || []).map(profile => {
-                const userRoleIds = (userRoles || []).filter(ur => ur.user_id === profile.user_id).map(ur => ur.role_id)
-                const profileRoles = (roles || []).filter(role => userRoleIds.includes(role.id)).map(role => ({ roles: { name: role.name } }))
-                return {
-                    ...profile,
-                    user_roles: profileRoles
-                }
-            })
 
-            // Fetch all assignments (all are now 'adhoc' in schedule_type, differentiated by package_id vs class_type_id)
-            const { data: assignmentsData } = await supabase
-                .from('class_assignments')
-                .select('*')
-                .eq('schedule_type', 'adhoc')
-                .order('assigned_at', { ascending: false })
+            // Build profiles with roles more efficiently
+            const userRoleMap = new Map<string, string[]>()
+                ; (userRoles || []).forEach(ur => {
+                    if (!userRoleMap.has(ur.user_id)) {
+                        userRoleMap.set(ur.user_id, [])
+                    }
+                    userRoleMap.get(ur.user_id)?.push(ur.role_id)
+                })
 
-            // Fetch weekly schedules
-            const { data: weeklySchedulesData } = await supabase
-                .from('class_schedules')
-                .select('*')
-                .eq('is_active', true)
-                .order('day_of_week', { ascending: true })
+            const roleMap = new Map(roles.map(role => [role.id, role.name]))
 
-            const enrichedAssignments = (assignmentsData || []).map(assignment => {
-                const classType = classTypesData?.find(ct => ct.id === assignment.class_type_id)
-                const instructorProfile = profilesWithRoles.find(p => p.user_id === assignment.instructor_id)
-                return {
-                    ...assignment,
-                    class_type: classType,
-                    instructor_profile: instructorProfile
-                }
-            })
+            const profilesWithRoles = (profiles || []).map(profile => ({
+                ...profile,
+                user_roles: (userRoleMap.get(profile.user_id) || [])
+                    .map(roleId => ({ roles: { name: roleMap.get(roleId) || '' } }))
+                    .filter(role => role.roles.name)
+            }))
 
-            const enrichedWeeklySchedules = (weeklySchedulesData || []).map(schedule => {
-                const classType = classTypesData?.find(ct => ct.id === schedule.class_type_id)
-                const instructorProfile = profilesWithRoles.find(p => p.user_id === schedule.instructor_id)
-                return {
-                    ...schedule,
-                    class_type: classType,
-                    instructor_profile: instructorProfile
-                }
-            })
+            // Build lookup maps for better performance
+            const classTypeMap = new Map(classTypesData.map(ct => [ct.id, ct]))
+            const profileMap = new Map(profilesWithRoles.map(p => [p.user_id, p]))
 
-            setClassTypes(classTypesData || [])
-            setPackages(packagesData || [])
+            // Enrich data more efficiently
+            const enrichedAssignments = assignmentsData.map(assignment => ({
+                ...assignment,
+                class_type: classTypeMap.get(assignment.class_type_id),
+                instructor_profile: profileMap.get(assignment.instructor_id)
+            }))
+
+            const enrichedWeeklySchedules = weeklySchedulesData.map(schedule => ({
+                ...schedule,
+                class_type: classTypeMap.get(schedule.class_type_id),
+                instructor_profile: profileMap.get(schedule.instructor_id)
+            }))
+
+            // Update state
+            setClassTypes(classTypesData)
+            setPackages(packagesData)
             setUserProfiles(profilesWithRoles)
             setAssignments(enrichedAssignments)
             setWeeklySchedules(enrichedWeeklySchedules)
@@ -378,6 +518,7 @@ export function ClassAssignmentManager() {
             console.error('Fetch error:', e)
         } finally {
             setLoading(false)
+            setLoadingStates(prev => ({ ...prev, fetchingData: false }))
         }
     }
 
@@ -387,70 +528,140 @@ export function ClassAssignmentManager() {
             return
         }
 
+        setLoadingStates(prev => ({ ...prev, checkingConflicts: true }))
+
         const proposedStart = timeToMinutes(formData.start_time)
         const proposedEnd = timeToMinutes(formData.end_time)
-        const proposedDate = new Date(formData.date)
-        const proposedDayOfWeek = proposedDate.getDay() // 0 = Sunday, 1 = Monday, etc.
-
-        // Check for conflicts with existing adhoc assignments
-        const conflictingAssignment = assignments.find(assignment => {
-            // Only check assignments that are not cancelled
-            if (assignment.class_status === 'cancelled') return false
-
-            // Check if same instructor and same date
-            if (assignment.instructor_id === formData.instructor_id && assignment.date === formData.date) {
-                if (assignment.start_time && assignment.end_time) {
-                    const existingStart = timeToMinutes(assignment.start_time)
-                    const existingEnd = timeToMinutes(assignment.end_time)
-
-                    // Check if times overlap
-                    return (proposedStart < existingEnd && proposedEnd > existingStart)
-                }
-            }
-            return false
-        })
-
-        // Check for conflicts with weekly schedules
-        const conflictingWeeklySchedule = weeklySchedules.find(schedule => {
-            // Only check active schedules
-            if (!schedule.is_active) return false
-
-            // Check if same instructor and same day of week
-            if (schedule.instructor_id === formData.instructor_id && schedule.day_of_week === proposedDayOfWeek) {
-                if (schedule.start_time && schedule.end_time) {
-                    const existingStart = timeToMinutes(schedule.start_time)
-                    const existingEnd = timeToMinutes(schedule.end_time)
-
-                    // Check if times overlap
-                    return (proposedStart < existingEnd && proposedEnd > existingStart)
-                }
-            }
-            return false
-        })
-
+        const proposedDate = createDateInTimeZone(formData.date)
+        const proposedDayOfWeek = proposedDate.getDay()
         const instructor = userProfiles.find(p => p.user_id === formData.instructor_id)
 
-        if (conflictingAssignment) {
-            const conflictTime = `${formatTime(conflictingAssignment.start_time)} - ${formatTime(conflictingAssignment.end_time)}`
+        // Enhanced conflict detection
+        const conflicts: ConflictDetails[] = []
 
+        // 1. Check instructor conflicts with existing assignments
+        const instructorConflicts = assignments.filter(assignment => {
+            if (assignment.class_status === 'cancelled') return false
+            if (assignment.instructor_id !== formData.instructor_id) return false
+            if (assignment.date !== formData.date) return false
+
+            if (assignment.start_time && assignment.end_time) {
+                const existingStart = timeToMinutes(assignment.start_time)
+                const existingEnd = timeToMinutes(assignment.end_time)
+                return (proposedStart < existingEnd && proposedEnd > existingStart)
+            }
+            return false
+        })
+
+        // 2. Check instructor conflicts with weekly schedules
+        const scheduleConflicts = weeklySchedules.filter(schedule => {
+            if (!schedule.is_active) return false
+            if (schedule.instructor_id !== formData.instructor_id) return false
+            if (schedule.day_of_week !== proposedDayOfWeek) return false
+
+            if (schedule.start_time && schedule.end_time) {
+                const existingStart = timeToMinutes(schedule.start_time)
+                const existingEnd = timeToMinutes(schedule.end_time)
+                return (proposedStart < existingEnd && proposedEnd > existingStart)
+            }
+            return false
+        })
+
+        // 3. Check for timing issues
+        const duration = proposedEnd - proposedStart
+        if (duration < 30) {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Class duration is less than 30 minutes',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider extending the class duration to at least 30 minutes']
+            })
+        }
+
+        if (duration > 180) {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Class duration is more than 3 hours',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider breaking this into multiple sessions', 'Add breaks for long sessions']
+            })
+        }
+
+        // 4. Check for early morning or late evening classes
+        const startHour = Math.floor(proposedStart / 60)
+        if (startHour < 6) {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Early morning class (before 6 AM)',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider scheduling after 6 AM for better attendance']
+            })
+        }
+
+        if (startHour >= 22) {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Late evening class (after 10 PM)',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider scheduling before 10 PM for better attendance']
+            })
+        }
+
+        // 5. Check weekend scheduling
+        const isWeekend = proposedDayOfWeek === 0 || proposedDayOfWeek === 6
+        if (isWeekend && formData.assignment_type === 'weekly') {
+            conflicts.push({
+                hasConflict: true,
+                message: 'Weekend recurring classes may have lower attendance',
+                conflictType: 'timing',
+                severity: 'warning',
+                suggestions: ['Consider weekday scheduling for regular classes']
+            })
+        }
+
+        // Process conflicts and set the most severe one
+        if (instructorConflicts.length > 0) {
+            const conflict = instructorConflicts[0]
             setConflictWarning({
                 hasConflict: true,
-                conflictingClass: conflictingAssignment,
-                message: `${instructor?.full_name || 'This instructor'} already has an adhoc class scheduled from ${conflictTime} on ${formatDate(formData.date)}`
+                conflictingClass: conflict,
+                conflictType: 'instructor',
+                severity: 'error',
+                message: `${instructor?.full_name || 'This instructor'} already has a class scheduled from ${formatTimeWithTimeZone(conflict.start_time || '')} to ${formatTimeWithTimeZone(conflict.end_time || '')} on ${formatDateWithTimeZone(proposedDate)}`,
+                suggestions: [
+                    'Choose a different time slot',
+                    'Select a different instructor',
+                    'Reschedule the conflicting class'
+                ]
             })
-        } else if (conflictingWeeklySchedule) {
-            const conflictTime = `${formatTime(conflictingWeeklySchedule.start_time)} - ${formatTime(conflictingWeeklySchedule.end_time)}`
+        } else if (scheduleConflicts.length > 0) {
+            const conflict = scheduleConflicts[0]
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-            const dayName = dayNames[proposedDayOfWeek]
-
             setConflictWarning({
                 hasConflict: true,
-                conflictingClass: conflictingWeeklySchedule as any, // Type assertion since we're reusing the interface
-                message: `${instructor?.full_name || 'This instructor'} has a weekly recurring class scheduled from ${conflictTime} every ${dayName}`
+                conflictingClass: conflict,
+                conflictType: 'instructor',
+                severity: 'error',
+                message: `${instructor?.full_name || 'This instructor'} has a recurring class on ${dayNames[conflict.day_of_week]} from ${formatTimeWithTimeZone(conflict.start_time || '')} to ${formatTimeWithTimeZone(conflict.end_time || '')}`,
+                suggestions: [
+                    'Choose a different day or time',
+                    'Select a different instructor',
+                    'Modify the recurring schedule'
+                ]
             })
+        } else if (conflicts.length > 0) {
+            // Show the first warning-level conflict
+            const warningConflict = conflicts.find(c => c.severity === 'warning') || conflicts[0]
+            setConflictWarning(warningConflict)
         } else {
             setConflictWarning(null)
         }
+
+        setLoadingStates(prev => ({ ...prev, checkingConflicts: false }))
     }
 
     const getAvailableInstructors = () => {
@@ -503,18 +714,61 @@ export function ClassAssignmentManager() {
         }
     }
 
-    // Helper function to convert time to minutes
-    const timeToMinutes = (timeString: string) => {
-        if (!timeString) return 0;
+    // Helper function to convert time to minutes with error handling
+    const timeToMinutes = (timeString: string): number => {
+        if (!timeString || !timeString.includes(':')) return 0
         const [hours, minutes] = timeString.split(':').map(Number);
-        return hours * 60 + minutes;
+        if (isNaN(hours) || isNaN(minutes)) return 0
+        return Math.max(0, Math.min(24 * 60, hours * 60 + minutes));
     }
 
-    // Helper function to convert minutes to time string
-    const minutesToTime = (minutes: number) => {
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
+    // Helper function to convert minutes to time string with bounds checking
+    const minutesToTime = (minutes: number): string => {
+        const clampedMinutes = Math.max(0, Math.min(24 * 60 - 1, minutes))
+        const hours = Math.floor(clampedMinutes / 60);
+        const mins = clampedMinutes % 60;
         return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+    }
+
+    // Timezone-aware date functions
+    const createDateInTimeZone = (dateString: string, timeString?: string): Date => {
+        const date = new Date(dateString)
+        if (timeString && timeString.includes(':')) {
+            const [hours, minutes] = timeString.split(':').map(Number)
+            if (!isNaN(hours) && !isNaN(minutes)) {
+                date.setHours(hours, minutes, 0, 0)
+            }
+        }
+        return date
+    }
+
+    const formatDateWithTimeZone = (date: Date): string => {
+        return date.toLocaleDateString('en-US', {
+            timeZone: timeZoneInfo.timeZone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        })
+    }
+
+    const formatTimeWithTimeZone = (timeString: string): string => {
+        try {
+            const [hours, minutes] = timeString.split(':').map(Number);
+            if (isNaN(hours) || isNaN(minutes)) return '—';
+
+            const date = new Date();
+            date.setHours(hours, minutes);
+
+            return date.toLocaleTimeString('en-US', {
+                timeZone: timeZoneInfo.timeZone,
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+        } catch (error) {
+            console.error('Error formatting time with timezone:', timeString, error);
+            return '—';
+        }
     }
 
     const handleStartTimeChange = (time: string) => {
@@ -583,9 +837,40 @@ export function ClassAssignmentManager() {
             case 'monthly':
                 if (!formData.package_id) newErrors.package_id = 'Package is required'
                 if (!formData.start_date) newErrors.start_date = 'Start date is required'
-                if (!formData.end_date) newErrors.end_date = 'End date is required'
+                
+                // Validate based on assignment method
+                if (formData.monthly_assignment_method === 'weekly_recurrence') {
+                    if (!formData.weekly_days || formData.weekly_days.length === 0) {
+                        newErrors.weekly_days = 'Please select at least one day of the week'
+                    }
+                    if (!formData.end_date) newErrors.end_date = 'End date is required for weekly recurrence'
+                } else if (formData.monthly_assignment_method === 'manual_calendar') {
+                    const selectedPackage = packages.find(pkg => pkg.id === formData.package_id)
+                    const requiredCount = selectedPackage?.class_count || 0
+                    if (!formData.manual_selections || formData.manual_selections.length === 0) {
+                        newErrors.manual_selections = 'Please select class dates and times from the calendar'
+                    } else if (formData.manual_selections.length !== requiredCount) {
+                        newErrors.manual_selections = `Please select exactly ${requiredCount} class slots to match the package requirement`
+                    }
+                }
+                
                 if (formData.start_date && formData.end_date && formData.start_date >= formData.end_date) {
                     newErrors.end_date = 'End date must be after start date'
+                }
+
+                // Validate package exists and is regular type
+                if (formData.package_id) {
+                    const selectedPackage = packages.find(pkg => pkg.id === formData.package_id)
+                    if (!selectedPackage) {
+                        newErrors.package_id = 'Selected package not found'
+                    } else if (selectedPackage.course_type !== 'regular') {
+                        newErrors.package_id = 'Please select a regular package for monthly assignments'
+                    }
+                }
+
+                // Validate day of month
+                if (formData.day_of_month < -1 || formData.day_of_month === 0 || formData.day_of_month > 31) {
+                    newErrors.day_of_month = 'Invalid day of month selected'
                 }
                 break
 
@@ -593,6 +878,32 @@ export function ClassAssignmentManager() {
                 if (!formData.package_id) newErrors.package_id = 'Package is required'
                 if (!formData.start_date) newErrors.start_date = 'Start date is required'
                 if (formData.course_duration_value < 1) newErrors.course_duration_value = 'Duration must be at least 1'
+                if (formData.course_duration_value > 12) newErrors.course_duration_value = 'Duration cannot exceed 12 months'
+
+                // Validate package exists and is crash course type
+                if (formData.package_id) {
+                    const selectedPackage = packages.find(pkg => pkg.id === formData.package_id)
+                    if (!selectedPackage) {
+                        newErrors.package_id = 'Selected package not found'
+                    } else if (selectedPackage.course_type !== 'crash') {
+                        newErrors.package_id = 'Please select a crash course package'
+                    }
+                }
+                break
+
+            case 'package':
+                if (!formData.package_id) newErrors.package_id = 'Package is required'
+                if (!formData.start_date) newErrors.start_date = 'Start date is required'
+
+                // Validate package exists
+                if (formData.package_id) {
+                    const selectedPackage = packages.find(pkg => pkg.id === formData.package_id)
+                    if (!selectedPackage) {
+                        newErrors.package_id = 'Selected package not found'
+                    } else if (!selectedPackage.is_active) {
+                        newErrors.package_id = 'Selected package is no longer active'
+                    }
+                }
                 break
         }
 
@@ -679,6 +990,7 @@ export function ClassAssignmentManager() {
 
         try {
             setSaving(true)
+            setLoadingStates(prev => ({ ...prev, creatingAssignment: true }))
             const currentUser = await supabase.auth.getUser()
             const currentUserId = currentUser.data.user?.id || ''
 
@@ -692,7 +1004,7 @@ export function ClassAssignmentManager() {
                     break
 
                 case 'monthly':
-                    await createMonthlyAssignments(currentUserId)
+                    await createPackageAssignments(currentUserId)
                     break
 
                 case 'crash_course':
@@ -717,6 +1029,7 @@ export function ClassAssignmentManager() {
             setErrors({ general: err.message })
         } finally {
             setSaving(false)
+            setLoadingStates(prev => ({ ...prev, creatingAssignment: false }))
         }
     }
 
@@ -755,7 +1068,24 @@ export function ClassAssignmentManager() {
 
             // Generated/calculated fields
             timeline_description: '',
-            total_classes: 0
+            total_classes: 0,
+
+            // New timezone support
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+
+            // New assignment method fields
+            monthly_assignment_method: 'weekly_recurrence',
+
+            // Weekly recurrence fields
+            weekly_days: [1, 3, 5], // Default: Mon, Wed, Fri
+
+            // Manual calendar selections
+            manual_selections: [],
+            
+            // Booking reference fields
+            booking_id: '',
+            client_name: '',
+            client_email: ''
         })
     }
 
@@ -773,7 +1103,13 @@ export function ClassAssignmentManager() {
             assigned_at: new Date().toISOString(),
             class_status: 'scheduled' as const,
             payment_status: 'pending' as const,
-            payment_date: null
+            payment_date: null,
+            // Booking reference fields
+            booking_id: formData.booking_id || null,
+            client_name: formData.client_name || null,
+            client_email: formData.client_email || null,
+            timezone: formData.timezone,
+            created_in_timezone: formData.timezone
         }
 
         console.log('Creating adhoc assignment:', assignment)
@@ -809,68 +1145,7 @@ export function ClassAssignmentManager() {
         }
     }
 
-    const createMonthlyAssignments = async (currentUserId: string) => {
-        const assignments = []
-        const startDate = new Date(formData.start_date)
-        const endDate = new Date(formData.end_date)
-
-        // Get the selected package to determine classes per month
-        const selectedPackage = packages.find(pkg => pkg.id === formData.package_id)
-        const classesPerMonth = selectedPackage?.class_count || 1
-
-        // Generate all monthly occurrences
-        const currentDate = new Date(startDate)
-        while (currentDate <= endDate) {
-            // Create multiple classes for this month based on package class_count
-            for (let classIndex = 0; classIndex < classesPerMonth; classIndex++) {
-                // Calculate the actual date for this class in the month
-                let classDate = new Date(currentDate)
-
-                if (formData.day_of_month === -1) {
-                    // Last day of month
-                    classDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-                } else {
-                    // Specific day of month, but distribute classes throughout the month
-                    const baseDay = formData.day_of_month
-                    const dayOffset = Math.floor((classIndex * 7) % 28) // Spread classes weekly within month
-                    const targetDay = baseDay + dayOffset
-                    
-                    classDate.setDate(Math.min(targetDay, new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()))
-
-                    // If the day doesn't exist in this month, adjust
-                    if (classDate.getMonth() !== currentDate.getMonth()) {
-                        classDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
-                    }
-                }
-
-                assignments.push({
-                    package_id: formData.package_id,
-                    date: classDate.toISOString().split('T')[0],
-                    start_time: formData.start_time,
-                    end_time: formData.end_time,
-                    instructor_id: formData.instructor_id,
-                    payment_amount: formData.payment_amount / classesPerMonth, // Divide payment across classes
-                    notes: `Regular Package (Monthly recurring - Class ${classIndex + 1}/${classesPerMonth}): ${formData.notes || 'Auto-generated'}`,
-                    schedule_type: 'adhoc',
-                    assigned_by: currentUserId,
-                    assigned_at: new Date().toISOString(),
-                    class_status: 'scheduled' as const,
-                    payment_status: 'pending' as const,
-                    payment_date: null
-                })
-            }
-
-            // Move to next month
-            currentDate.setMonth(currentDate.getMonth() + 1)
-        }
-
-        console.log('Creating monthly assignments:', assignments.length, 'classes', `(${classesPerMonth} classes per month)`)
-        const { error } = await supabase.from('class_assignments').insert(assignments)
-        if (error) {
-            console.error('Monthly assignments creation error:', error)
-            throw error
-        }
-    }
+    // Removed old createMonthlyAssignments function - now using createPackageAssignments
 
     const createCrashCourseAssignments = async (currentUserId: string) => {
         const assignments = []
@@ -921,10 +1196,268 @@ export function ClassAssignmentManager() {
         }
     }
 
-    const createPackageAssignments = async (_currentUserId: string) => {
-        // TODO: Implement package assignment logic
-        console.log('Package assignments not yet implemented')
-        throw new Error('Package assignments are not yet implemented. Please implement based on your package structure.')
+    const createPackageAssignments = async (currentUserId: string) => {
+        if (!formData.package_id) {
+            throw new Error('Package selection is required for package assignments')
+        }
+
+        const selectedPackage = packages.find(pkg => pkg.id === formData.package_id)
+        if (!selectedPackage) {
+            throw new Error('Selected package not found')
+        }
+
+        const assignments = []
+        
+        if (formData.monthly_assignment_method === 'weekly_recurrence') {
+            // Weekly recurrence method
+            assignments.push(...await createWeeklyRecurrenceAssignments(selectedPackage, currentUserId))
+        } else if (formData.monthly_assignment_method === 'manual_calendar') {
+            // Manual calendar selection method
+            assignments.push(...await createManualCalendarAssignments(selectedPackage, currentUserId))
+        }
+
+        if (assignments.length === 0) {
+            throw new Error('No valid assignments were created. Please check your selections.')
+        }
+
+        console.log('Creating package assignments:', assignments.length, 'classes via', formData.monthly_assignment_method)
+        const { error } = await supabase.from('class_assignments').insert(assignments)
+        if (error) {
+            console.error('Package assignments creation error:', error)
+            throw error
+        }
+    }
+
+    const createWeeklyRecurrenceAssignments = async (selectedPackage: Package, currentUserId: string) => {
+        const assignments = []
+        const startDate = new Date(formData.start_date)
+        const endDate = formData.end_date ? new Date(formData.end_date) : new Date(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate())
+        
+        // Validate weekly days selection
+        if (!formData.weekly_days || formData.weekly_days.length === 0) {
+            throw new Error('Please select at least one day of the week for recurring classes')
+        }
+
+        let assignmentCount = 0
+        let currentDate = new Date(startDate)
+        const maxAssignments = selectedPackage.class_count
+        
+        // Continue creating assignments until we hit the class count or end date
+        while (assignmentCount < maxAssignments && currentDate <= endDate) {
+            // Check if current day is in selected weekdays
+            const currentDayOfWeek = currentDate.getDay() // 0 = Sunday, 6 = Saturday
+            
+            if (formData.weekly_days.includes(currentDayOfWeek)) {
+                assignments.push({
+                    package_id: formData.package_id,
+                    class_type_id: formData.class_type_id || null,
+                    date: currentDate.toISOString().split('T')[0],
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    instructor_id: formData.instructor_id,
+                    payment_amount: formData.payment_amount,
+                    notes: formData.notes,
+                    schedule_type: 'adhoc',
+                    assignment_method: 'weekly_recurrence',
+                    recurrence_days: formData.weekly_days,
+                    timezone: formData.timezone,
+                    created_in_timezone: formData.timezone,
+                    assigned_by: currentUserId,
+                    assigned_at: new Date().toISOString(),
+                    class_status: 'scheduled' as const,
+                    payment_status: 'pending' as const,
+                    payment_date: null,
+                    // Booking reference fields
+                    booking_id: formData.booking_id || null,
+                    client_name: formData.client_name || null,
+                    client_email: formData.client_email || null
+                })
+                
+                assignmentCount++
+                
+                // Break if we've reached the required class count
+                if (assignmentCount >= maxAssignments) {
+                    break
+                }
+            }
+            
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1)
+        }
+
+        if (assignmentCount === 0) {
+            throw new Error('No classes could be scheduled with the selected days and date range. Please adjust your selection.')
+        }
+
+        if (assignmentCount < maxAssignments) {
+            const remaining = maxAssignments - assignmentCount
+            console.warn(`Only ${assignmentCount} out of ${maxAssignments} classes could be scheduled. ${remaining} classes remaining.`)
+        }
+
+        return assignments
+    }
+
+    const createManualCalendarAssignments = async (selectedPackage: Package, currentUserId: string) => {
+        const assignments = []
+        
+        // Validate manual selections
+        if (!formData.manual_selections || formData.manual_selections.length === 0) {
+            throw new Error('Please select dates and times from the calendar for manual assignment')
+        }
+
+        if (formData.manual_selections.length !== selectedPackage.class_count) {
+            throw new Error(`Please select exactly ${selectedPackage.class_count} class slots to match the package requirement`)
+        }
+
+        // Create assignments from manual selections
+        for (const selection of formData.manual_selections) {
+            assignments.push({
+                package_id: formData.package_id,
+                class_type_id: formData.class_type_id || null,
+                date: selection.date,
+                start_time: selection.start_time,
+                end_time: selection.end_time,
+                instructor_id: formData.instructor_id,
+                payment_amount: formData.payment_amount,
+                notes: formData.notes,
+                schedule_type: 'adhoc',
+                assignment_method: 'manual_calendar',
+                timezone: selection.timezone,
+                created_in_timezone: formData.timezone,
+                assigned_by: currentUserId,
+                assigned_at: new Date().toISOString(),
+                class_status: 'scheduled' as const,
+                payment_status: 'pending' as const,
+                payment_date: null,
+                // Booking reference fields
+                booking_id: formData.booking_id || null,
+                client_name: formData.client_name || null,
+                client_email: formData.client_email || null
+            })
+        }
+
+        return assignments
+    }
+
+    // Delete assignment function
+    const deleteAssignment = async (assignmentId: string, assignmentTitle: string) => {
+        const confirmed = window.confirm(
+            `Are you sure you want to delete this class assignment?\n\n${assignmentTitle}\n\nThis action cannot be undone.`
+        )
+
+        if (!confirmed) return
+
+        try {
+            setLoadingStates(prev => ({ ...prev, deletingAssignment: true }))
+
+            const { error } = await supabase
+                .from('class_assignments')
+                .delete()
+                .eq('id', assignmentId)
+
+            if (error) {
+                console.error('Delete assignment error:', error)
+                throw error
+            }
+
+            // Refresh data to update the UI
+            await fetchData()
+
+            // Show success message
+            alert('Class assignment deleted successfully')
+        } catch (err: any) {
+            console.error('Delete error:', err)
+            alert(`Failed to delete assignment: ${err.message}`)
+        } finally {
+            setLoadingStates(prev => ({ ...prev, deletingAssignment: false }))
+        }
+    }
+
+    // Helper function to get assignment title for deletion confirmation
+    const getAssignmentTitle = (assignment: ClassAssignment) => {
+        const instructor = assignment.instructor_profile?.full_name || 'Unknown Instructor'
+        const classType = assignment.class_type?.name || 'Unknown Class'
+        const date = assignment.date
+        const time = assignment.start_time && assignment.end_time
+            ? `${formatTimeWithTimeZone(assignment.start_time)} - ${formatTimeWithTimeZone(assignment.end_time)}`
+            : 'Unknown Time'
+
+        return `${classType} with ${instructor} on ${formatDateWithTimeZone(new Date(date))} at ${time}`
+    }
+
+    // Multi-delete functionality
+    const toggleAssignmentSelection = (assignmentId: string) => {
+        const newSelected = new Set(selectedAssignments)
+        if (newSelected.has(assignmentId)) {
+            newSelected.delete(assignmentId)
+        } else {
+            newSelected.add(assignmentId)
+        }
+        setSelectedAssignments(newSelected)
+    }
+
+    const selectAllFilteredAssignments = () => {
+        const allIds = new Set(filteredAssignments.map(a => a.id))
+        setSelectedAssignments(allIds)
+    }
+
+    const clearAllSelections = () => {
+        setSelectedAssignments(new Set())
+    }
+
+    const toggleSelectMode = () => {
+        setIsSelectMode(!isSelectMode)
+        if (isSelectMode) {
+            clearAllSelections()
+        }
+    }
+
+    const deleteSelectedAssignments = async () => {
+        if (selectedAssignments.size === 0) return
+
+        const selectedList = Array.from(selectedAssignments)
+        const assignmentTitles = selectedList
+            .map(id => {
+                const assignment = assignments.find(a => a.id === id)
+                return assignment ? getAssignmentTitle(assignment) : 'Unknown Assignment'
+            })
+            .slice(0, 3) // Show first 3 assignments
+            .join('\n• ')
+
+        const additionalCount = selectedList.length > 3 ? `\n...and ${selectedList.length - 3} more` : ''
+
+        const confirmed = window.confirm(
+            `Are you sure you want to delete ${selectedList.length} class assignment${selectedList.length > 1 ? 's' : ''}?\n\n• ${assignmentTitles}${additionalCount}\n\nThis action cannot be undone.`
+        )
+
+        if (!confirmed) return
+
+        try {
+            setLoadingStates(prev => ({ ...prev, deletingAssignment: true }))
+
+            const { error } = await supabase
+                .from('class_assignments')
+                .delete()
+                .in('id', selectedList)
+
+            if (error) {
+                console.error('Bulk delete assignments error:', error)
+                throw error
+            }
+
+            // Clear selections and refresh data
+            clearAllSelections()
+            setIsSelectMode(false)
+            await fetchData()
+
+            // Show success message
+            alert(`${selectedList.length} class assignment${selectedList.length > 1 ? 's' : ''} deleted successfully`)
+        } catch (err: any) {
+            console.error('Bulk delete error:', err)
+            alert(`Failed to delete assignments: ${err.message}`)
+        } finally {
+            setLoadingStates(prev => ({ ...prev, deletingAssignment: false }))
+        }
     }
 
     const availableInstructors = getAvailableInstructors()
@@ -1365,8 +1898,8 @@ export function ClassAssignmentManager() {
                             <button
                                 onClick={() => setActiveView('list')}
                                 className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'list'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 <List className="w-4 h-4 inline mr-2" />
@@ -1375,8 +1908,8 @@ export function ClassAssignmentManager() {
                             <button
                                 onClick={() => setActiveView('calendar')}
                                 className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'calendar'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 <Calendar className="w-4 h-4 inline mr-2" />
@@ -1385,8 +1918,8 @@ export function ClassAssignmentManager() {
                             <button
                                 onClick={() => setActiveView('analytics')}
                                 className={`py-4 px-1 border-b-2 font-medium text-sm ${activeView === 'analytics'
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                                     }`}
                             >
                                 <BarChart3 className="w-4 h-4 inline mr-2" />
@@ -1402,18 +1935,79 @@ export function ClassAssignmentManager() {
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-lg font-semibold text-gray-900">
                                         Assignments ({filteredAssignments.length})
+                                        {selectedAssignments.size > 0 && (
+                                            <span className="ml-2 text-sm text-blue-600">
+                                                ({selectedAssignments.size} selected)
+                                            </span>
+                                        )}
                                     </h3>
                                     <div className="flex space-x-2">
+                                        <Button
+                                            variant={isSelectMode ? "primary" : "outline"}
+                                            size="sm"
+                                            onClick={toggleSelectMode}
+                                        >
+                                            <CheckSquare className="w-4 h-4 mr-2" />
+                                            {isSelectMode ? 'Exit Select' : 'Select'}
+                                        </Button>
                                         <Button variant="outline" size="sm">
                                             <Download className="w-4 h-4 mr-2" />
                                             Export
                                         </Button>
-                                        <Button variant="outline" size="sm" onClick={() => fetchData()}>
-                                            <RefreshCw className="w-4 h-4 mr-2" />
-                                            Refresh
+                                        <Button variant="outline" size="sm" onClick={() => fetchData()} disabled={loadingStates.fetchingData}>
+                                            <RefreshCw className={`w-4 h-4 mr-2 ${loadingStates.fetchingData ? 'animate-spin' : ''}`} />
+                                            {loadingStates.fetchingData ? 'Refreshing...' : 'Refresh'}
                                         </Button>
                                     </div>
                                 </div>
+
+                                {/* Bulk Actions Toolbar - Only show when in select mode */}
+                                {isSelectMode && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedAssignments.size === filteredAssignments.length && filteredAssignments.length > 0}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            selectAllFilteredAssignments()
+                                                        } else {
+                                                            clearAllSelections()
+                                                        }
+                                                    }}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                                />
+                                                <label className="text-sm text-gray-700">
+                                                    Select All ({filteredAssignments.length})
+                                                </label>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={clearAllSelections}
+                                                disabled={selectedAssignments.size === 0}
+                                            >
+                                                Clear Selection
+                                            </Button>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-sm text-gray-600">
+                                                {selectedAssignments.size} assignment{selectedAssignments.size !== 1 ? 's' : ''} selected
+                                            </span>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={deleteSelectedAssignments}
+                                                disabled={selectedAssignments.size === 0 || loadingStates.deletingAssignment}
+                                                className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-300"
+                                            >
+                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                {loadingStates.deletingAssignment ? 'Deleting...' : 'Delete Selected'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Enhanced List View */}
                                 {loading ? (
@@ -1440,9 +2034,18 @@ export function ClassAssignmentManager() {
                                                     <div key={assignment.id} className="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
                                                         <div className="flex items-center justify-between">
                                                             <div className="flex items-center space-x-4">
+                                                                {/* Checkbox for multi-select */}
+                                                                {isSelectMode && (
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={selectedAssignments.has(assignment.id)}
+                                                                        onChange={() => toggleAssignmentSelection(assignment.id)}
+                                                                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                                                                    />
+                                                                )}
                                                                 <div className={`w-3 h-3 rounded-full ${assignment.class_status === 'completed' ? 'bg-green-500' :
-                                                                        assignment.class_status === 'cancelled' ? 'bg-red-500' :
-                                                                            'bg-blue-500'
+                                                                    assignment.class_status === 'cancelled' ? 'bg-red-500' :
+                                                                        'bg-blue-500'
                                                                     }`} />
                                                                 <div>
                                                                     <div className="flex items-center space-x-2">
@@ -1453,8 +2056,8 @@ export function ClassAssignmentManager() {
                                                                             {formatTime(assignment.start_time)} - {formatTime(assignment.end_time)}
                                                                         </span>
                                                                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getAssignmentType(assignment) === 'crash_course' ? 'bg-orange-100 text-orange-800' :
-                                                                                getAssignmentType(assignment) === 'monthly' ? 'bg-green-100 text-green-800' :
-                                                                                    'bg-blue-100 text-blue-800'
+                                                                            getAssignmentType(assignment) === 'monthly' ? 'bg-green-100 text-green-800' :
+                                                                                'bg-blue-100 text-blue-800'
                                                                             }`}>
                                                                             {getAssignmentType(assignment) === 'crash_course' ? 'Crash Course' :
                                                                                 getAssignmentType(assignment) === 'monthly' ? 'Monthly Package' :
@@ -1487,6 +2090,7 @@ export function ClassAssignmentManager() {
                                                                             updateData.payment_date = null;
                                                                         }
 
+                                                                        setLoadingStates(prev => ({ ...prev, updatingStatus: true }))
                                                                         const { error } = await supabase
                                                                             .from('class_assignments')
                                                                             .update(updateData)
@@ -1497,16 +2101,28 @@ export function ClassAssignmentManager() {
                                                                         } else {
                                                                             fetchData();
                                                                         }
+                                                                        setLoadingStates(prev => ({ ...prev, updatingStatus: false }))
                                                                     }}
                                                                     className={`text-xs border rounded px-2 py-1 ${assignment.payment_status === 'cancelled' ? 'text-red-600 bg-red-50 border-red-200' :
-                                                                            assignment.payment_status === 'paid' ? 'text-green-600 bg-green-50 border-green-200' :
-                                                                                'text-yellow-600 bg-yellow-50 border-yellow-200'
+                                                                        assignment.payment_status === 'paid' ? 'text-green-600 bg-green-50 border-green-200' :
+                                                                            'text-yellow-600 bg-yellow-50 border-yellow-200'
                                                                         }`}
+                                                                    disabled={loadingStates.updatingStatus}
                                                                 >
                                                                     <option value="pending">Pending</option>
                                                                     <option value="paid">Paid</option>
                                                                     <option value="cancelled">Cancelled</option>
                                                                 </select>
+
+                                                                {/* Delete Button */}
+                                                                <button
+                                                                    onClick={() => deleteAssignment(assignment.id, getAssignmentTitle(assignment))}
+                                                                    disabled={loadingStates.deletingAssignment}
+                                                                    className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    title="Delete Assignment"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1577,28 +2193,28 @@ export function ClassAssignmentManager() {
                                         })}
                                     </div>
 
-                                    {/* Calendar Body */}
+                                    {/* Calendar Body - Full 24-hour view */}
                                     <div className="max-h-96 overflow-y-auto">
-                                        {Array.from({ length: 14 }, (_, hourIndex) => {
-                                            const hour = hourIndex + 8 // Start from 8 AM
+                                        {Array.from({ length: 24 }, (_, hourIndex) => {
+                                            const hour = hourIndex // Start from 12 AM (0:00)
                                             return (
                                                 <div key={hour} className="grid grid-cols-8 border-b border-gray-100 min-h-[60px]">
                                                     {/* Time Column */}
                                                     <div className="p-2 text-xs text-gray-500 border-r bg-gray-25 flex items-start">
-                                                        {hour}:00
+                                                        {formatTimeWithAMPM(`${hour.toString().padStart(2, '0')}:00`)}
                                                     </div>
-                                                    
+
                                                     {/* Day Columns */}
                                                     {Array.from({ length: 7 }, (_, dayIndex) => {
                                                         const date = new Date(currentWeekStart)
                                                         date.setDate(date.getDate() + dayIndex)
                                                         const dateString = date.toISOString().split('T')[0]
-                                                        
+
                                                         // Find assignments for this day and time slot
                                                         const dayAssignments = filteredAssignments.filter(assignment => {
                                                             if (assignment.date !== dateString) return false
                                                             if (!assignment.start_time) return false
-                                                            
+
                                                             const startHour = parseInt(assignment.start_time.split(':')[0])
                                                             return startHour === hour
                                                         })
@@ -1608,19 +2224,44 @@ export function ClassAssignmentManager() {
                                                                 {dayAssignments.map((assignment, idx) => {
                                                                     const startTime = assignment.start_time || ''
                                                                     const endTime = assignment.end_time || ''
-                                                                    const duration = assignment.start_time && assignment.end_time 
+                                                                    const duration = assignment.start_time && assignment.end_time
                                                                         ? timeToMinutes(assignment.end_time) - timeToMinutes(assignment.start_time)
                                                                         : 60
-                                                                    
+
                                                                     return (
                                                                         <div
                                                                             key={idx}
-                                                                            className="mb-1 p-1 bg-blue-100 border-l-2 border-blue-500 rounded text-xs cursor-pointer hover:bg-blue-200 transition-colors"
-                                                                            style={{ 
+                                                                            className="mb-1 p-1 bg-blue-100 border-l-2 border-blue-500 rounded text-xs cursor-pointer hover:bg-blue-200 transition-colors relative group"
+                                                                            style={{
                                                                                 height: `${Math.max(duration / 60 * 60, 20)}px`
                                                                             }}
                                                                             title={`${assignment.class_type?.name || 'Class'} - ${startTime}-${endTime}\nInstructor: ${assignment.instructor_profile?.full_name || assignment.instructor_profile?.email || 'N/A'}`}
                                                                         >
+                                                                            {/* Checkbox for multi-select */}
+                                                                            {isSelectMode && (
+                                                                                <input
+                                                                                    type="checkbox"
+                                                                                    checked={selectedAssignments.has(assignment.id)}
+                                                                                    onChange={(e) => {
+                                                                                        e.stopPropagation()
+                                                                                        toggleAssignmentSelection(assignment.id)
+                                                                                    }}
+                                                                                    className="absolute top-1 left-1 w-3 h-3 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-1 z-10"
+                                                                                />
+                                                                            )}
+                                                                            {/* Delete button - appears on hover */}
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation()
+                                                                                    deleteAssignment(assignment.id, getAssignmentTitle(assignment))
+                                                                                }}
+                                                                                className="absolute top-0 right-0 p-0.5 text-red-600 hover:text-red-800 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                                                                disabled={loadingStates.deletingAssignment}
+                                                                                title="Delete Assignment"
+                                                                            >
+                                                                                <Trash2 className="w-3 h-3" />
+                                                                            </button>
+
                                                                             <div className="font-medium text-blue-800 truncate">
                                                                                 {assignment.class_type?.name || 'Class'}
                                                                             </div>
@@ -1631,13 +2272,12 @@ export function ClassAssignmentManager() {
                                                                                 {assignment.instructor_profile?.full_name?.split(' ')[0] || 'Instructor'}
                                                                             </div>
                                                                             {assignment.payment_status && (
-                                                                                <div className={`text-xs px-1 rounded ${
-                                                                                    assignment.payment_status === 'paid' 
-                                                                                        ? 'bg-green-200 text-green-800' 
+                                                                                <div className={`text-xs px-1 rounded ${assignment.payment_status === 'paid'
+                                                                                        ? 'bg-green-200 text-green-800'
                                                                                         : assignment.payment_status === 'pending'
-                                                                                        ? 'bg-yellow-200 text-yellow-800'
-                                                                                        : 'bg-red-200 text-red-800'
-                                                                                }`}>
+                                                                                            ? 'bg-yellow-200 text-yellow-800'
+                                                                                            : 'bg-red-200 text-red-800'
+                                                                                    }`}>
                                                                                     {assignment.payment_status}
                                                                                 </div>
                                                                             )}
@@ -1838,12 +2478,12 @@ export function ClassAssignmentManager() {
                                     const selectedPkg = packages.find(pkg => pkg.id === formData.package_id)
                                     return selectedPkg && (
                                         <div className={`mt-2 p-3 border rounded-md ${formData.assignment_type === 'crash_course'
-                                                ? 'bg-blue-50 border-blue-200'
-                                                : 'bg-green-50 border-green-200'
+                                            ? 'bg-blue-50 border-blue-200'
+                                            : 'bg-green-50 border-green-200'
                                             }`}>
                                             <div className={`text-sm ${formData.assignment_type === 'crash_course'
-                                                    ? 'text-blue-800'
-                                                    : 'text-green-800'
+                                                ? 'text-blue-800'
+                                                : 'text-green-800'
                                                 }`}>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="font-medium">Package Details:</span>
@@ -2214,6 +2854,168 @@ export function ClassAssignmentManager() {
                                 </div>
                             )}
 
+                            {/* Booking Reference Selector */}
+                            <div>
+                                <BookingSelector
+                                    selectedBookingId={formData.booking_id}
+                                    onBookingSelect={(bookingId, clientName, clientEmail) => {
+                                        handleInputChange('booking_id', bookingId)
+                                        handleInputChange('client_name', clientName)
+                                        handleInputChange('client_email', clientEmail)
+                                    }}
+                                    disabled={saving || loadingStates.creatingAssignment}
+                                />
+                            </div>
+
+                            {/* Client Info Display */}
+                            {formData.client_name && (
+                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                        <Users className="w-4 h-4 text-blue-600" />
+                                        <span className="font-medium text-blue-900 dark:text-blue-100 text-sm">Client Information</span>
+                                    </div>
+                                    <div className="space-y-1 text-sm">
+                                        <div className="flex items-center space-x-2">
+                                            <span className="font-medium text-blue-800 dark:text-blue-200">Name:</span>
+                                            <span className="text-blue-700 dark:text-blue-300">{formData.client_name}</span>
+                                        </div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="font-medium text-blue-800 dark:text-blue-200">Email:</span>
+                                            <span className="text-blue-700 dark:text-blue-300">{formData.client_email}</span>
+                                        </div>
+                                        {formData.booking_id && (
+                                            <div className="flex items-center space-x-2">
+                                                <span className="font-medium text-blue-800 dark:text-blue-200">Booking ID:</span>
+                                                <span className="text-blue-700 dark:text-blue-300 font-mono text-xs bg-blue-100 dark:bg-blue-800 px-2 py-1 rounded">{formData.booking_id}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Timezone Selector */}
+                            <div>
+                                <TimezoneSelector
+                                    value={formData.timezone}
+                                    onChange={(timezone) => handleInputChange('timezone', timezone)}
+                                    disabled={saving || loadingStates.creatingAssignment}
+                                    showCurrentTime={true}
+                                />
+                            </div>
+
+                            {/* Package Assignment Method Selection */}
+                            {(formData.assignment_type === 'monthly' || formData.assignment_type === 'package') && formData.package_id && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                                            Assignment Method
+                                        </label>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div 
+                                                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                                                    formData.monthly_assignment_method === 'weekly_recurrence' 
+                                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                }`}
+                                                onClick={() => handleInputChange('monthly_assignment_method', 'weekly_recurrence')}
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <input
+                                                        type="radio"
+                                                        name="assignment_method"
+                                                        value="weekly_recurrence"
+                                                        checked={formData.monthly_assignment_method === 'weekly_recurrence'}
+                                                        onChange={() => handleInputChange('monthly_assignment_method', 'weekly_recurrence')}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <div>
+                                                        <h4 className="font-medium text-gray-900">Weekly Recurrence</h4>
+                                                        <p className="text-sm text-gray-600">Select specific weekdays and times for recurring classes</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <div 
+                                                className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                                                    formData.monthly_assignment_method === 'manual_calendar' 
+                                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                }`}
+                                                onClick={() => handleInputChange('monthly_assignment_method', 'manual_calendar')}
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <input
+                                                        type="radio"
+                                                        name="assignment_method"
+                                                        value="manual_calendar"
+                                                        checked={formData.monthly_assignment_method === 'manual_calendar'}
+                                                        onChange={() => handleInputChange('monthly_assignment_method', 'manual_calendar')}
+                                                        className="text-blue-600"
+                                                    />
+                                                    <div>
+                                                        <h4 className="font-medium text-gray-900">Manual Calendar</h4>
+                                                        <p className="text-sm text-gray-600">Manually select each class date and time from calendar</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Weekly Recurrence Configuration */}
+                                    {formData.monthly_assignment_method === 'weekly_recurrence' && (
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-3">
+                                                    Select Days of Week
+                                                </label>
+                                                <WeekdaySelector
+                                                    selectedDays={formData.weekly_days}
+                                                    onSelectionChange={(days) => handleInputChange('weekly_days', days)}
+                                                    disabled={saving || loadingStates.creatingAssignment}
+                                                />
+                                            </div>
+                                            
+                                            {formData.weekly_days.length > 0 && (
+                                                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                                                    <div className="flex items-center space-x-2 mb-2">
+                                                        <Calendar className="w-4 h-4 text-blue-600" />
+                                                        <span className="font-medium text-blue-900 text-sm">Recurrence Preview</span>
+                                                    </div>
+                                                    <p className="text-sm text-blue-700">
+                                                        Classes will be scheduled on{' '}
+                                                        <span className="font-medium">
+                                                            {formData.weekly_days.map(day => getWeekdayName(day, 'long')).join(', ')}
+                                                        </span>
+                                                        {' '}at{' '}
+                                                        <span className="font-medium">
+                                                            {formData.start_time && formData.end_time 
+                                                                ? `${formatTimeWithAMPM(formData.start_time)} - ${formatTimeWithAMPM(formData.end_time)}`
+                                                                : 'selected time'
+                                                            }
+                                                        </span>
+                                                        {' '}until {packages.find(p => p.id === formData.package_id)?.class_count || 0} classes are completed.
+                                                    </p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Manual Calendar Configuration */}
+                                    {formData.monthly_assignment_method === 'manual_calendar' && (
+                                        <div>
+                                            <ManualCalendarSelector
+                                                selections={formData.manual_selections}
+                                                onSelectionsChange={(selections) => handleInputChange('manual_selections', selections)}
+                                                timezone={formData.timezone}
+                                                requiredCount={packages.find(p => p.id === formData.package_id)?.class_count || 0}
+                                                minDate={formData.start_date || new Date().toISOString().split('T')[0]}
+                                                maxDate={formData.end_date}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Notes (Optional)</label>
                                 <textarea
@@ -2236,9 +3038,9 @@ export function ClassAssignmentManager() {
                                 >
                                     Cancel
                                 </Button>
-                                <Button type="submit" disabled={saving || conflictWarning?.hasConflict}>
+                                <Button type="submit" disabled={saving || loadingStates.creatingAssignment || conflictWarning?.hasConflict}>
                                     <Save className="w-4 h-4 mr-2" />
-                                    {saving ? 'Saving...' : 'Assign Class'}
+                                    {saving || loadingStates.creatingAssignment ? 'Creating Assignment...' : 'Assign Class'}
                                 </Button>
                             </div>
                         </form>
