@@ -324,7 +324,8 @@ export default function InstructorProfile() {
                 `Time: ${formatTime(schedule.start_time)}\n` +
                 `Duration: ${schedule.duration_minutes} minutes\n` +
                 `Price: $${schedule.class_type.price}\n\n` +
-                `Booking ID: ${booking.id}`;
+                `Booking ID: ${booking.booking_id || booking.id}\n\n` +
+                `Please save this Booking ID for your records!`;
             alert(successMessage);
             // Refresh data
             await fetchInstructorData();

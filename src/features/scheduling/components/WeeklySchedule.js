@@ -59,12 +59,14 @@ function WeeklyScheduleContent() {
                 emergency_phone: '',
                 status: 'confirmed'
             };
-            const { error: bookingError } = await supabase
+            const { data: bookingResult, error: bookingError } = await supabase
                 .from('bookings')
-                .insert([bookingData]);
+                .insert([bookingData])
+                .select('booking_id');
             if (bookingError)
                 throw bookingError;
-            alert(`Successfully booked ${schedule.class_type.name} for ${nextClassDate.toLocaleDateString()}!`);
+            const bookingId = bookingResult?.[0]?.booking_id || 'N/A';
+            alert(`Successfully booked ${schedule.class_type.name} for ${nextClassDate.toLocaleDateString()}!\n\nYour Booking ID: ${bookingId}\n\nPlease save this ID for your records.`);
         }
         catch (error) {
             console.error('Booking error:', error);

@@ -24,6 +24,7 @@ export function BookCorporate() {
     const [step, setStep] = useState(1)
     const [loading, setLoading] = useState(false)
     const [errors, setErrors] = useState<Record<string, string>>({})
+    const [bookingId, setBookingId] = useState<string>('')
     const [classPackages, setClassPackages] = useState<ClassPackage[]>([])
     const [loadingPackages, setLoadingPackages] = useState(true)
     const [packageSearch, setPackageSearch] = useState('')
@@ -310,12 +311,14 @@ export function BookCorporate() {
                 booking_notes: formData.previousExperience ? `Previous Experience: ${formData.previousExperience}` : null
             }
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('bookings')
                 .insert([bookingData])
+                .select('booking_id')
 
             if (error) throw error
 
+            setBookingId(data?.[0]?.booking_id || 'N/A')
             setStep(4) // Success step
         } catch (error: any) {
             setErrors({ general: error.message || 'An error occurred while submitting your request.' })
@@ -1057,9 +1060,15 @@ export function BookCorporate() {
                             </div>
 
                             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Request Submitted Successfully!</h2>
-                            <p className="text-gray-600 dark:text-white mb-8">
+                            <p className="text-gray-600 dark:text-white mb-4">
                                 Thank you for your interest in our Corporate Wellness Program! Our team will review your requirements and get back to you within 1 business day with a customized proposal.
                             </p>
+                            
+                            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-8">
+                                <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Your Request ID</h3>
+                                <p className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">{bookingId}</p>
+                                <p className="text-sm text-green-700 dark:text-green-300">Please save this ID for your records</p>
+                            </div>
 
                             <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6 mb-8">
                                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4">What Happens Next?</h3>

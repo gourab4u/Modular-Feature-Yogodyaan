@@ -73,7 +73,7 @@ export function BookingSelector({
     try {
       setLoading(true)
       
-      // Fetch bookings that don't have assignments yet or need new assignments
+      // Fetch bookings that don't have assignments yet (exclude 'completed' and 'cancelled' status)
       const { data, error } = await supabase
         .from('bookings')
         .select('*')

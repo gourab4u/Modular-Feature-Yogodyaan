@@ -188,13 +188,16 @@ export function BookClass() {
         class_type_id: selectedClassType?.id || null
       }
 
-      const { error } = await supabase
+      const { data: bookingResult, error } = await supabase
         .from('bookings')
         .insert([bookingData])
+        .select('booking_id')
 
       if (error) {
         throw error
       }
+
+      const bookingId = bookingResult?.[0]?.booking_id || 'N/A'
 
       // Reset form and show success
       setFormData({
@@ -210,7 +213,7 @@ export function BookClass() {
       setSelectedClassType(null)
       setShowBookingForm(false)
 
-      alert('Booking confirmed! You will receive a confirmation email shortly.')
+      alert(`Booking confirmed! You will receive a confirmation email shortly.\n\nYour Booking ID: ${bookingId}\n\nPlease save this ID for your records.`)
     } catch (error: any) {
       setErrors({ general: error.message || 'An error occurred while booking your class.' })
     } finally {

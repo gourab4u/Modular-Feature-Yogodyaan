@@ -43,8 +43,13 @@ interface ClassSchedule {
     day_of_week: number // 0 = Sunday, 1 = Monday, etc.
     start_time: string
     end_time: string
-    instructor_id: string
+    instructor_id: string | null
+    duration_minutes: number
+    max_participants: number
     is_active?: boolean
+    effective_from?: string
+    effective_until?: string
+    notes?: string
     class_type?: {
         id: string
         name: string
@@ -101,7 +106,7 @@ interface FormData {
     class_type_id: string
     instructor_id: string
     payment_amount: number
-    payment_type: 'per_class' | 'monthly' | 'total_duration' | 'per_member' | 'per_class_total'
+    payment_type: 'per_class' | 'monthly' | 'total_duration' | 'per_member' | 'per_class_total' | 'per_student_per_class'
     notes: string
     date: string
     start_time: string
@@ -135,6 +140,9 @@ interface FormData {
     booking_id: string
     client_name: string
     client_email: string
+    
+    // Weekly template assignment
+    selected_template_id: string
 }
 
 interface ManualClassSelection {
@@ -159,6 +167,7 @@ interface TimeZoneInfo {
 export function ClassAssignmentManager() {
     const [assignments, setAssignments] = useState<ClassAssignment[]>([])
     const [weeklySchedules, setWeeklySchedules] = useState<ClassSchedule[]>([])
+    const [scheduleTemplates, setScheduleTemplates] = useState<ClassSchedule[]>([])
     const [classTypes, setClassTypes] = useState<ClassType[]>([])
     const [packages, setPackages] = useState<Package[]>([])
     const [userProfiles, setUserProfiles] = useState<UserProfile[]>([])
@@ -257,7 +266,10 @@ export function ClassAssignmentManager() {
         // Booking reference fields
         booking_id: '',
         client_name: '',
-        client_email: ''
+        client_email: '',
+        
+        // Weekly template assignment
+        selected_template_id: ''
     })
 
     useEffect(() => {
@@ -278,7 +290,7 @@ export function ClassAssignmentManager() {
         updateTimelineInfo()
 
         // Reset payment_type to per_class if switching away from weekly and weekly-specific payment types were selected
-        if (formData.assignment_type !== 'weekly' && (formData.payment_type === 'per_member' || formData.payment_type === 'per_class_total')) {
+        if (formData.assignment_type !== 'weekly' && (formData.payment_type === 'per_member' || formData.payment_type === 'per_class_total' || formData.payment_type === 'per_student_per_class')) {
             setFormData(prev => ({ ...prev, payment_type: 'per_class' }))
         }
     }, [formData.assignment_type, formData.start_date, formData.course_duration_value, formData.course_duration_unit, formData.day_of_week, formData.day_of_month, formData.date])
@@ -295,15 +307,31 @@ export function ClassAssignmentManager() {
                 break
 
             case 'weekly':
-                if (formData.start_date && formData.end_date) {
-                    const dayName = getDayName(formData.day_of_week)
-                    description = `Recurring weekly ${dayName} classes from ${formatDate(formData.start_date)} recurring till ${formatDate(formData.end_date)}`
-                    totalClasses = calculateWeeklyClasses(formData.start_date, formData.end_date)
-                } else if (formData.start_date) {
-                    const dayName = getDayName(formData.day_of_week)
-                    description = `Recurring weekly ${dayName} classes starting ${formatDate(formData.start_date)} - select end date (till end of year)`
+                const selectedTemplate = scheduleTemplates.find(t => t.id === formData.selected_template_id)
+                if (selectedTemplate) {
+                    // Template assignment mode
+                    if (formData.start_date && formData.end_date) {
+                        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedTemplate.day_of_week]
+                        const className = selectedTemplate.class_type?.name || 'Selected Class'
+                        description = `Assign instructor to ${className} template - ${dayName} at ${selectedTemplate.start_time} from ${formatDate(formData.start_date)} till ${formatDate(formData.end_date)}`
+                        totalClasses = calculateWeeklyClasses(formData.start_date, formData.end_date)
+                    } else {
+                        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedTemplate.day_of_week]
+                        const className = selectedTemplate.class_type?.name || 'Selected Class'
+                        description = `Assign instructor to ${className} template - ${dayName} at ${selectedTemplate.start_time} - select date range`
+                    }
                 } else {
-                    description = 'Set up recurring weekly schedule with start date and recurring till date'
+                    // New recurring schedule mode
+                    if (formData.start_date && formData.end_date) {
+                        const dayName = getDayName(formData.day_of_week)
+                        description = `Recurring weekly ${dayName} classes from ${formatDate(formData.start_date)} recurring till ${formatDate(formData.end_date)}`
+                        totalClasses = calculateWeeklyClasses(formData.start_date, formData.end_date)
+                    } else if (formData.start_date) {
+                        const dayName = getDayName(formData.day_of_week)
+                        description = `Recurring weekly ${dayName} classes starting ${formatDate(formData.start_date)} - select end date (till end of year)`
+                    } else {
+                        description = 'Set up recurring weekly schedule or assign instructor to existing template'
+                    }
                 }
                 break
 
@@ -432,13 +460,18 @@ export function ClassAssignmentManager() {
                 packagesResult,
                 rolesResult,
                 assignmentsResult,
-                weeklySchedulesResult
+                weeklySchedulesResult,
+                scheduleTemplatesResult
             ] = await Promise.all([
                 supabase.from('class_types').select('id, name, difficulty_level'),
                 supabase.from('class_packages').select('id, name, description, duration, price, class_count, validity_days, type, course_type, is_active').eq('is_active', true).eq('is_archived', false),
                 supabase.from('roles').select('id, name').in('name', ['instructor', 'yoga_acharya']),
                 supabase.from('class_assignments').select('*').eq('schedule_type', 'adhoc').order('assigned_at', { ascending: false }),
-                supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true })
+                supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true }),
+                supabase.from('class_schedules').select(`
+                    *,
+                    class_type:class_types(id, name, difficulty_level)
+                `).eq('is_active', true).order('day_of_week', { ascending: true }).order('start_time', { ascending: true })
             ])
 
             const classTypesData = classTypesResult.data || []
@@ -446,6 +479,7 @@ export function ClassAssignmentManager() {
             const roles = rolesResult.data || []
             const assignmentsData = assignmentsResult.data || []
             const weeklySchedulesData = weeklySchedulesResult.data || []
+            const scheduleTemplatesData = scheduleTemplatesResult.data || []
 
             // Now fetch user roles and profiles based on role data
             const roleIds = roles.map(r => r.id)
@@ -457,6 +491,7 @@ export function ClassAssignmentManager() {
                 setUserProfiles([])
                 setAssignments([])
                 setWeeklySchedules([])
+                setScheduleTemplates([])
                 return
             }
 
@@ -514,6 +549,7 @@ export function ClassAssignmentManager() {
             setUserProfiles(profilesWithRoles)
             setAssignments(enrichedAssignments)
             setWeeklySchedules(enrichedWeeklySchedules)
+            setScheduleTemplates(scheduleTemplatesData)
         } catch (e) {
             console.error('Fetch error:', e)
         } finally {
@@ -814,8 +850,14 @@ export function ClassAssignmentManager() {
 
         // Common validations
         if (!formData.instructor_id) newErrors.instructor_id = 'Instructor is required'
-        if (!formData.start_time) newErrors.start_time = 'Start time is required'
-        if (!formData.end_time) newErrors.end_time = 'End time is required'
+        
+        // Time validations - not required when using templates (since templates contain time info)
+        const isUsingTemplate = formData.assignment_type === 'weekly' && formData.selected_template_id
+        if (!isUsingTemplate) {
+            if (!formData.start_time) newErrors.start_time = 'Start time is required'
+            if (!formData.end_time) newErrors.end_time = 'End time is required'
+        }
+        
         if (formData.payment_amount <= 0) newErrors.payment_amount = 'Amount must be greater than 0'
 
         // Assignment type specific validations
@@ -826,7 +868,14 @@ export function ClassAssignmentManager() {
                 break
 
             case 'weekly':
-                if (!formData.class_type_id) newErrors.class_type_id = 'Class type is required'
+                const selectedTemplate = scheduleTemplates.find(t => t.id === formData.selected_template_id)
+                if (selectedTemplate) {
+                    // Template assignment validation
+                    if (!formData.instructor_id) newErrors.instructor_id = 'Instructor is required for template assignment'
+                } else {
+                    // New recurring schedule validation
+                    if (!formData.class_type_id) newErrors.class_type_id = 'Class type is required'
+                }
                 if (!formData.start_date) newErrors.start_date = 'Start date is required'
                 if (!formData.end_date) newErrors.end_date = 'End date is required'
                 if (formData.start_date && formData.end_date && formData.start_date >= formData.end_date) {
@@ -1000,7 +1049,12 @@ export function ClassAssignmentManager() {
                     break
 
                 case 'weekly':
-                    await createWeeklySchedule(currentUserId)
+                    const selectedTemplate = scheduleTemplates.find(t => t.id === formData.selected_template_id)
+                    if (selectedTemplate) {
+                        await createTemplateAssignment(currentUserId)
+                    } else {
+                        await createWeeklySchedule(currentUserId)
+                    }
                     break
 
                 case 'monthly':
@@ -1085,7 +1139,10 @@ export function ClassAssignmentManager() {
             // Booking reference fields
             booking_id: '',
             client_name: '',
-            client_email: ''
+            client_email: '',
+            
+            // Weekly template assignment
+            selected_template_id: ''
         })
     }
 
@@ -1118,6 +1175,19 @@ export function ClassAssignmentManager() {
             console.error('Adhoc assignment creation error:', error)
             throw error
         }
+
+        // Update booking status to 'completed' if booking_id is provided (booking is fulfilled by assignment)
+        if (formData.booking_id) {
+            const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({ status: 'completed' })
+                .eq('booking_id', formData.booking_id)
+            
+            if (bookingUpdateError) {
+                console.error('Error updating booking status:', bookingUpdateError)
+                // Don't throw error for booking status update failure
+            }
+        }
     }
 
     const createWeeklySchedule = async (currentUserId: string) => {
@@ -1142,6 +1212,97 @@ export function ClassAssignmentManager() {
         if (error) {
             console.error('Weekly schedule creation error:', error)
             throw error
+        }
+    }
+
+    const createTemplateAssignment = async (currentUserId: string) => {
+        const selectedTemplate = scheduleTemplates.find(t => t.id === formData.selected_template_id)
+        if (!selectedTemplate) {
+            throw new Error('Selected template not found')
+        }
+
+        // Update the template with the assigned instructor
+        const { error: updateError } = await supabase
+            .from('class_schedules')
+            .update({ 
+                instructor_id: formData.instructor_id,
+                effective_from: formData.start_date,
+                effective_until: formData.end_date,
+                notes: formData.notes || `Instructor assigned via Class Assignment Manager`
+            })
+            .eq('id', formData.selected_template_id)
+
+        if (updateError) {
+            console.error('Template assignment error:', updateError)
+            throw updateError
+        }
+
+        // Create weekly assignments based on the template
+        const assignments = []
+        const startDate = new Date(formData.start_date)
+        const endDate = new Date(formData.end_date)
+        const templateDay = selectedTemplate.day_of_week
+
+        // Generate assignments for each week
+        let currentDate = new Date(startDate)
+        
+        // Find the first occurrence of the template day
+        while (currentDate.getDay() !== templateDay && currentDate <= endDate) {
+            currentDate.setDate(currentDate.getDate() + 1)
+        }
+
+        // Create assignments for each occurrence
+        while (currentDate <= endDate) {
+            const endTime = new Date(`2000-01-01T${selectedTemplate.start_time}`)
+            endTime.setMinutes(endTime.getMinutes() + selectedTemplate.duration_minutes)
+            
+            const assignment = {
+                class_type_id: selectedTemplate.class_type_id,
+                instructor_id: formData.instructor_id,
+                date: currentDate.toISOString().split('T')[0],
+                start_time: selectedTemplate.start_time,
+                end_time: endTime.toTimeString().slice(0, 5),
+                payment_amount: formData.payment_amount,
+                notes: formData.notes || `Generated from template: ${selectedTemplate.class_type?.name}`,
+                class_status: 'scheduled' as const,
+                payment_status: 'pending' as const,
+                assigned_at: new Date().toISOString(),
+                assigned_by: currentUserId,
+                schedule_type: 'weekly_template',
+                scheduled_class_id: selectedTemplate.id,
+                booking_id: formData.booking_id || null,
+                client_name: formData.client_name || null,
+                client_email: formData.client_email || null
+            }
+            
+            assignments.push(assignment)
+            
+            // Move to next week
+            currentDate.setDate(currentDate.getDate() + 7)
+        }
+
+        if (assignments.length === 0) {
+            throw new Error('No assignments generated. Check your date range and template day.')
+        }
+
+        console.log('Creating template assignments:', assignments)
+        const { error } = await supabase.from('class_assignments').insert(assignments)
+        if (error) {
+            console.error('Template assignments creation error:', error)
+            throw error
+        }
+
+        // Update booking status to 'completed' if booking_id is provided (booking is fulfilled by assignment)
+        if (formData.booking_id) {
+            const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({ status: 'completed' })
+                .eq('booking_id', formData.booking_id)
+            
+            if (bookingUpdateError) {
+                console.error('Error updating booking status:', bookingUpdateError)
+                // Don't throw error for booking status update failure
+            }
         }
     }
 
@@ -1194,6 +1355,19 @@ export function ClassAssignmentManager() {
             console.error('Crash course assignments creation error:', error)
             throw error
         }
+
+        // Update booking status to 'completed' if booking_id is provided (booking is fulfilled by assignment)
+        if (formData.booking_id) {
+            const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({ status: 'completed' })
+                .eq('booking_id', formData.booking_id)
+            
+            if (bookingUpdateError) {
+                console.error('Error updating booking status:', bookingUpdateError)
+                // Don't throw error for booking status update failure
+            }
+        }
     }
 
     const createPackageAssignments = async (currentUserId: string) => {
@@ -1225,6 +1399,19 @@ export function ClassAssignmentManager() {
         if (error) {
             console.error('Package assignments creation error:', error)
             throw error
+        }
+
+        // Update booking status to 'completed' if booking_id is provided (booking is fulfilled by assignment)
+        if (formData.booking_id) {
+            const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({ status: 'completed' })
+                .eq('booking_id', formData.booking_id)
+            
+            if (bookingUpdateError) {
+                console.error('Error updating booking status:', bookingUpdateError)
+                // Don't throw error for booking status update failure
+            }
         }
     }
 
@@ -2404,7 +2591,7 @@ export function ClassAssignmentManager() {
                                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
                                     <option value="adhoc">Adhoc Class (One-time class with selectable date)</option>
-                                    <option value="weekly">Weekly Recurring (Recurring weekly classes till end date)</option>
+                                    <option value="weekly">Weekly Recurring (Create new recurring classes or assign to existing templates)</option>
                                     <option value="monthly">Regular Packages (Monthly recurring packages)</option>
                                     <option value="crash_course">Crash Course (Fixed duration course with auto-calculated end date)</option>
                                 </select>
@@ -2427,51 +2614,55 @@ export function ClassAssignmentManager() {
                                 </div>
                             )}
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700">
-                                    {formData.assignment_type === 'crash_course' ? 'Crash Course Package' :
-                                        formData.assignment_type === 'monthly' ? 'Regular Package' :
-                                            'Class Type'}
-                                </label>
-                                <select
-                                    value={(formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') ? formData.package_id : formData.class_type_id}
-                                    onChange={(e) => {
-                                        if (formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') {
-                                            handleInputChange('package_id', e.target.value)
-                                            handleInputChange('class_type_id', '') // Clear class_type_id when using package
-                                        } else {
-                                            handleInputChange('class_type_id', e.target.value)
-                                            handleInputChange('package_id', '') // Clear package_id when using class type
-                                        }
-                                    }}
-                                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                >
-                                    <option value="">
-                                        {formData.assignment_type === 'crash_course' ? 'Select crash course package' :
-                                            formData.assignment_type === 'monthly' ? 'Select regular package' :
-                                                'Select class type'}
-                                    </option>
-                                    {formData.assignment_type === 'crash_course'
-                                        ? packages.filter(pkg => pkg.course_type === 'crash').map(pkg => (
-                                            <option key={pkg.id} value={pkg.id}>
-                                                {pkg.name} - {pkg.type || 'Standard'} ({pkg.duration} - {pkg.class_count} classes - ₹{pkg.price})
-                                            </option>
-                                        ))
-                                        : formData.assignment_type === 'monthly'
-                                            ? packages.filter(pkg => pkg.course_type === 'regular').map(pkg => (
+                            {/* Class Type / Package Selection - Hidden for template assignments */}
+                            {!(formData.assignment_type === 'weekly' && formData.selected_template_id) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">
+                                        {formData.assignment_type === 'crash_course' ? 'Crash Course Package' :
+                                            formData.assignment_type === 'monthly' ? 'Regular Package' :
+                                                'Class Type'}
+                                    </label>
+                                    <select
+                                        value={(formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') ? formData.package_id : formData.class_type_id}
+                                        onChange={(e) => {
+                                            if (formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') {
+                                                handleInputChange('package_id', e.target.value)
+                                                handleInputChange('class_type_id', '') // Clear class_type_id when using package
+                                            } else {
+                                                handleInputChange('class_type_id', e.target.value)
+                                                handleInputChange('package_id', '') // Clear package_id when using class type
+                                            }
+                                        }}
+                                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">
+                                            {formData.assignment_type === 'crash_course' ? 'Select crash course package' :
+                                                formData.assignment_type === 'monthly' ? 'Select regular package' :
+                                                    'Select class type'}
+                                        </option>
+                                        {formData.assignment_type === 'crash_course'
+                                            ? packages.filter(pkg => pkg.course_type === 'crash').map(pkg => (
                                                 <option key={pkg.id} value={pkg.id}>
                                                     {pkg.name} - {pkg.type || 'Standard'} ({pkg.duration} - {pkg.class_count} classes - ₹{pkg.price})
                                                 </option>
                                             ))
-                                            : classTypes.map(ct => (
-                                                <option key={ct.id} value={ct.id}>
-                                                    {ct.name} ({ct.difficulty_level})
-                                                </option>
-                                            ))
-                                    }
-                                </select>
-                                {errors.class_type_id && <p className="text-red-500 text-sm mt-1">{errors.class_type_id}</p>}
-                                {errors.package_id && <p className="text-red-500 text-sm mt-1">{errors.package_id}</p>}
+                                            : formData.assignment_type === 'monthly'
+                                                ? packages.filter(pkg => pkg.course_type === 'regular').map(pkg => (
+                                                    <option key={pkg.id} value={pkg.id}>
+                                                        {pkg.name} - {pkg.type || 'Standard'} ({pkg.duration} - {pkg.class_count} classes - ₹{pkg.price})
+                                                    </option>
+                                                ))
+                                                : classTypes.map(ct => (
+                                                    <option key={ct.id} value={ct.id}>
+                                                        {ct.name} ({ct.difficulty_level})
+                                                    </option>
+                                                ))
+                                        }
+                                    </select>
+                                    {errors.class_type_id && <p className="text-red-500 text-sm mt-1">{errors.class_type_id}</p>}
+                                    {errors.package_id && <p className="text-red-500 text-sm mt-1">{errors.package_id}</p>}
+                                </div>
+                            )}
 
                                 {/* Show selected package details */}
                                 {formData.package_id && (formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') && (() => {
@@ -2500,9 +2691,8 @@ export function ClassAssignmentManager() {
                                         </div>
                                     )
                                 })()}
-                            </div>
 
-                            {/* Dynamic Date/Time Fields Based on Assignment Type */}
+                            {/* Dynamic Date/Time Fields Based on Assignment Type - Hidden for template assignments */}
                             {formData.assignment_type === 'adhoc' && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2520,7 +2710,7 @@ export function ClassAssignmentManager() {
                                 </div>
                             )}
 
-                            {(formData.assignment_type === 'weekly' || formData.assignment_type === 'monthly' || formData.assignment_type === 'crash_course') && (
+                            {(formData.assignment_type === 'weekly' || formData.assignment_type === 'monthly' || formData.assignment_type === 'crash_course') && !(formData.assignment_type === 'weekly' && formData.selected_template_id) && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -2596,27 +2786,127 @@ export function ClassAssignmentManager() {
                                 </div>
                             )}
 
-                            {/* Day Selection for Weekly */}
+                            {/* Weekly Assignment Options */}
                             {formData.assignment_type === 'weekly' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
-                                    <select
-                                        value={formData.day_of_week}
-                                        onChange={(e) => handleInputChange('day_of_week', parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value={0}>Sunday</option>
-                                        <option value={1}>Monday</option>
-                                        <option value={2}>Tuesday</option>
-                                        <option value={3}>Wednesday</option>
-                                        <option value={4}>Thursday</option>
-                                        <option value={5}>Friday</option>
-                                        <option value={6}>Saturday</option>
-                                    </select>
+                                <div className="space-y-6">
+                                    {/* Template Selection Option */}
+                                    {scheduleTemplates.length > 0 && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                            <h4 className="font-medium text-blue-800 mb-2">Available Schedule Templates</h4>
+                                            <p className="text-sm text-blue-700 mb-3">
+                                                Select an existing template to assign an instructor, or create a new recurring schedule below.
+                                            </p>
+                                            
+                                            <div className="grid gap-3">
+                                                {scheduleTemplates.map(template => {
+                                                    const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][template.day_of_week]
+                                                    const hasInstructor = template.instructor_id
+                                                    const assignedInstructor = userProfiles.find(p => p.user_id === template.instructor_id)
+                                                    
+                                                    return (
+                                                        <div 
+                                                            key={template.id}
+                                                            className={`border rounded-lg p-3 transition-colors ${
+                                                                formData.selected_template_id === template.id 
+                                                                    ? 'border-blue-500 bg-blue-50' 
+                                                                    : hasInstructor 
+                                                                        ? 'border-green-200 bg-green-50'
+                                                                        : 'border-gray-200 bg-white hover:border-gray-300'
+                                                            }`}
+                                                        >
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="weekly_mode_selection"
+                                                                    value={template.id}
+                                                                    checked={formData.selected_template_id === template.id}
+                                                                    onChange={(e) => {
+                                                                        handleInputChange('selected_template_id', e.target.value)
+                                                                        // Clear class type and day selection when using template
+                                                                        handleInputChange('class_type_id', '')
+                                                                        handleInputChange('day_of_week', 0)
+                                                                    }}
+                                                                    className="text-blue-600"
+                                                                    disabled={hasInstructor && formData.selected_template_id !== template.id}
+                                                                />
+                                                                <h5 className="font-medium text-gray-900">
+                                                                    {template.class_type?.name || 'Unknown Class'}
+                                                                </h5>
+                                                                {hasInstructor && (
+                                                                    <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                                                                        Assigned
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-sm text-gray-600 space-y-1 ml-6">
+                                                                <div>📅 {dayName} at {template.start_time}</div>
+                                                                <div>⏱️ {template.duration_minutes} minutes</div>
+                                                                <div>👥 Max {template.max_participants} participants</div>
+                                                                {hasInstructor && assignedInstructor && (
+                                                                    <div className="text-green-700 font-medium">
+                                                                        👤 {assignedInstructor.full_name}
+                                                                    </div>
+                                                                )}
+                                                                {!hasInstructor && (
+                                                                    <div className="text-orange-600">
+                                                                        👤 No instructor assigned
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                                
+                                                {/* Option to create new recurring schedule */}
+                                                <div className={`border rounded-lg p-3 transition-colors ${
+                                                    !formData.selected_template_id 
+                                                        ? 'border-blue-500 bg-blue-50' 
+                                                        : 'border-gray-200 bg-white hover:border-gray-300'
+                                                }`}>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <input
+                                                            type="radio"
+                                                            name="weekly_mode_selection"
+                                                            value=""
+                                                            checked={!formData.selected_template_id}
+                                                            onChange={() => handleInputChange('selected_template_id', '')}
+                                                            className="text-blue-600"
+                                                        />
+                                                        <h5 className="font-medium text-gray-900">
+                                                            Create New Recurring Schedule
+                                                        </h5>
+                                                    </div>
+                                                    <div className="text-sm text-gray-600 ml-6">
+                                                        Set up a new weekly recurring class with custom day and time
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Day Selection for New Schedule - Hidden when template is selected */}
+                                    {!formData.selected_template_id && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">Day of Week</label>
+                                            <select
+                                                value={formData.day_of_week}
+                                                onChange={(e) => handleInputChange('day_of_week', parseInt(e.target.value))}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value={0}>Sunday</option>
+                                                <option value={1}>Monday</option>
+                                                <option value={2}>Tuesday</option>
+                                                <option value={3}>Wednesday</option>
+                                                <option value={4}>Thursday</option>
+                                                <option value={5}>Friday</option>
+                                                <option value={6}>Saturday</option>
+                                            </select>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
-                            {/* Day Selection for Monthly */}
+                            {/* Day Selection for Monthly - Hidden for template assignments */}
                             {formData.assignment_type === 'monthly' && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">Day of Month</label>
@@ -2649,48 +2939,50 @@ export function ClassAssignmentManager() {
                                 </div>
                             )}
 
+                            {/* Time/Duration Selection - Hidden when template is selected */}
+                            {!(formData.assignment_type === 'weekly' && formData.selected_template_id) && (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div>
+                                        <ClockSelector
+                                            value={formData.start_time}
+                                            onChange={handleStartTimeChange}
+                                            label="Start Time"
+                                            error={errors.start_time}
+                                        />
+                                    </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div>
-                                    <ClockSelector
-                                        value={formData.start_time}
-                                        onChange={handleStartTimeChange}
-                                        label="Start Time"
-                                        error={errors.start_time}
-                                    />
-                                </div>
+                                    <div>
+                                        <ClockSelector
+                                            value={formData.end_time}
+                                            onChange={handleEndTimeChange}
+                                            label="End Time"
+                                            error={errors.end_time}
+                                        />
+                                    </div>
 
-                                <div>
-                                    <ClockSelector
-                                        value={formData.end_time}
-                                        onChange={handleEndTimeChange}
-                                        label="End Time"
-                                        error={errors.end_time}
-                                    />
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Duration
+                                        </label>
+                                        <select
+                                            value={formData.duration}
+                                            onChange={(e) => handleDurationChange(parseInt(e.target.value))}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        >
+                                            {getDurationOptions().map(option => (
+                                                <option key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {formData.duration && (
+                                            <p className="text-sm text-gray-600 mt-1">
+                                                Duration: {formData.duration} minutes
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Duration
-                                    </label>
-                                    <select
-                                        value={formData.duration}
-                                        onChange={(e) => handleDurationChange(parseInt(e.target.value))}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                    >
-                                        {getDurationOptions().map(option => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    {formData.duration && (
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            Duration: {formData.duration} minutes
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
+                            )}
 
                             {/* Conflict Warning */}
                             {conflictWarning?.hasConflict && (
@@ -2744,6 +3036,7 @@ export function ClassAssignmentManager() {
                                             <>
                                                 <option value="per_member">Per Student Monthly Rate (Weekly Classes)</option>
                                                 <option value="per_class_total">Total Per Class (Weekly Classes)</option>
+                                                <option value="per_student_per_class">Per Student Per Class (Weekly Classes)</option>
                                             </>
                                         )}
                                     </select>
@@ -2758,6 +3051,7 @@ export function ClassAssignmentManager() {
                                             {formData.payment_type === 'total_duration' && '(total amount)'}
                                             {formData.payment_type === 'per_member' && '(per student monthly rate)'}
                                             {formData.payment_type === 'per_class_total' && '(total per class)'}
+                                            {formData.payment_type === 'per_student_per_class' && '(per student per class)'}
                                         </span>
                                     </label>
                                     <input
@@ -2772,7 +3066,8 @@ export function ClassAssignmentManager() {
                                                 formData.payment_type === 'monthly' ? 'Monthly payment amount' :
                                                     formData.payment_type === 'per_member' ? 'Rate per student per month' :
                                                         formData.payment_type === 'per_class_total' ? 'Total amount per class' :
-                                                            'Total course amount'
+                                                            formData.payment_type === 'per_student_per_class' ? 'Amount per student per class' :
+                                                                'Total course amount'
                                         }
                                     />
                                     {errors.payment_amount && <p className="text-red-500 text-sm mt-1">{errors.payment_amount}</p>}
@@ -2846,6 +3141,24 @@ export function ClassAssignmentManager() {
                                                     <p className="text-orange-600">• Total for {formData.total_classes} classes: <span className="font-semibold">₹{(formData.payment_amount * formData.total_classes).toLocaleString()}</span></p>
                                                     <p className="text-orange-500 text-xs mt-1">
                                                         * Payment is fixed per class, independent of member count
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {formData.payment_type === 'per_student_per_class' && (
+                                            <div>
+                                                <p>
+                                                    <strong>Per Student Per Class:</strong> ₹{formData.payment_amount} per student per class
+                                                </p>
+                                                <div className="mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs">
+                                                    <p className="text-purple-700">
+                                                        <strong>Student-Based Class Payment:</strong>
+                                                    </p>
+                                                    <p className="text-purple-600">• Payment scales with class attendance</p>
+                                                    <p className="text-purple-600">• Example: 5 students = ₹{(formData.payment_amount * 5).toLocaleString()} per class</p>
+                                                    <p className="text-purple-600">• Example: 10 students = ₹{(formData.payment_amount * 10).toLocaleString()} per class</p>
+                                                    <p className="text-purple-500 text-xs mt-1">
+                                                        * Final payment depends on actual student attendance per class
                                                     </p>
                                                 </div>
                                             </div>

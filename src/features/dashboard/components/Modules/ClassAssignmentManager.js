@@ -13,6 +13,7 @@ import { BookingSelector } from '../../../../shared/components/ui/BookingSelecto
 export function ClassAssignmentManager() {
     const [assignments, setAssignments] = useState([]);
     const [weeklySchedules, setWeeklySchedules] = useState([]);
+    const [scheduleTemplates, setScheduleTemplates] = useState([]);
     const [classTypes, setClassTypes] = useState([]);
     const [packages, setPackages] = useState([]);
     const [userProfiles, setUserProfiles] = useState([]);
@@ -94,7 +95,9 @@ export function ClassAssignmentManager() {
         // Booking reference fields
         booking_id: '',
         client_name: '',
-        client_email: ''
+        client_email: '',
+        // Weekly template assignment
+        selected_template_id: ''
     });
     useEffect(() => {
         fetchData();
@@ -111,7 +114,7 @@ export function ClassAssignmentManager() {
     useEffect(() => {
         updateTimelineInfo();
         // Reset payment_type to per_class if switching away from weekly and weekly-specific payment types were selected
-        if (formData.assignment_type !== 'weekly' && (formData.payment_type === 'per_member' || formData.payment_type === 'per_class_total')) {
+        if (formData.assignment_type !== 'weekly' && (formData.payment_type === 'per_member' || formData.payment_type === 'per_class_total' || formData.payment_type === 'per_student_per_class')) {
             setFormData(prev => ({ ...prev, payment_type: 'per_class' }));
         }
     }, [formData.assignment_type, formData.start_date, formData.course_duration_value, formData.course_duration_unit, formData.day_of_week, formData.day_of_month, formData.date]);
@@ -125,17 +128,35 @@ export function ClassAssignmentManager() {
                 totalClasses = 1;
                 break;
             case 'weekly':
-                if (formData.start_date && formData.end_date) {
-                    const dayName = getDayName(formData.day_of_week);
-                    description = `Recurring weekly ${dayName} classes from ${formatDate(formData.start_date)} recurring till ${formatDate(formData.end_date)}`;
-                    totalClasses = calculateWeeklyClasses(formData.start_date, formData.end_date);
-                }
-                else if (formData.start_date) {
-                    const dayName = getDayName(formData.day_of_week);
-                    description = `Recurring weekly ${dayName} classes starting ${formatDate(formData.start_date)} - select end date (till end of year)`;
+                const selectedTemplate = scheduleTemplates.find(t => t.id === formData.selected_template_id);
+                if (selectedTemplate) {
+                    // Template assignment mode
+                    if (formData.start_date && formData.end_date) {
+                        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedTemplate.day_of_week];
+                        const className = selectedTemplate.class_type?.name || 'Selected Class';
+                        description = `Assign instructor to ${className} template - ${dayName} at ${selectedTemplate.start_time} from ${formatDate(formData.start_date)} till ${formatDate(formData.end_date)}`;
+                        totalClasses = calculateWeeklyClasses(formData.start_date, formData.end_date);
+                    }
+                    else {
+                        const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][selectedTemplate.day_of_week];
+                        const className = selectedTemplate.class_type?.name || 'Selected Class';
+                        description = `Assign instructor to ${className} template - ${dayName} at ${selectedTemplate.start_time} - select date range`;
+                    }
                 }
                 else {
-                    description = 'Set up recurring weekly schedule with start date and recurring till date';
+                    // New recurring schedule mode
+                    if (formData.start_date && formData.end_date) {
+                        const dayName = getDayName(formData.day_of_week);
+                        description = `Recurring weekly ${dayName} classes from ${formatDate(formData.start_date)} recurring till ${formatDate(formData.end_date)}`;
+                        totalClasses = calculateWeeklyClasses(formData.start_date, formData.end_date);
+                    }
+                    else if (formData.start_date) {
+                        const dayName = getDayName(formData.day_of_week);
+                        description = `Recurring weekly ${dayName} classes starting ${formatDate(formData.start_date)} - select end date (till end of year)`;
+                    }
+                    else {
+                        description = 'Set up recurring weekly schedule or assign instructor to existing template';
+                    }
                 }
                 break;
             case 'monthly':
@@ -248,18 +269,23 @@ export function ClassAssignmentManager() {
             setLoading(true);
             setLoadingStates(prev => ({ ...prev, fetchingData: true }));
             // Execute all independent queries in parallel
-            const [classTypesResult, packagesResult, rolesResult, assignmentsResult, weeklySchedulesResult] = await Promise.all([
+            const [classTypesResult, packagesResult, rolesResult, assignmentsResult, weeklySchedulesResult, scheduleTemplatesResult] = await Promise.all([
                 supabase.from('class_types').select('id, name, difficulty_level'),
                 supabase.from('class_packages').select('id, name, description, duration, price, class_count, validity_days, type, course_type, is_active').eq('is_active', true).eq('is_archived', false),
                 supabase.from('roles').select('id, name').in('name', ['instructor', 'yoga_acharya']),
                 supabase.from('class_assignments').select('*').eq('schedule_type', 'adhoc').order('assigned_at', { ascending: false }),
-                supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true })
+                supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true }),
+                supabase.from('class_schedules').select(`
+                    *,
+                    class_type:class_types(id, name, difficulty_level)
+                `).eq('is_active', true).order('day_of_week', { ascending: true }).order('start_time', { ascending: true })
             ]);
             const classTypesData = classTypesResult.data || [];
             const packagesData = packagesResult.data || [];
             const roles = rolesResult.data || [];
             const assignmentsData = assignmentsResult.data || [];
             const weeklySchedulesData = weeklySchedulesResult.data || [];
+            const scheduleTemplatesData = scheduleTemplatesResult.data || [];
             // Now fetch user roles and profiles based on role data
             const roleIds = roles.map(r => r.id);
             if (roleIds.length === 0) {
@@ -269,6 +295,7 @@ export function ClassAssignmentManager() {
                 setUserProfiles([]);
                 setAssignments([]);
                 setWeeklySchedules([]);
+                setScheduleTemplates([]);
                 return;
             }
             // First get user roles
@@ -316,6 +343,7 @@ export function ClassAssignmentManager() {
             setUserProfiles(profilesWithRoles);
             setAssignments(enrichedAssignments);
             setWeeklySchedules(enrichedWeeklySchedules);
+            setScheduleTemplates(scheduleTemplatesData);
         }
         catch (e) {
             console.error('Fetch error:', e);
@@ -596,10 +624,14 @@ export function ClassAssignmentManager() {
         // Common validations
         if (!formData.instructor_id)
             newErrors.instructor_id = 'Instructor is required';
-        if (!formData.start_time)
-            newErrors.start_time = 'Start time is required';
-        if (!formData.end_time)
-            newErrors.end_time = 'End time is required';
+        // Time validations - not required when using templates (since templates contain time info)
+        const isUsingTemplate = formData.assignment_type === 'weekly' && formData.selected_template_id;
+        if (!isUsingTemplate) {
+            if (!formData.start_time)
+                newErrors.start_time = 'Start time is required';
+            if (!formData.end_time)
+                newErrors.end_time = 'End time is required';
+        }
         if (formData.payment_amount <= 0)
             newErrors.payment_amount = 'Amount must be greater than 0';
         // Assignment type specific validations
@@ -611,8 +643,17 @@ export function ClassAssignmentManager() {
                     newErrors.date = 'Date is required';
                 break;
             case 'weekly':
-                if (!formData.class_type_id)
-                    newErrors.class_type_id = 'Class type is required';
+                const selectedTemplate = scheduleTemplates.find(t => t.id === formData.selected_template_id);
+                if (selectedTemplate) {
+                    // Template assignment validation
+                    if (!formData.instructor_id)
+                        newErrors.instructor_id = 'Instructor is required for template assignment';
+                }
+                else {
+                    // New recurring schedule validation
+                    if (!formData.class_type_id)
+                        newErrors.class_type_id = 'Class type is required';
+                }
                 if (!formData.start_date)
                     newErrors.start_date = 'Start date is required';
                 if (!formData.end_date)
@@ -781,7 +822,13 @@ export function ClassAssignmentManager() {
                     await createAdhocAssignment(currentUserId);
                     break;
                 case 'weekly':
-                    await createWeeklySchedule(currentUserId);
+                    const selectedTemplate = scheduleTemplates.find(t => t.id === formData.selected_template_id);
+                    if (selectedTemplate) {
+                        await createTemplateAssignment(currentUserId);
+                    }
+                    else {
+                        await createWeeklySchedule(currentUserId);
+                    }
                     break;
                 case 'monthly':
                     await createPackageAssignments(currentUserId);
@@ -851,7 +898,9 @@ export function ClassAssignmentManager() {
             // Booking reference fields
             booking_id: '',
             client_name: '',
-            client_email: ''
+            client_email: '',
+            // Weekly template assignment
+            selected_template_id: ''
         });
     };
     const createAdhocAssignment = async (currentUserId) => {
@@ -882,6 +931,17 @@ export function ClassAssignmentManager() {
             console.error('Adhoc assignment creation error:', error);
             throw error;
         }
+        // Update booking status to 'completed' if booking_id is provided (booking is fulfilled by assignment)
+        if (formData.booking_id) {
+            const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({ status: 'completed' })
+                .eq('booking_id', formData.booking_id);
+            if (bookingUpdateError) {
+                console.error('Error updating booking status:', bookingUpdateError);
+                // Don't throw error for booking status update failure
+            }
+        }
     };
     const createWeeklySchedule = async (currentUserId) => {
         const schedule = {
@@ -904,6 +964,83 @@ export function ClassAssignmentManager() {
         if (error) {
             console.error('Weekly schedule creation error:', error);
             throw error;
+        }
+    };
+    const createTemplateAssignment = async (currentUserId) => {
+        const selectedTemplate = scheduleTemplates.find(t => t.id === formData.selected_template_id);
+        if (!selectedTemplate) {
+            throw new Error('Selected template not found');
+        }
+        // Update the template with the assigned instructor
+        const { error: updateError } = await supabase
+            .from('class_schedules')
+            .update({
+            instructor_id: formData.instructor_id,
+            effective_from: formData.start_date,
+            effective_until: formData.end_date,
+            notes: formData.notes || `Instructor assigned via Class Assignment Manager`
+        })
+            .eq('id', formData.selected_template_id);
+        if (updateError) {
+            console.error('Template assignment error:', updateError);
+            throw updateError;
+        }
+        // Create weekly assignments based on the template
+        const assignments = [];
+        const startDate = new Date(formData.start_date);
+        const endDate = new Date(formData.end_date);
+        const templateDay = selectedTemplate.day_of_week;
+        // Generate assignments for each week
+        let currentDate = new Date(startDate);
+        // Find the first occurrence of the template day
+        while (currentDate.getDay() !== templateDay && currentDate <= endDate) {
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        // Create assignments for each occurrence
+        while (currentDate <= endDate) {
+            const endTime = new Date(`2000-01-01T${selectedTemplate.start_time}`);
+            endTime.setMinutes(endTime.getMinutes() + selectedTemplate.duration_minutes);
+            const assignment = {
+                class_type_id: selectedTemplate.class_type_id,
+                instructor_id: formData.instructor_id,
+                date: currentDate.toISOString().split('T')[0],
+                start_time: selectedTemplate.start_time,
+                end_time: endTime.toTimeString().slice(0, 5),
+                payment_amount: formData.payment_amount,
+                notes: formData.notes || `Generated from template: ${selectedTemplate.class_type?.name}`,
+                class_status: 'scheduled',
+                payment_status: 'pending',
+                assigned_at: new Date().toISOString(),
+                assigned_by: currentUserId,
+                schedule_type: 'weekly_template',
+                scheduled_class_id: selectedTemplate.id,
+                booking_id: formData.booking_id || null,
+                client_name: formData.client_name || null,
+                client_email: formData.client_email || null
+            };
+            assignments.push(assignment);
+            // Move to next week
+            currentDate.setDate(currentDate.getDate() + 7);
+        }
+        if (assignments.length === 0) {
+            throw new Error('No assignments generated. Check your date range and template day.');
+        }
+        console.log('Creating template assignments:', assignments);
+        const { error } = await supabase.from('class_assignments').insert(assignments);
+        if (error) {
+            console.error('Template assignments creation error:', error);
+            throw error;
+        }
+        // Update booking status to 'completed' if booking_id is provided (booking is fulfilled by assignment)
+        if (formData.booking_id) {
+            const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({ status: 'completed' })
+                .eq('booking_id', formData.booking_id);
+            if (bookingUpdateError) {
+                console.error('Error updating booking status:', bookingUpdateError);
+                // Don't throw error for booking status update failure
+            }
         }
     };
     // Removed old createMonthlyAssignments function - now using createPackageAssignments
@@ -951,6 +1088,17 @@ export function ClassAssignmentManager() {
             console.error('Crash course assignments creation error:', error);
             throw error;
         }
+        // Update booking status to 'completed' if booking_id is provided (booking is fulfilled by assignment)
+        if (formData.booking_id) {
+            const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({ status: 'completed' })
+                .eq('booking_id', formData.booking_id);
+            if (bookingUpdateError) {
+                console.error('Error updating booking status:', bookingUpdateError);
+                // Don't throw error for booking status update failure
+            }
+        }
     };
     const createPackageAssignments = async (currentUserId) => {
         if (!formData.package_id) {
@@ -977,6 +1125,17 @@ export function ClassAssignmentManager() {
         if (error) {
             console.error('Package assignments creation error:', error);
             throw error;
+        }
+        // Update booking status to 'completed' if booking_id is provided (booking is fulfilled by assignment)
+        if (formData.booking_id) {
+            const { error: bookingUpdateError } = await supabase
+                .from('bookings')
+                .update({ status: 'completed' })
+                .eq('booking_id', formData.booking_id);
+            if (bookingUpdateError) {
+                console.error('Error updating booking status:', bookingUpdateError);
+                // Don't throw error for booking status update failure
+            }
         }
     };
     const createWeeklyRecurrenceAssignments = async (selectedPackage, currentUserId) => {
@@ -1378,7 +1537,7 @@ export function ClassAssignmentManager() {
                                                                 }) })] }), _jsxs("div", { className: "bg-gray-50 rounded-lg p-6", children: [_jsx("h4", { className: "text-md font-medium text-gray-900 mb-4", children: "Revenue Status" }), _jsxs("div", { className: "space-y-3", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center", children: [_jsx("div", { className: "w-3 h-3 rounded-full bg-green-500 mr-3" }), _jsx("span", { className: "text-sm text-gray-700", children: "Paid" })] }), _jsxs("span", { className: "text-sm font-medium", children: ["\u20B9", stats.paidRevenue.toLocaleString()] })] }), _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center", children: [_jsx("div", { className: "w-3 h-3 rounded-full bg-yellow-500 mr-3" }), _jsx("span", { className: "text-sm text-gray-700", children: "Pending" })] }), _jsxs("span", { className: "text-sm font-medium", children: ["\u20B9", stats.pendingRevenue.toLocaleString()] })] })] })] })] })] }))] })] })] }), showAssignForm && (_jsx("div", { className: "fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center p-4", children: _jsxs("div", { className: "bg-white shadow-xl rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto", children: [_jsxs("div", { className: "flex justify-between items-center p-6 border-b border-gray-200", children: [_jsx("h3", { className: "text-xl font-semibold text-gray-900", children: "Create New Assignment" }), _jsx(Button, { variant: "outline", size: "sm", onClick: () => {
                                         setShowAssignForm(false);
                                         setConflictWarning(null);
-                                    }, children: _jsx(X, { className: "w-4 h-4" }) })] }), _jsxs("form", { onSubmit: handleSubmit, className: "p-6 space-y-6", children: [errors.general && _jsx("div", { className: "text-red-500 text-sm", children: errors.general }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Assignment Type" }), _jsxs("select", { value: formData.assignment_type, onChange: (e) => handleInputChange('assignment_type', e.target.value), className: "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "adhoc", children: "Adhoc Class (One-time class with selectable date)" }), _jsx("option", { value: "weekly", children: "Weekly Recurring (Recurring weekly classes till end date)" }), _jsx("option", { value: "monthly", children: "Regular Packages (Monthly recurring packages)" }), _jsx("option", { value: "crash_course", children: "Crash Course (Fixed duration course with auto-calculated end date)" })] }), errors.assignment_type && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.assignment_type })] }), formData.timeline_description && (_jsxs("div", { className: "bg-blue-50 border border-blue-200 rounded-lg p-4", children: [_jsxs("div", { className: "flex items-center gap-2 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 text-blue-600" }), _jsx("span", { className: "font-medium text-blue-800", children: "Assignment Timeline" })] }), _jsx("p", { className: "text-blue-700", children: formData.timeline_description }), formData.total_classes > 0 && (_jsxs("p", { className: "text-sm text-blue-600 mt-1", children: ["Total estimated classes: ", formData.total_classes] }))] })), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700", children: formData.assignment_type === 'crash_course' ? 'Crash Course Package' :
+                                    }, children: _jsx(X, { className: "w-4 h-4" }) })] }), _jsxs("form", { onSubmit: handleSubmit, className: "p-6 space-y-6", children: [errors.general && _jsx("div", { className: "text-red-500 text-sm", children: errors.general }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Assignment Type" }), _jsxs("select", { value: formData.assignment_type, onChange: (e) => handleInputChange('assignment_type', e.target.value), className: "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "adhoc", children: "Adhoc Class (One-time class with selectable date)" }), _jsx("option", { value: "weekly", children: "Weekly Recurring (Create new recurring classes or assign to existing templates)" }), _jsx("option", { value: "monthly", children: "Regular Packages (Monthly recurring packages)" }), _jsx("option", { value: "crash_course", children: "Crash Course (Fixed duration course with auto-calculated end date)" })] }), errors.assignment_type && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.assignment_type })] }), formData.timeline_description && (_jsxs("div", { className: "bg-blue-50 border border-blue-200 rounded-lg p-4", children: [_jsxs("div", { className: "flex items-center gap-2 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 text-blue-600" }), _jsx("span", { className: "font-medium text-blue-800", children: "Assignment Timeline" })] }), _jsx("p", { className: "text-blue-700", children: formData.timeline_description }), formData.total_classes > 0 && (_jsxs("p", { className: "text-sm text-blue-600 mt-1", children: ["Total estimated classes: ", formData.total_classes] }))] })), !(formData.assignment_type === 'weekly' && formData.selected_template_id) && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700", children: formData.assignment_type === 'crash_course' ? 'Crash Course Package' :
                                                 formData.assignment_type === 'monthly' ? 'Regular Package' :
                                                     'Class Type' }), _jsxs("select", { value: (formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') ? formData.package_id : formData.class_type_id, onChange: (e) => {
                                                 if (formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') {
@@ -1395,18 +1554,35 @@ export function ClassAssignmentManager() {
                                                     ? packages.filter(pkg => pkg.course_type === 'crash').map(pkg => (_jsxs("option", { value: pkg.id, children: [pkg.name, " - ", pkg.type || 'Standard', " (", pkg.duration, " - ", pkg.class_count, " classes - \u20B9", pkg.price, ")"] }, pkg.id)))
                                                     : formData.assignment_type === 'monthly'
                                                         ? packages.filter(pkg => pkg.course_type === 'regular').map(pkg => (_jsxs("option", { value: pkg.id, children: [pkg.name, " - ", pkg.type || 'Standard', " (", pkg.duration, " - ", pkg.class_count, " classes - \u20B9", pkg.price, ")"] }, pkg.id)))
-                                                        : classTypes.map(ct => (_jsxs("option", { value: ct.id, children: [ct.name, " (", ct.difficulty_level, ")"] }, ct.id)))] }), errors.class_type_id && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.class_type_id }), errors.package_id && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.package_id }), formData.package_id && (formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') && (() => {
-                                            const selectedPkg = packages.find(pkg => pkg.id === formData.package_id);
-                                            return selectedPkg && (_jsx("div", { className: `mt-2 p-3 border rounded-md ${formData.assignment_type === 'crash_course'
-                                                    ? 'bg-blue-50 border-blue-200'
-                                                    : 'bg-green-50 border-green-200'}`, children: _jsxs("div", { className: `text-sm ${formData.assignment_type === 'crash_course'
-                                                        ? 'text-blue-800'
-                                                        : 'text-green-800'}`, children: [_jsx("div", { className: "flex items-center gap-2 mb-1", children: _jsx("span", { className: "font-medium", children: "Package Details:" }) }), _jsxs("div", { className: "grid grid-cols-2 gap-2 text-xs", children: [_jsxs("div", { children: [_jsx("strong", { children: "Type:" }), " ", selectedPkg.type || 'Standard'] }), _jsxs("div", { children: [_jsx("strong", { children: "Duration:" }), " ", selectedPkg.duration] }), _jsxs("div", { children: [_jsx("strong", { children: "Classes:" }), " ", selectedPkg.class_count] }), _jsxs("div", { children: [_jsx("strong", { children: "Price:" }), " \u20B9", selectedPkg.price] }), selectedPkg.validity_days && _jsxs("div", { children: [_jsx("strong", { children: "Validity:" }), " ", selectedPkg.validity_days, " days"] }), selectedPkg.description && _jsxs("div", { className: "col-span-2", children: [_jsx("strong", { children: "Description:" }), " ", selectedPkg.description] })] })] }) }));
-                                        })()] }), formData.assignment_type === 'adhoc' && (_jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 inline mr-1" }), "Class Date"] }), _jsx("input", { type: "date", value: formData.date, onChange: (e) => handleInputChange('date', e.target.value), min: new Date().toISOString().split('T')[0], className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" }), errors.date && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.date })] })), (formData.assignment_type === 'weekly' || formData.assignment_type === 'monthly' || formData.assignment_type === 'crash_course') && (_jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 inline mr-1" }), "Start Date"] }), _jsx("input", { type: "date", value: formData.start_date, onChange: (e) => handleInputChange('start_date', e.target.value), min: new Date().toISOString().split('T')[0], className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" }), errors.start_date && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.start_date })] }), formData.assignment_type !== 'crash_course' && (_jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 inline mr-1" }), "End Date"] }), _jsx("input", { type: "date", value: formData.end_date, onChange: (e) => handleInputChange('end_date', e.target.value), min: formData.start_date || new Date().toISOString().split('T')[0], max: `${new Date().getFullYear()}-12-31`, className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" }), errors.end_date && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.end_date })] })), formData.assignment_type === 'crash_course' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Course Duration" }), _jsxs("div", { className: "flex gap-2", children: [_jsx("input", { type: "number", min: "1", max: "12", value: formData.course_duration_value, onChange: (e) => handleInputChange('course_duration_value', parseInt(e.target.value)), className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: "Duration" }), _jsxs("select", { value: formData.course_duration_unit, onChange: (e) => handleInputChange('course_duration_unit', e.target.value), className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "weeks", children: "Weeks" }), _jsx("option", { value: "months", children: "Months" })] })] }), formData.start_date && formData.end_date && (_jsxs("div", { className: "mt-2 p-3 bg-green-50 border border-green-200 rounded-md", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(Calendar, { className: "w-4 h-4 text-green-600" }), _jsx("span", { className: "text-sm font-medium text-green-800", children: "Auto-calculated Course Period" })] }), _jsxs("p", { className: "text-sm text-green-700 mt-1", children: [_jsx("strong", { children: "Start:" }), " ", formatDate(formData.start_date), " \u2192 ", _jsx("strong", { children: "End:" }), " ", formatDate(formData.end_date)] }), _jsxs("p", { className: "text-xs text-green-600 mt-1", children: ["End date is automatically calculated as Start Date + ", formData.course_duration_value, " ", formData.course_duration_unit] })] }))] }))] })), formData.assignment_type === 'weekly' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Day of Week" }), _jsxs("select", { value: formData.day_of_week, onChange: (e) => handleInputChange('day_of_week', parseInt(e.target.value)), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: 0, children: "Sunday" }), _jsx("option", { value: 1, children: "Monday" }), _jsx("option", { value: 2, children: "Tuesday" }), _jsx("option", { value: 3, children: "Wednesday" }), _jsx("option", { value: 4, children: "Thursday" }), _jsx("option", { value: 5, children: "Friday" }), _jsx("option", { value: 6, children: "Saturday" })] })] })), formData.assignment_type === 'monthly' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Day of Month" }), _jsxs("select", { value: formData.day_of_month, onChange: (e) => handleInputChange('day_of_month', parseInt(e.target.value)), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [Array.from({ length: 31 }, (_, i) => i + 1).map(day => (_jsxs("option", { value: day, children: [day, getOrdinalSuffix(day)] }, day))), _jsx("option", { value: -1, children: "Last day of month" })] })] })), formData.assignment_type === 'crash_course' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Class Frequency" }), _jsxs("select", { value: formData.class_frequency, onChange: (e) => handleInputChange('class_frequency', e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "daily", children: "Daily" }), _jsx("option", { value: "weekly", children: "Weekly" }), _jsx("option", { value: "specific", children: "Specific Days" })] })] })), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4", children: [_jsx("div", { children: _jsx(ClockSelector, { value: formData.start_time, onChange: handleStartTimeChange, label: "Start Time", error: errors.start_time }) }), _jsx("div", { children: _jsx(ClockSelector, { value: formData.end_time, onChange: handleEndTimeChange, label: "End Time", error: errors.end_time }) }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Duration" }), _jsx("select", { value: formData.duration, onChange: (e) => handleDurationChange(parseInt(e.target.value)), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", children: getDurationOptions().map(option => (_jsx("option", { value: option.value, children: option.label }, option.value))) }), formData.duration && (_jsxs("p", { className: "text-sm text-gray-600 mt-1", children: ["Duration: ", formData.duration, " minutes"] }))] })] }), conflictWarning?.hasConflict && (_jsxs("div", { className: "bg-red-50 border border-red-200 rounded-md p-4 flex items-start space-x-3", children: [_jsx(AlertTriangle, { className: "w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" }), _jsxs("div", { children: [_jsx("h4", { className: "text-sm font-medium text-red-800", children: "Scheduling Conflict" }), _jsx("p", { className: "text-sm text-red-700 mt-1", children: conflictWarning.message })] })] })), _jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700", children: ["Instructor / Yoga Acharya", formData.date && formData.start_time && formData.end_time && (_jsxs("span", { className: "text-sm text-gray-500 ml-2", children: ["(", availableInstructors.length, " available)"] }))] }), _jsxs("select", { value: formData.instructor_id, onChange: (e) => handleInputChange('instructor_id', e.target.value), className: "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "", children: "Select instructor" }), availableInstructors.map(profile => (_jsx("option", { value: profile.user_id, children: profile.full_name || profile.email }, profile.user_id)))] }), errors.instructor_id && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.instructor_id }), errors.conflict && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.conflict })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Payment Type" }), _jsxs("select", { value: formData.payment_type, onChange: (e) => handleInputChange('payment_type', e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "per_class", children: "Per Class" }), _jsx("option", { value: "monthly", children: "Monthly" }), _jsx("option", { value: "total_duration", children: "Total Duration" }), formData.assignment_type === 'weekly' && (_jsxs(_Fragment, { children: [_jsx("option", { value: "per_member", children: "Per Student Monthly Rate (Weekly Classes)" }), _jsx("option", { value: "per_class_total", children: "Total Per Class (Weekly Classes)" })] }))] })] }), _jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: ["Payment Amount (\u20B9)", _jsxs("span", { className: "text-sm text-gray-500 ml-1", children: [formData.payment_type === 'per_class' && '(per class)', formData.payment_type === 'monthly' && '(per month)', formData.payment_type === 'total_duration' && '(total amount)', formData.payment_type === 'per_member' && '(per student monthly rate)', formData.payment_type === 'per_class_total' && '(total per class)'] })] }), _jsx("input", { type: "number", min: "0", step: "0.01", value: formData.payment_amount, onChange: (e) => handleInputChange('payment_amount', parseFloat(e.target.value) || 0), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: formData.payment_type === 'per_class' ? 'Amount per class' :
+                                                        : classTypes.map(ct => (_jsxs("option", { value: ct.id, children: [ct.name, " (", ct.difficulty_level, ")"] }, ct.id)))] }), errors.class_type_id && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.class_type_id }), errors.package_id && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.package_id })] })), formData.package_id && (formData.assignment_type === 'crash_course' || formData.assignment_type === 'monthly') && (() => {
+                                    const selectedPkg = packages.find(pkg => pkg.id === formData.package_id);
+                                    return selectedPkg && (_jsx("div", { className: `mt-2 p-3 border rounded-md ${formData.assignment_type === 'crash_course'
+                                            ? 'bg-blue-50 border-blue-200'
+                                            : 'bg-green-50 border-green-200'}`, children: _jsxs("div", { className: `text-sm ${formData.assignment_type === 'crash_course'
+                                                ? 'text-blue-800'
+                                                : 'text-green-800'}`, children: [_jsx("div", { className: "flex items-center gap-2 mb-1", children: _jsx("span", { className: "font-medium", children: "Package Details:" }) }), _jsxs("div", { className: "grid grid-cols-2 gap-2 text-xs", children: [_jsxs("div", { children: [_jsx("strong", { children: "Type:" }), " ", selectedPkg.type || 'Standard'] }), _jsxs("div", { children: [_jsx("strong", { children: "Duration:" }), " ", selectedPkg.duration] }), _jsxs("div", { children: [_jsx("strong", { children: "Classes:" }), " ", selectedPkg.class_count] }), _jsxs("div", { children: [_jsx("strong", { children: "Price:" }), " \u20B9", selectedPkg.price] }), selectedPkg.validity_days && _jsxs("div", { children: [_jsx("strong", { children: "Validity:" }), " ", selectedPkg.validity_days, " days"] }), selectedPkg.description && _jsxs("div", { className: "col-span-2", children: [_jsx("strong", { children: "Description:" }), " ", selectedPkg.description] })] })] }) }));
+                                })(), formData.assignment_type === 'adhoc' && (_jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 inline mr-1" }), "Class Date"] }), _jsx("input", { type: "date", value: formData.date, onChange: (e) => handleInputChange('date', e.target.value), min: new Date().toISOString().split('T')[0], className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" }), errors.date && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.date })] })), (formData.assignment_type === 'weekly' || formData.assignment_type === 'monthly' || formData.assignment_type === 'crash_course') && !(formData.assignment_type === 'weekly' && formData.selected_template_id) && (_jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 inline mr-1" }), "Start Date"] }), _jsx("input", { type: "date", value: formData.start_date, onChange: (e) => handleInputChange('start_date', e.target.value), min: new Date().toISOString().split('T')[0], className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" }), errors.start_date && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.start_date })] }), formData.assignment_type !== 'crash_course' && (_jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: [_jsx(Calendar, { className: "w-4 h-4 inline mr-1" }), "End Date"] }), _jsx("input", { type: "date", value: formData.end_date, onChange: (e) => handleInputChange('end_date', e.target.value), min: formData.start_date || new Date().toISOString().split('T')[0], max: `${new Date().getFullYear()}-12-31`, className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" }), errors.end_date && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.end_date })] })), formData.assignment_type === 'crash_course' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Course Duration" }), _jsxs("div", { className: "flex gap-2", children: [_jsx("input", { type: "number", min: "1", max: "12", value: formData.course_duration_value, onChange: (e) => handleInputChange('course_duration_value', parseInt(e.target.value)), className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: "Duration" }), _jsxs("select", { value: formData.course_duration_unit, onChange: (e) => handleInputChange('course_duration_unit', e.target.value), className: "flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "weeks", children: "Weeks" }), _jsx("option", { value: "months", children: "Months" })] })] }), formData.start_date && formData.end_date && (_jsxs("div", { className: "mt-2 p-3 bg-green-50 border border-green-200 rounded-md", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx(Calendar, { className: "w-4 h-4 text-green-600" }), _jsx("span", { className: "text-sm font-medium text-green-800", children: "Auto-calculated Course Period" })] }), _jsxs("p", { className: "text-sm text-green-700 mt-1", children: [_jsx("strong", { children: "Start:" }), " ", formatDate(formData.start_date), " \u2192 ", _jsx("strong", { children: "End:" }), " ", formatDate(formData.end_date)] }), _jsxs("p", { className: "text-xs text-green-600 mt-1", children: ["End date is automatically calculated as Start Date + ", formData.course_duration_value, " ", formData.course_duration_unit] })] }))] }))] })), formData.assignment_type === 'weekly' && (_jsxs("div", { className: "space-y-6", children: [scheduleTemplates.length > 0 && (_jsxs("div", { className: "bg-blue-50 border border-blue-200 rounded-lg p-4", children: [_jsx("h4", { className: "font-medium text-blue-800 mb-2", children: "Available Schedule Templates" }), _jsx("p", { className: "text-sm text-blue-700 mb-3", children: "Select an existing template to assign an instructor, or create a new recurring schedule below." }), _jsxs("div", { className: "grid gap-3", children: [scheduleTemplates.map(template => {
+                                                            const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][template.day_of_week];
+                                                            const hasInstructor = template.instructor_id;
+                                                            const assignedInstructor = userProfiles.find(p => p.user_id === template.instructor_id);
+                                                            return (_jsxs("div", { className: `border rounded-lg p-3 transition-colors ${formData.selected_template_id === template.id
+                                                                    ? 'border-blue-500 bg-blue-50'
+                                                                    : hasInstructor
+                                                                        ? 'border-green-200 bg-green-50'
+                                                                        : 'border-gray-200 bg-white hover:border-gray-300'}`, children: [_jsxs("div", { className: "flex items-center gap-2 mb-1", children: [_jsx("input", { type: "radio", name: "weekly_mode_selection", value: template.id, checked: formData.selected_template_id === template.id, onChange: (e) => {
+                                                                                    handleInputChange('selected_template_id', e.target.value);
+                                                                                    // Clear class type and day selection when using template
+                                                                                    handleInputChange('class_type_id', '');
+                                                                                    handleInputChange('day_of_week', 0);
+                                                                                }, className: "text-blue-600", disabled: hasInstructor && formData.selected_template_id !== template.id }), _jsx("h5", { className: "font-medium text-gray-900", children: template.class_type?.name || 'Unknown Class' }), hasInstructor && (_jsx("span", { className: "px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full", children: "Assigned" }))] }), _jsxs("div", { className: "text-sm text-gray-600 space-y-1 ml-6", children: [_jsxs("div", { children: ["\uD83D\uDCC5 ", dayName, " at ", template.start_time] }), _jsxs("div", { children: ["\u23F1\uFE0F ", template.duration_minutes, " minutes"] }), _jsxs("div", { children: ["\uD83D\uDC65 Max ", template.max_participants, " participants"] }), hasInstructor && assignedInstructor && (_jsxs("div", { className: "text-green-700 font-medium", children: ["\uD83D\uDC64 ", assignedInstructor.full_name] })), !hasInstructor && (_jsx("div", { className: "text-orange-600", children: "\uD83D\uDC64 No instructor assigned" }))] })] }, template.id));
+                                                        }), _jsxs("div", { className: `border rounded-lg p-3 transition-colors ${!formData.selected_template_id
+                                                                ? 'border-blue-500 bg-blue-50'
+                                                                : 'border-gray-200 bg-white hover:border-gray-300'}`, children: [_jsxs("div", { className: "flex items-center gap-2 mb-1", children: [_jsx("input", { type: "radio", name: "weekly_mode_selection", value: "", checked: !formData.selected_template_id, onChange: () => handleInputChange('selected_template_id', ''), className: "text-blue-600" }), _jsx("h5", { className: "font-medium text-gray-900", children: "Create New Recurring Schedule" })] }), _jsx("div", { className: "text-sm text-gray-600 ml-6", children: "Set up a new weekly recurring class with custom day and time" })] })] })] })), !formData.selected_template_id && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Day of Week" }), _jsxs("select", { value: formData.day_of_week, onChange: (e) => handleInputChange('day_of_week', parseInt(e.target.value)), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: 0, children: "Sunday" }), _jsx("option", { value: 1, children: "Monday" }), _jsx("option", { value: 2, children: "Tuesday" }), _jsx("option", { value: 3, children: "Wednesday" }), _jsx("option", { value: 4, children: "Thursday" }), _jsx("option", { value: 5, children: "Friday" }), _jsx("option", { value: 6, children: "Saturday" })] })] }))] })), formData.assignment_type === 'monthly' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Day of Month" }), _jsxs("select", { value: formData.day_of_month, onChange: (e) => handleInputChange('day_of_month', parseInt(e.target.value)), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [Array.from({ length: 31 }, (_, i) => i + 1).map(day => (_jsxs("option", { value: day, children: [day, getOrdinalSuffix(day)] }, day))), _jsx("option", { value: -1, children: "Last day of month" })] })] })), formData.assignment_type === 'crash_course' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Class Frequency" }), _jsxs("select", { value: formData.class_frequency, onChange: (e) => handleInputChange('class_frequency', e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "daily", children: "Daily" }), _jsx("option", { value: "weekly", children: "Weekly" }), _jsx("option", { value: "specific", children: "Specific Days" })] })] })), !(formData.assignment_type === 'weekly' && formData.selected_template_id) && (_jsxs("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-4", children: [_jsx("div", { children: _jsx(ClockSelector, { value: formData.start_time, onChange: handleStartTimeChange, label: "Start Time", error: errors.start_time }) }), _jsx("div", { children: _jsx(ClockSelector, { value: formData.end_time, onChange: handleEndTimeChange, label: "End Time", error: errors.end_time }) }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Duration" }), _jsx("select", { value: formData.duration, onChange: (e) => handleDurationChange(parseInt(e.target.value)), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent", children: getDurationOptions().map(option => (_jsx("option", { value: option.value, children: option.label }, option.value))) }), formData.duration && (_jsxs("p", { className: "text-sm text-gray-600 mt-1", children: ["Duration: ", formData.duration, " minutes"] }))] })] })), conflictWarning?.hasConflict && (_jsxs("div", { className: "bg-red-50 border border-red-200 rounded-md p-4 flex items-start space-x-3", children: [_jsx(AlertTriangle, { className: "w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" }), _jsxs("div", { children: [_jsx("h4", { className: "text-sm font-medium text-red-800", children: "Scheduling Conflict" }), _jsx("p", { className: "text-sm text-red-700 mt-1", children: conflictWarning.message })] })] })), _jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700", children: ["Instructor / Yoga Acharya", formData.date && formData.start_time && formData.end_time && (_jsxs("span", { className: "text-sm text-gray-500 ml-2", children: ["(", availableInstructors.length, " available)"] }))] }), _jsxs("select", { value: formData.instructor_id, onChange: (e) => handleInputChange('instructor_id', e.target.value), className: "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "", children: "Select instructor" }), availableInstructors.map(profile => (_jsx("option", { value: profile.user_id, children: profile.full_name || profile.email }, profile.user_id)))] }), errors.instructor_id && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.instructor_id }), errors.conflict && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.conflict })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Payment Type" }), _jsxs("select", { value: formData.payment_type, onChange: (e) => handleInputChange('payment_type', e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", children: [_jsx("option", { value: "per_class", children: "Per Class" }), _jsx("option", { value: "monthly", children: "Monthly" }), _jsx("option", { value: "total_duration", children: "Total Duration" }), formData.assignment_type === 'weekly' && (_jsxs(_Fragment, { children: [_jsx("option", { value: "per_member", children: "Per Student Monthly Rate (Weekly Classes)" }), _jsx("option", { value: "per_class_total", children: "Total Per Class (Weekly Classes)" }), _jsx("option", { value: "per_student_per_class", children: "Per Student Per Class (Weekly Classes)" })] }))] })] }), _jsxs("div", { children: [_jsxs("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: ["Payment Amount (\u20B9)", _jsxs("span", { className: "text-sm text-gray-500 ml-1", children: [formData.payment_type === 'per_class' && '(per class)', formData.payment_type === 'monthly' && '(per month)', formData.payment_type === 'total_duration' && '(total amount)', formData.payment_type === 'per_member' && '(per student monthly rate)', formData.payment_type === 'per_class_total' && '(total per class)', formData.payment_type === 'per_student_per_class' && '(per student per class)'] })] }), _jsx("input", { type: "number", min: "0", step: "0.01", value: formData.payment_amount, onChange: (e) => handleInputChange('payment_amount', parseFloat(e.target.value) || 0), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500", placeholder: formData.payment_type === 'per_class' ? 'Amount per class' :
                                                         formData.payment_type === 'monthly' ? 'Monthly payment amount' :
                                                             formData.payment_type === 'per_member' ? 'Rate per student per month' :
                                                                 formData.payment_type === 'per_class_total' ? 'Total amount per class' :
-                                                                    'Total course amount' }), errors.payment_amount && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.payment_amount })] })] }), formData.total_classes > 0 && formData.payment_amount > 0 && (_jsxs("div", { className: "bg-gray-50 border border-gray-200 rounded-lg p-4", children: [_jsxs("div", { className: "flex items-center gap-2 mb-2", children: [_jsx(DollarSign, { className: "w-4 h-4 text-gray-600" }), _jsx("span", { className: "font-medium text-gray-800", children: "Payment Summary" })] }), _jsxs("div", { className: "text-sm text-gray-700", children: [formData.payment_type === 'per_class' && (_jsxs("p", { children: [_jsx("strong", { children: "Per Class:" }), " \u20B9", formData.payment_amount, " \u00D7 ", formData.total_classes, " classes =", _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", (formData.payment_amount * formData.total_classes).toLocaleString()] })] })), formData.payment_type === 'monthly' && (_jsxs("p", { children: [_jsx("strong", { children: "Monthly:" }), " \u20B9", formData.payment_amount, " per month \u00D7 estimated ", Math.ceil(formData.total_classes / 4), " months =", _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", (formData.payment_amount * Math.ceil(formData.total_classes / 4)).toLocaleString()] })] })), formData.payment_type === 'total_duration' && (_jsxs("p", { children: [_jsx("strong", { children: "Total Duration:" }), _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", formData.payment_amount.toLocaleString()] }), ' ', "for entire course (", formData.total_classes, " classes)"] })), formData.payment_type === 'per_member' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Per Student Monthly Rate:" }), " \u20B9", formData.payment_amount, " per student per month"] }), _jsxs("div", { className: "mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs", children: [_jsx("p", { className: "text-blue-700", children: _jsx("strong", { children: "Monthly Payment Calculation:" }) }), _jsx("p", { className: "text-blue-800 font-medium", children: "Formula: Students enrolled \u00D7 Monthly rate \u00D7 Weekly classes in month" }), _jsxs("div", { className: "mt-2 space-y-1", children: [_jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 1:" }), " 5 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 5 * 4).toLocaleString()] })] }), _jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 2:" }), " 7 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 7 * 4).toLocaleString()] })] }), _jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 3:" }), " 10 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 10 * 4).toLocaleString()] })] })] }), _jsx("p", { className: "text-blue-500 text-xs mt-2", children: "* Payment calculated monthly based on enrolled students that month" })] })] })), formData.payment_type === 'per_class_total' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Total Per Class:" }), " \u20B9", formData.payment_amount, " per class (fixed amount)"] }), _jsxs("div", { className: "mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs", children: [_jsx("p", { className: "text-orange-700", children: _jsx("strong", { children: "Fixed Class Payment:" }) }), _jsxs("p", { className: "text-orange-600", children: ["\u2022 Instructor receives \u20B9", formData.payment_amount.toLocaleString(), " per class regardless of attendance"] }), _jsxs("p", { className: "text-orange-600", children: ["\u2022 Total for ", formData.total_classes, " classes: ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * formData.total_classes).toLocaleString()] })] }), _jsx("p", { className: "text-orange-500 text-xs mt-1", children: "* Payment is fixed per class, independent of member count" })] })] }))] })] })), _jsx("div", { children: _jsx(BookingSelector, { selectedBookingId: formData.booking_id, onBookingSelect: (bookingId, clientName, clientEmail) => {
+                                                                    formData.payment_type === 'per_student_per_class' ? 'Amount per student per class' :
+                                                                        'Total course amount' }), errors.payment_amount && _jsx("p", { className: "text-red-500 text-sm mt-1", children: errors.payment_amount })] })] }), formData.total_classes > 0 && formData.payment_amount > 0 && (_jsxs("div", { className: "bg-gray-50 border border-gray-200 rounded-lg p-4", children: [_jsxs("div", { className: "flex items-center gap-2 mb-2", children: [_jsx(DollarSign, { className: "w-4 h-4 text-gray-600" }), _jsx("span", { className: "font-medium text-gray-800", children: "Payment Summary" })] }), _jsxs("div", { className: "text-sm text-gray-700", children: [formData.payment_type === 'per_class' && (_jsxs("p", { children: [_jsx("strong", { children: "Per Class:" }), " \u20B9", formData.payment_amount, " \u00D7 ", formData.total_classes, " classes =", _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", (formData.payment_amount * formData.total_classes).toLocaleString()] })] })), formData.payment_type === 'monthly' && (_jsxs("p", { children: [_jsx("strong", { children: "Monthly:" }), " \u20B9", formData.payment_amount, " per month \u00D7 estimated ", Math.ceil(formData.total_classes / 4), " months =", _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", (formData.payment_amount * Math.ceil(formData.total_classes / 4)).toLocaleString()] })] })), formData.payment_type === 'total_duration' && (_jsxs("p", { children: [_jsx("strong", { children: "Total Duration:" }), _jsxs("span", { className: "font-semibold text-green-600 ml-1", children: ["\u20B9", formData.payment_amount.toLocaleString()] }), ' ', "for entire course (", formData.total_classes, " classes)"] })), formData.payment_type === 'per_member' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Per Student Monthly Rate:" }), " \u20B9", formData.payment_amount, " per student per month"] }), _jsxs("div", { className: "mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs", children: [_jsx("p", { className: "text-blue-700", children: _jsx("strong", { children: "Monthly Payment Calculation:" }) }), _jsx("p", { className: "text-blue-800 font-medium", children: "Formula: Students enrolled \u00D7 Monthly rate \u00D7 Weekly classes in month" }), _jsxs("div", { className: "mt-2 space-y-1", children: [_jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 1:" }), " 5 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 5 * 4).toLocaleString()] })] }), _jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 2:" }), " 7 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 7 * 4).toLocaleString()] })] }), _jsxs("p", { className: "text-blue-600", children: ["\u2022 ", _jsx("strong", { children: "Month 3:" }), " 10 students \u00D7 \u20B9", formData.payment_amount, " \u00D7 4 weeks = ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * 10 * 4).toLocaleString()] })] })] }), _jsx("p", { className: "text-blue-500 text-xs mt-2", children: "* Payment calculated monthly based on enrolled students that month" })] })] })), formData.payment_type === 'per_class_total' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Total Per Class:" }), " \u20B9", formData.payment_amount, " per class (fixed amount)"] }), _jsxs("div", { className: "mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs", children: [_jsx("p", { className: "text-orange-700", children: _jsx("strong", { children: "Fixed Class Payment:" }) }), _jsxs("p", { className: "text-orange-600", children: ["\u2022 Instructor receives \u20B9", formData.payment_amount.toLocaleString(), " per class regardless of attendance"] }), _jsxs("p", { className: "text-orange-600", children: ["\u2022 Total for ", formData.total_classes, " classes: ", _jsxs("span", { className: "font-semibold", children: ["\u20B9", (formData.payment_amount * formData.total_classes).toLocaleString()] })] }), _jsx("p", { className: "text-orange-500 text-xs mt-1", children: "* Payment is fixed per class, independent of member count" })] })] })), formData.payment_type === 'per_student_per_class' && (_jsxs("div", { children: [_jsxs("p", { children: [_jsx("strong", { children: "Per Student Per Class:" }), " \u20B9", formData.payment_amount, " per student per class"] }), _jsxs("div", { className: "mt-2 p-2 bg-purple-50 border border-purple-200 rounded text-xs", children: [_jsx("p", { className: "text-purple-700", children: _jsx("strong", { children: "Student-Based Class Payment:" }) }), _jsx("p", { className: "text-purple-600", children: "\u2022 Payment scales with class attendance" }), _jsxs("p", { className: "text-purple-600", children: ["\u2022 Example: 5 students = \u20B9", (formData.payment_amount * 5).toLocaleString(), " per class"] }), _jsxs("p", { className: "text-purple-600", children: ["\u2022 Example: 10 students = \u20B9", (formData.payment_amount * 10).toLocaleString(), " per class"] }), _jsx("p", { className: "text-purple-500 text-xs mt-1", children: "* Final payment depends on actual student attendance per class" })] })] }))] })] })), _jsx("div", { children: _jsx(BookingSelector, { selectedBookingId: formData.booking_id, onBookingSelect: (bookingId, clientName, clientEmail) => {
                                             handleInputChange('booking_id', bookingId);
                                             handleInputChange('client_name', clientName);
                                             handleInputChange('client_email', clientEmail);

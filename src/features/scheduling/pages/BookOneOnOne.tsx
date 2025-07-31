@@ -25,6 +25,7 @@ export function BookOneOnOne() {
     const [step, setStep] = useState(1)
     const [loading, setLoading] = useState(false)
     const [errors, setErrors] = useState<Record<string, string>>({})
+    const [bookingId, setBookingId] = useState<string>('')
     const [classPackages, setClassPackages] = useState<ClassPackage[]>([])
     const [loadingPackages, setLoadingPackages] = useState(true)
     const [packageSearch, setPackageSearch] = useState('')
@@ -310,7 +311,7 @@ export function BookOneOnOne() {
             const { data, error } = await supabase
                 .from('bookings')
                 .insert([bookingData])
-                .select()
+                .select('booking_id')
 
             if (error) {
                 console.error('Supabase error:', error)
@@ -318,6 +319,7 @@ export function BookOneOnOne() {
             }
 
             console.log('Successfully inserted:', data)
+            setBookingId(data?.[0]?.booking_id || 'N/A')
             setStep(4) // Success step
         } catch (error: any) {
             console.error('Full error:', error)
@@ -896,9 +898,15 @@ export function BookOneOnOne() {
                             </div>
 
                             <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Booking Submitted!</h2>
-                            <p className="text-gray-600 dark:text-white mb-8">
+                            <p className="text-gray-600 dark:text-white mb-4">
                                 Thank you for booking with us! We'll review your request and send you a confirmation email within 24 hours with your session details and payment instructions.
                             </p>
+                            
+                            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-8">
+                                <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Your Booking ID</h3>
+                                <p className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">{bookingId}</p>
+                                <p className="text-sm text-green-700 dark:text-green-300">Please save this ID for your records</p>
+                            </div>
 
                             <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6 mb-8">
                                 <h3 className="font-semibold text-gray-900 dark:text-white mb-4">What's Next?</h3>
