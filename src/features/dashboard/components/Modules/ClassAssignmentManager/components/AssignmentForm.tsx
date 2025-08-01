@@ -4,6 +4,7 @@ import { getDurationOptions } from '../utils'
 import { Button } from './Button'
 import { LoadingSpinner } from './LoadingSpinner'
 import { BookingSelector } from './BookingSelector'
+import { ManualCalendarSelector } from './ManualCalendarSelector'
 
 interface AssignmentFormProps {
     isVisible: boolean
@@ -55,7 +56,8 @@ export const AssignmentForm = ({
     }
 
     const showPackageSelector = ['crash_course', 'monthly', 'package'].includes(formData.assignment_type)
-    const showClassTypeSelector = !showPackageSelector
+    const showClassTypeSelector = !showPackageSelector && formData.assignment_type !== 'weekly'
+    const showBookingTypeSelector = ['adhoc', 'monthly', 'crash_course', 'package'].includes(formData.assignment_type)
     const usingTemplate = formData.assignment_type === 'weekly' && formData.monthly_assignment_method === 'weekly_recurrence' && formData.selected_template_id
 
     return (
@@ -175,7 +177,7 @@ export const AssignmentForm = ({
                                             <option value="">Select Package</option>
                                             {getFilteredPackages().map(pkg => (
                                                 <option key={pkg.id} value={pkg.id}>
-                                                    {pkg.name} - {pkg.class_count} classes (${pkg.price})
+                                                    {pkg.name} - {pkg.class_count} classes (₹{pkg.price})
                                                 </option>
                                             ))}
                                         </select>
@@ -196,7 +198,7 @@ export const AssignmentForm = ({
                                                         <p>{selectedPackage.description}</p>
                                                         <p>Duration: {selectedPackage.duration}</p>
                                                         <p>Classes: {selectedPackage.class_count}</p>
-                                                        <p>Price: ${selectedPackage.price}</p>
+                                                        <p>Price: ₹{selectedPackage.price}</p>
                                                         {selectedPackage.validity_days && (
                                                             <p>Valid for: {selectedPackage.validity_days} days</p>
                                                         )}
@@ -205,6 +207,26 @@ export const AssignmentForm = ({
                                             })()}
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* Booking Type Selector for Monthly/Crash/Package */}
+                            {showBookingTypeSelector && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Booking Type <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        value={formData.booking_type}
+                                        onChange={(e) => onInputChange('booking_type', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Select booking type</option>
+                                        <option value="individual">Individual</option>
+                                        <option value="corporate">Corporate</option>
+                                        <option value="private_group">Private Group</option>
+                                    </select>
+                                    {errors.booking_type && <p className="text-red-500 text-sm mt-1">{errors.booking_type}</p>}
                                 </div>
                             )}
 
@@ -375,24 +397,6 @@ export const AssignmentForm = ({
                                 </div>
                             )}
 
-                            {/* Class Frequency for Crash Courses */}
-                            {formData.assignment_type === 'crash_course' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Class Frequency <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        value={formData.class_frequency}
-                                        onChange={(e) => onInputChange('class_frequency', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="daily">Daily</option>
-                                        <option value="weekly">Weekly</option>
-                                        <option value="specific">Specific Days</option>
-                                    </select>
-                                    {errors.class_frequency && <p className="text-red-500 text-sm mt-1">{errors.class_frequency}</p>}
-                                </div>
-                            )}
 
                             {/* Instructor Selection */}
                             <div>
@@ -525,7 +529,7 @@ export const AssignmentForm = ({
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         <DollarSign className="w-4 h-4 inline mr-1" />
-                                        Payment Amount <span className="text-red-500">*</span>
+                                        Payment Amount (INR) <span className="text-red-500">*</span>
                                     </label>
                                     <input
                                         type="number"
@@ -548,7 +552,7 @@ export const AssignmentForm = ({
                                         <div>
                                             <span className="text-green-700">Total Amount:</span>
                                             <span className="font-medium ml-2">
-                                                ${(formData.payment_type === 'per_class' 
+                                                ₹{(formData.payment_type === 'per_class' 
                                                     ? formData.payment_amount * formData.total_classes 
                                                     : formData.payment_amount).toFixed(2)}
                                             </span>
@@ -556,7 +560,7 @@ export const AssignmentForm = ({
                                         <div>
                                             <span className="text-green-700">Per Class:</span>
                                             <span className="font-medium ml-2">
-                                                ${(formData.payment_type === 'per_class' 
+                                                ₹{(formData.payment_type === 'per_class' 
                                                     ? formData.payment_amount 
                                                     : formData.payment_amount / formData.total_classes).toFixed(2)}
                                             </span>
@@ -580,12 +584,13 @@ export const AssignmentForm = ({
                                 <BookingSelector
                                     bookings={bookings}
                                     selectedBookingId={formData.booking_id || ''}
-                                    classTypeId={formData.class_type_id}
                                     onBookingSelect={(bookingId, clientName, clientEmail) => {
                                         onInputChange('booking_id', bookingId)
                                         onInputChange('client_name', clientName)
                                         onInputChange('client_email', clientEmail)
                                     }}
+                                    bookingTypeFilter={formData.booking_type as any}
+                                    assignmentType={formData.assignment_type}
                                 />
                             </div>
 
@@ -610,10 +615,16 @@ export const AssignmentForm = ({
                                     onChange={(e) => onInputChange('timezone', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
-                                    <option value="America/New_York">Eastern Time</option>
-                                    <option value="America/Chicago">Central Time</option>
-                                    <option value="America/Denver">Mountain Time</option>
-                                    <option value="America/Los_Angeles">Pacific Time</option>
+                                    <option value="">Select your timezone</option>
+                                    <option value="UTC-8">Pacific Time (UTC-8)</option>
+                                    <option value="UTC-7">Mountain Time (UTC-7)</option>
+                                    <option value="UTC-6">Central Time (UTC-6)</option>
+                                    <option value="UTC-5">Eastern Time (UTC-5)</option>
+                                    <option value="UTC+0">GMT (UTC+0)</option>
+                                    <option value="UTC+1">Central European Time (UTC+1)</option>
+                                    <option value="UTC+5:30">India Standard Time (UTC+5:30)</option>
+                                    <option value="UTC+8">Singapore Time (UTC+8)</option>
+                                    <option value="UTC+9">Japan Time (UTC+9)</option>
                                 </select>
                             </div>
 
@@ -698,9 +709,11 @@ export const AssignmentForm = ({
                                             {/* Manual Calendar Configuration */}
                                             {formData.monthly_assignment_method === 'manual_calendar' && (
                                                 <div className="ml-7 mt-3">
-                                                    <div className="text-sm text-gray-500">
-                                                        Manual calendar selector would go here
-                                                    </div>
+                                                    <ManualCalendarSelector
+                                                        selections={formData.manual_selections || []}
+                                                        onSelectionsChange={(selections) => onInputChange('manual_selections', selections)}
+                                                        totalClasses={formData.total_classes}
+                                                    />
                                                     {errors.manual_selections && <p className="text-red-500 text-sm mt-1">{errors.manual_selections}</p>}
                                                 </div>
                                             )}

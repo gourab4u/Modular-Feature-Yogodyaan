@@ -13,6 +13,7 @@ export interface ClassAssignment {
     assigned_at: string
     assigned_by: string
     schedule_type: string
+    booking_type: 'individual' | 'corporate' | 'private_group' | 'public_group'
     // Instructor status fields
     instructor_status?: 'pending' | 'accepted' | 'rejected'
     instructor_response_at?: string
@@ -98,19 +99,28 @@ export interface Package {
 
 export interface Booking {
     id: string
-    client_name: string
-    client_email: string
-    client_phone?: string
-    class_type_id: string
-    preferred_date?: string
-    preferred_time?: string
+    user_id: string
+    class_name: string
+    instructor: string
+    class_date: string
+    class_time: string
+    first_name: string
+    last_name: string
+    email: string
+    phone: string
     status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
     created_at: string
-    notes?: string
-    class_type?: {
+    booking_type?: 'individual' | 'corporate' | 'private_group' | 'public_group'
+    class_packages?: {
         id: string
         name: string
-        difficulty_level: string
+        description?: string
+        price?: number
+        class_count?: number
+        validity_days?: number
+        type?: string
+        duration?: string
+        course_type?: string
     }
 }
 
@@ -143,6 +153,7 @@ export interface FormData {
     package_id: string
     timeline_description: string
     total_classes: number
+    booking_type: 'individual' | 'corporate' | 'private_group' | 'public_group'
 
     // New timezone support
     timezone: string

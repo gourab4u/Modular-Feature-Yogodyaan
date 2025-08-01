@@ -57,7 +57,8 @@ function WeeklyScheduleContent() {
                 special_requests: '',
                 emergency_contact: '',
                 emergency_phone: '',
-                status: 'confirmed'
+                status: 'confirmed',
+                booking_type: 'public_group'
             };
             const { data: bookingResult, error: bookingError } = await supabase
                 .from('bookings')

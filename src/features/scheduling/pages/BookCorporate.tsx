@@ -74,7 +74,7 @@ export function BookCorporate() {
                 .from('class_packages')
                 .select('*')
                 .eq('is_active', true)
-                .eq('type', 'corporate')
+                .eq('type', 'Corporate')
                 .order('price')
 
             if (error) {
@@ -287,7 +287,7 @@ export function BookCorporate() {
                 last_name: formData.contactName.split(' ').slice(1).join(' ') || '',
                 email: formData.email,
                 phone: formData.phone,
-                experience_level: 'corporate',
+                experience_level: 'intermediate', // Default for corporate bookings
                 special_requests: formData.specialRequests,
                 status: 'pending',
                 booking_type: 'corporate',
@@ -1063,7 +1063,7 @@ export function BookCorporate() {
                             <p className="text-gray-600 dark:text-white mb-4">
                                 Thank you for your interest in our Corporate Wellness Program! Our team will review your requirements and get back to you within 1 business day with a customized proposal.
                             </p>
-                            
+
                             <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-8">
                                 <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Your Request ID</h3>
                                 <p className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">{bookingId}</p>

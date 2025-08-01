@@ -135,7 +135,7 @@ export const ClassDetailsPopup = ({ assignment, isVisible, onClose }: ClassDetai
                                     <div className="flex items-center space-x-2">
                                         <DollarSign className="w-4 h-4 text-green-500" />
                                         <p className="text-lg font-semibold text-green-600">
-                                            ${assignment.payment_amount.toFixed(2)}
+                                            ₹{assignment.payment_amount.toFixed(2)}
                                         </p>
                                     </div>
                                     <p className="text-sm text-gray-600">Amount</p>

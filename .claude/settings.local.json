@@ -9,7 +9,10 @@
       "Bash(find:*)",
       "mcp__ide__getDiagnostics",
       "Bash(sed:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(rm:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout 10s npm run dev)"
     ],
     "deny": []
   }

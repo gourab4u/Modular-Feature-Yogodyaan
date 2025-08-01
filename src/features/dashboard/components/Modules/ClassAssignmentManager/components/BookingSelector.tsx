@@ -6,32 +6,79 @@ interface BookingSelectorProps {
     bookings: Booking[]
     selectedBookingId: string
     onBookingSelect: (bookingId: string, clientName: string, clientEmail: string) => void
-    classTypeId?: string
+    bookingTypeFilter?: 'individual' | 'corporate' | 'private_group' | 'public_group' | null
+    assignmentType?: string
 }
 
 export const BookingSelector = ({ 
     bookings, 
     selectedBookingId, 
-    onBookingSelect, 
-    classTypeId 
+    onBookingSelect,
+    bookingTypeFilter,
+    assignmentType
 }: BookingSelectorProps) => {
     const [isOpen, setIsOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
 
-    // Filter bookings by class type if specified, and by search term
+    // Filter bookings based on assignment type, booking type, course type, status, and search term
     const filteredBookings = bookings.filter(booking => {
-        const matchesClassType = !classTypeId || booking.class_type_id === classTypeId
-        const matchesSearch = !searchTerm || 
-            booking.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            booking.client_email.toLowerCase().includes(searchTerm.toLowerCase())
+        // Filter by status - only show pending/confirmed, not completed/cancelled/assigned
+        const matchesStatus = ['pending', 'confirmed'].includes(booking.status)
         
-        return matchesClassType && matchesSearch
+        // Filter by booking type based on assignment type
+        let matchesBookingType = true
+        let matchesCourseType = true
+        
+        if (assignmentType === 'weekly') {
+            // Weekly classes - show all bookings (or later filter by public_group)
+            matchesBookingType = true // Show all booking types for now
+            matchesCourseType = true // Allow any course type for weekly
+        } else if (assignmentType === 'monthly') {
+            // Monthly packages should show selected booking type with regular course type
+            if (bookingTypeFilter && bookingTypeFilter.trim() !== '') {
+                matchesBookingType = booking.booking_type === bookingTypeFilter
+                // Filter by course_type if package exists, otherwise allow booking
+                if (booking.class_packages && booking.class_packages.course_type) {
+                    matchesCourseType = booking.class_packages.course_type === 'regular'
+                } else {
+                    // If no package linked, allow the booking (might be individual bookings without packages)
+                    matchesCourseType = true
+                }
+            } else {
+                matchesBookingType = false // Don't show any bookings until type is selected
+            }
+        } else if (assignmentType === 'crash_course') {
+            // Crash courses should show selected booking type with crash course type
+            if (bookingTypeFilter && bookingTypeFilter.trim() !== '') {
+                matchesBookingType = booking.booking_type === bookingTypeFilter
+                // Filter by course_type if package exists, otherwise exclude booking for crash courses
+                if (booking.class_packages && booking.class_packages.course_type) {
+                    matchesCourseType = booking.class_packages.course_type === 'crash'
+                } else {
+                    // If no package linked, exclude from crash course assignments
+                    matchesCourseType = false
+                }
+            } else {
+                matchesBookingType = false // Don't show any bookings until type is selected
+            }
+        } else if (bookingTypeFilter && bookingTypeFilter.trim() !== '') {
+            // For adhoc and package forms, filter by selected booking type, any course type
+            matchesBookingType = booking.booking_type === bookingTypeFilter
+            // matchesCourseType remains true (any course type)
+        }
+        // If no booking type filter and not weekly/monthly/crash, show all booking types and course types
+        
+        const matchesSearch = !searchTerm || 
+            `${booking.first_name} ${booking.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            booking.email.toLowerCase().includes(searchTerm.toLowerCase())
+        
+        return matchesStatus && matchesBookingType && matchesCourseType && matchesSearch
     })
 
     const selectedBooking = bookings.find(b => b.id === selectedBookingId)
 
     const handleBookingSelect = (booking: Booking) => {
-        onBookingSelect(booking.id, booking.client_name, booking.client_email)
+        onBookingSelect(booking.id, `${booking.first_name} ${booking.last_name}`, booking.email)
         setIsOpen(false)
         setSearchTerm('')
     }
@@ -77,8 +124,8 @@ export const BookingSelector = ({
                         {selectedBooking ? (
                             <div className="flex items-center">
                                 <User className="w-4 h-4 mr-2 text-gray-400" />
-                                <span className="font-medium">{selectedBooking.client_name}</span>
-                                <span className="ml-2 text-sm text-gray-500">({selectedBooking.client_email})</span>
+                                <span className="font-medium">{selectedBooking.first_name} {selectedBooking.last_name}</span>
+                                <span className="ml-2 text-sm text-gray-500">({selectedBooking.email})</span>
                                 <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`}>
                                     {selectedBooking.status}
                                 </span>
@@ -136,7 +183,7 @@ export const BookingSelector = ({
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <User className="w-4 h-4 mr-2 text-gray-400" />
-                                                    <span className="font-medium text-gray-900">{booking.client_name}</span>
+                                                    <span className="font-medium text-gray-900">{booking.first_name} {booking.last_name}</span>
                                                 </div>
                                                 <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
                                                     {booking.status}
@@ -146,40 +193,35 @@ export const BookingSelector = ({
                                             {/* Contact info */}
                                             <div className="flex items-center text-sm text-gray-600">
                                                 <Mail className="w-3 h-3 mr-1" />
-                                                <span className="mr-3">{booking.client_email}</span>
-                                                {booking.client_phone && (
+                                                <span className="mr-3">{booking.email}</span>
+                                                {booking.phone && (
                                                     <>
                                                         <Phone className="w-3 h-3 mr-1" />
-                                                        <span>{booking.client_phone}</span>
+                                                        <span>{booking.phone}</span>
                                                     </>
                                                 )}
                                             </div>
 
                                             {/* Class type */}
                                             <div className="text-sm text-gray-600">
-                                                <span className="font-medium">Class:</span> {booking.class_type?.name || 'Unknown'}
+                                                <span className="font-medium">Class:</span> {booking.class_name || 'Unknown'}
                                             </div>
 
                                             {/* Preferred date/time */}
-                                            {(booking.preferred_date || booking.preferred_time) && (
+                                            {(booking.class_date || booking.class_time) && (
                                                 <div className="flex items-center text-sm text-gray-600">
                                                     <Calendar className="w-3 h-3 mr-1" />
-                                                    <span className="mr-2">{formatDate(booking.preferred_date)}</span>
-                                                    {booking.preferred_time && (
+                                                    <span className="mr-2">{formatDate(booking.class_date)}</span>
+                                                    {booking.class_time && (
                                                         <>
                                                             <Clock className="w-3 h-3 mr-1" />
-                                                            <span>{formatTime(booking.preferred_time)}</span>
+                                                            <span>{formatTime(booking.class_time)}</span>
                                                         </>
                                                     )}
                                                 </div>
                                             )}
 
-                                            {/* Notes */}
-                                            {booking.notes && (
-                                                <div className="text-xs text-gray-500 italic truncate">
-                                                    {booking.notes}
-                                                </div>
-                                            )}
+                                            {/* Notes section removed as it's not in the new structure */}
                                         </div>
                                     </button>
                                 ))
@@ -195,17 +237,17 @@ export const BookingSelector = ({
                     <div className="text-sm">
                         <div className="font-medium text-blue-900 mb-1">Linked Booking Details:</div>
                         <div className="text-blue-800">
-                            <div><strong>Client:</strong> {selectedBooking.client_name}</div>
-                            <div><strong>Email:</strong> {selectedBooking.client_email}</div>
-                            {selectedBooking.client_phone && (
-                                <div><strong>Phone:</strong> {selectedBooking.client_phone}</div>
+                            <div><strong>Client:</strong> {selectedBooking.first_name} {selectedBooking.last_name}</div>
+                            <div><strong>Email:</strong> {selectedBooking.email}</div>
+                            {selectedBooking.phone && (
+                                <div><strong>Phone:</strong> {selectedBooking.phone}</div>
                             )}
-                            <div><strong>Class Type:</strong> {selectedBooking.class_type?.name || 'Unknown'}</div>
-                            {selectedBooking.preferred_date && (
-                                <div><strong>Preferred Date:</strong> {formatDate(selectedBooking.preferred_date)}</div>
+                            <div><strong>Class:</strong> {selectedBooking.class_name || 'Unknown'}</div>
+                            {selectedBooking.class_date && (
+                                <div><strong>Date:</strong> {formatDate(selectedBooking.class_date)}</div>
                             )}
-                            {selectedBooking.preferred_time && (
-                                <div><strong>Preferred Time:</strong> {formatTime(selectedBooking.preferred_time)}</div>
+                            {selectedBooking.class_time && (
+                                <div><strong>Time:</strong> {formatTime(selectedBooking.class_time)}</div>
                             )}
                             <div><strong>Status:</strong> 
                                 <span className={`ml-1 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`}>

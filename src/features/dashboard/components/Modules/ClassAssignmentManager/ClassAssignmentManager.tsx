@@ -21,7 +21,7 @@ import {
     getAssignmentType,
     formatTime
 } from './utils'
-import { supabase } from './lib/supabase'
+import { supabase } from '../../../../../shared/lib/supabase'
 import { AssignmentCreationService } from './services/assignmentCreation'
 
 export function ClassAssignmentManager() {

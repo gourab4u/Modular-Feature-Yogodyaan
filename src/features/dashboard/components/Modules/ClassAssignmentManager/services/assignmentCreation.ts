@@ -1,5 +1,113 @@
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../../../../../shared/lib/supabase'
 import { FormData, Package } from '../types'
+
+// Helper function to validate UUID format
+const isValidUUID = (uuid: string): boolean => {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    return uuidRegex.test(uuid)
+}
+
+// Helper function to validate booking exists in database
+const validateBookingExists = async (bookingId: string): Promise<boolean> => {
+    if (!bookingId || bookingId.trim() === '' || bookingId.trim() === 'null' || bookingId.trim() === 'undefined') {
+        return true // No booking to validate
+    }
+    
+    if (!isValidUUID(bookingId.trim())) {
+        console.warn('Invalid booking ID format:', bookingId)
+        return false
+    }
+    
+    try {
+        const { data: booking, error: bookingError } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('id', bookingId.trim())
+            .single()
+        
+        if (bookingError || !booking) {
+            console.warn('Booking not found:', bookingId)
+            return false
+        }
+        
+        return true
+    } catch (error) {
+        console.warn('Error validating booking:', error)
+        return false
+    }
+}
+
+// Helper function to clean assignment data - removes empty UUID fields that would cause 22P02 errors
+const cleanAssignmentData = async (data: any): Promise<any> => {
+    const cleaned = { ...data }
+    
+    // List of ALL UUID fields that could be empty
+    const uuidFields = ['booking_id', 'class_type_id', 'package_id', 'instructor_id', 'assigned_by']
+    
+    // First validate booking_id if present
+    if (cleaned.booking_id && cleaned.booking_id.trim() !== '') {
+        const bookingExists = await validateBookingExists(cleaned.booking_id)
+        if (!bookingExists) {
+            console.warn('Removing invalid booking_id:', cleaned.booking_id)
+            cleaned.booking_id = ''
+        }
+    }
+    
+    uuidFields.forEach(field => {
+        if (cleaned[field] === '' || cleaned[field] === null || cleaned[field] === undefined || 
+            cleaned[field] === 'null' || cleaned[field] === 'undefined' || 
+            (typeof cleaned[field] === 'string' && cleaned[field].trim() === '')) {
+            if (field === 'class_type_id') {
+                // class_type_id is only required for adhoc assignments
+                // For package-based assignments, it can be null/empty
+                delete cleaned[field]
+            } else if (field === 'package_id') {
+                // package_id is only required for package-based assignments
+                // For adhoc assignments, it can be null/empty
+                delete cleaned[field]
+            } else if (field === 'instructor_id') {
+                throw new Error('Please select an instructor before creating the assignment')
+            } else if (field === 'assigned_by') {
+                throw new Error('Authentication error - please log out and log in again')
+            } else {
+                delete cleaned[field]
+            }
+        }
+    })
+    
+    console.log('Original data:', JSON.stringify(data, null, 2))
+    console.log('Cleaned data:', JSON.stringify(cleaned, null, 2))
+    
+    return cleaned
+}
+
+// Helper function to get current user ID - requires authentication
+const getCurrentUserId = async (): Promise<string> => {
+    try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) {
+            console.error('Auth error getting current user:', error)
+            throw new Error('Authentication failed. Please log in to create assignments.')
+        }
+        if (!user || !user.id) {
+            console.error('No authenticated user found')
+            throw new Error('You must be logged in to create assignments. Please log in and try again.')
+        }
+        // Check if user.id is a valid UUID (not empty string)
+        if (typeof user.id !== 'string' || user.id.trim() === '') {
+            console.error('Invalid user ID:', user.id)
+            throw new Error('Invalid authentication state. Please log out and log in again.')
+        }
+        console.log('Current user ID:', user.id)
+        return user.id
+    } catch (error) {
+        if (error.message && error.message.includes('log in')) {
+            throw error // Re-throw authentication errors as-is
+        }
+        console.error('Failed to get current user:', error)
+        throw new Error('Authentication failed. Please log in to create assignments.')
+    }
+}
 
 export class AssignmentCreationService {
     static async createAssignment(formData: FormData, packages: Package[]) {
@@ -20,27 +128,111 @@ export class AssignmentCreationService {
     }
 
     private static async createAdhocAssignment(formData: FormData) {
-        const assignmentData = {
-            class_type_id: formData.class_type_id,
-            date: formData.date,
-            start_time: formData.start_time,
-            end_time: formData.end_time,
-            instructor_id: formData.instructor_id,
-            payment_amount: formData.payment_amount,
-            notes: formData.notes,
-            schedule_type: 'adhoc',
-            assigned_at: new Date().toISOString(),
-            assigned_by: 'system', // Replace with actual user ID
-            booking_id: formData.booking_id || null,
-            client_name: formData.client_name || null,
-            client_email: formData.client_email || null
+        const currentUserId = await getCurrentUserId()
+        
+        // Validate required fields
+        if (!formData.class_type_id || formData.class_type_id.trim() === '') {
+            throw new Error('Class type is required')
         }
+        if (!formData.instructor_id || formData.instructor_id.trim() === '') {
+            throw new Error('Instructor is required')
+        }
+
+        // Validate UUID formats  
+        if (!isValidUUID(formData.class_type_id.trim())) {
+            throw new Error('Invalid class type ID format')
+        }
+        if (!isValidUUID(formData.instructor_id.trim())) {
+            throw new Error('Invalid instructor ID format')
+        }
+        if (!isValidUUID(currentUserId.trim())) {
+            throw new Error('Invalid user authentication - please log out and log in again')
+        }
+        // Booking validation is now handled in cleanAssignmentData function
+        if (!formData.date || formData.date.trim() === '') {
+            throw new Error('Date is required')
+        }
+        if (!formData.start_time || formData.start_time.trim() === '') {
+            throw new Error('Start time is required')
+        }
+        if (!formData.end_time || formData.end_time.trim() === '') {
+            throw new Error('End time is required')
+        }
+
+        // Validate date format (YYYY-MM-DD)
+        const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+        if (!dateRegex.test(formData.date)) {
+            throw new Error('Date must be in YYYY-MM-DD format')
+        }
+
+        // Validate time format (HH:MM or HH:MM:SS)
+        const timeRegex = /^\d{2}:\d{2}(:\d{2})?$/
+        if (!timeRegex.test(formData.start_time)) {
+            throw new Error('Start time must be in HH:MM format')
+        }
+        if (!timeRegex.test(formData.end_time)) {
+            throw new Error('End time must be in HH:MM format')
+        }
+
+        // Validate payment amount is a valid number
+        const paymentAmount = parseFloat(formData.payment_amount?.toString() || '0')
+        if (isNaN(paymentAmount) || paymentAmount < 0) {
+            throw new Error('Payment amount must be a valid positive number')
+        }
+        
+        // Create assignment data with required fields only, add others conditionally
+        const assignmentData: any = {
+            class_type_id: formData.class_type_id.trim(),
+            date: formData.date.trim(),
+            start_time: formData.start_time.trim(),
+            end_time: formData.end_time.trim(),
+            instructor_id: formData.instructor_id.trim(),
+            payment_amount: paymentAmount,
+            schedule_type: 'adhoc',
+            assigned_by: currentUserId.trim(),
+            booking_type: formData.booking_type || 'individual'
+        }
+
+        // Add optional fields only if they have valid non-empty values
+        if (formData.notes && formData.notes.trim() !== '') {
+            assignmentData.notes = formData.notes.trim()
+        }
+        if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+            assignmentData.booking_id = formData.booking_id.trim()
+        }
+        if (formData.client_name && formData.client_name.trim() !== '') {
+            assignmentData.client_name = formData.client_name.trim()
+        }
+        if (formData.client_email && formData.client_email.trim() !== '') {
+            assignmentData.client_email = formData.client_email.trim()
+        }
+        
+        // Set default status fields that might be required
+        assignmentData.class_status = 'scheduled'
+        assignmentData.payment_status = 'pending'
+        assignmentData.instructor_status = 'pending'
+
+        // Clean the assignment data to remove empty UUID fields
+        const cleanedAssignmentData = await cleanAssignmentData(assignmentData)
+
+        console.log('Assignment data being inserted:', JSON.stringify(cleanedAssignmentData, null, 2))
+        console.log('Current user ID was:', currentUserId)
 
         const { error } = await supabase
             .from('class_assignments')
-            .insert([assignmentData])
+            .insert([cleanedAssignmentData])
 
-        if (error) throw error
+        if (error) {
+            console.error('Supabase insert error:', {
+                error,
+                code: error.code,
+                message: error.message,
+                details: error.details,
+                hint: error.hint,
+                assignmentData
+            })
+            throw new Error(`Database error: ${error.message || 'Unknown error occurred while creating assignment'}`)
+        }
 
         // Update booking status if linked
         if (formData.booking_id) {
@@ -80,7 +272,7 @@ export class AssignmentCreationService {
         if (updateError) throw updateError
 
         // Create weekly assignments based on the template
-        const assignments = this.generateWeeklyAssignments(
+        const assignments = await this.generateWeeklyAssignments(
             formData,
             template.day_of_week,
             template.start_time,
@@ -88,9 +280,10 @@ export class AssignmentCreationService {
             template.class_type_id
         )
 
+        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData))
         const { error: insertError } = await supabase
             .from('class_assignments')
-            .insert(assignments)
+            .insert(cleanedAssignments)
 
         if (insertError) throw insertError
 
@@ -123,7 +316,7 @@ export class AssignmentCreationService {
         if (scheduleError) throw scheduleError
 
         // Generate weekly assignments
-        const assignments = this.generateWeeklyAssignments(
+        const assignments = await this.generateWeeklyAssignments(
             formData,
             formData.day_of_week,
             formData.start_time,
@@ -131,9 +324,10 @@ export class AssignmentCreationService {
             formData.class_type_id
         )
 
+        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData))
         const { error: assignmentError } = await supabase
             .from('class_assignments')
-            .insert(assignments)
+            .insert(cleanedAssignments)
 
         if (assignmentError) throw assignmentError
 
@@ -145,13 +339,14 @@ export class AssignmentCreationService {
         return { success: true, count: assignments.length }
     }
 
-    private static generateWeeklyAssignments(
+    private static async generateWeeklyAssignments(
         formData: FormData,
         dayOfWeek: number,
         startTime: string,
         endTime: string,
         classTypeId: string
     ) {
+        const currentUserId = await getCurrentUserId()
         const assignments = []
         const startDate = new Date(formData.start_date)
         const endDate = new Date(formData.start_date)
@@ -172,21 +367,26 @@ export class AssignmentCreationService {
         // Create assignments for each occurrence
         let classCount = 0
         while (currentDate <= endDate && classCount < formData.total_classes) {
-            const assignment = {
+            const assignment: any = {
                 class_type_id: classTypeId,
                 date: currentDate.toISOString().split('T')[0],
                 start_time: startTime,
                 end_time: endTime,
                 instructor_id: formData.instructor_id,
                 payment_amount: this.calculatePaymentAmount(formData, 'weekly'),
-                notes: formData.notes,
                 schedule_type: 'weekly',
-                assigned_at: new Date().toISOString(),
-                assigned_by: 'system',
-                booking_id: formData.booking_id || null,
-                client_name: formData.client_name || null,
-                client_email: formData.client_email || null
+                assigned_by: currentUserId,
+                booking_type: formData.booking_type || 'public_group',
+                class_status: 'scheduled',
+                payment_status: 'pending',
+                instructor_status: 'pending'
             }
+
+            // Add optional fields only if they have values
+            if (formData.notes) assignment.notes = formData.notes
+            if (formData.booking_id) assignment.booking_id = formData.booking_id
+            if (formData.client_name) assignment.client_name = formData.client_name
+            if (formData.client_email) assignment.client_email = formData.client_email
 
             assignments.push(assignment)
             classCount++
@@ -218,14 +418,15 @@ export class AssignmentCreationService {
         }
 
         if (formData.monthly_assignment_method === 'weekly_recurrence') {
-            assignments.push(...this.generateWeeklyRecurrenceAssignments(formData, perClassAmount))
+            assignments.push(...await this.generateWeeklyRecurrenceAssignments(formData, perClassAmount))
         } else {
-            assignments.push(...this.generateManualCalendarAssignments(formData, perClassAmount))
+            assignments.push(...await this.generateManualCalendarAssignments(formData, perClassAmount))
         }
 
+        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData))
         const { error } = await supabase
             .from('class_assignments')
-            .insert(assignments)
+            .insert(cleanedAssignments)
 
         if (error) throw error
 
@@ -237,7 +438,8 @@ export class AssignmentCreationService {
         return { success: true, count: assignments.length }
     }
 
-    private static generateWeeklyRecurrenceAssignments(formData: FormData, perClassAmount: number) {
+    private static async generateWeeklyRecurrenceAssignments(formData: FormData, perClassAmount: number) {
+        const currentUserId = await getCurrentUserId()
         const assignments = []
 
         // Validate weekly days selection
@@ -254,21 +456,26 @@ export class AssignmentCreationService {
             const currentDayOfWeek = currentDate.getDay() // 0 = Sunday, 6 = Saturday
 
             if (formData.weekly_days.includes(currentDayOfWeek)) {
-                const assignment = {
-                    class_type_id: formData.class_type_id,
+                const assignment: any = {
+                    package_id: formData.package_id,
                     date: currentDate.toISOString().split('T')[0],
                     start_time: formData.start_time,
                     end_time: formData.end_time,
                     instructor_id: formData.instructor_id,
                     payment_amount: perClassAmount,
-                    notes: formData.notes,
                     schedule_type: 'monthly',
-                    assigned_at: new Date().toISOString(),
-                    assigned_by: 'system',
-                    booking_id: formData.booking_id || null,
-                    client_name: formData.client_name || null,
-                    client_email: formData.client_email || null
+                    assigned_by: currentUserId,
+                    booking_type: formData.booking_type || 'individual',
+                    class_status: 'scheduled',
+                    payment_status: 'pending',
+                    instructor_status: 'pending'
                 }
+
+                // Add optional fields only if they have values
+                if (formData.notes) assignment.notes = formData.notes
+                if (formData.booking_id) assignment.booking_id = formData.booking_id
+                if (formData.client_name) assignment.client_name = formData.client_name
+                if (formData.client_email) assignment.client_email = formData.client_email
 
                 assignments.push(assignment)
                 classesCreated++
@@ -286,66 +493,88 @@ export class AssignmentCreationService {
         return assignments
     }
 
-    private static generateManualCalendarAssignments(formData: FormData, perClassAmount: number) {
+    private static async generateManualCalendarAssignments(formData: FormData, perClassAmount: number) {
+        const currentUserId = await getCurrentUserId()
+        
         // Validate manual selections
         if (!formData.manual_selections || formData.manual_selections.length === 0) {
             throw new Error('Please select at least one class date and time')
         }
 
         // Create assignments from manual selections
-        return formData.manual_selections.map(selection => ({
-            class_type_id: formData.class_type_id,
-            date: selection.date,
-            start_time: selection.start_time,
-            end_time: selection.end_time,
-            instructor_id: formData.instructor_id,
-            payment_amount: perClassAmount,
-            notes: formData.notes,
-            schedule_type: 'monthly',
-            assigned_at: new Date().toISOString(),
-            assigned_by: 'system',
-            booking_id: formData.booking_id || null,
-            client_name: formData.client_name || null,
-            client_email: formData.client_email || null
-        }))
+        return formData.manual_selections.map(selection => {
+            const assignment: any = {
+                package_id: formData.package_id,
+                date: selection.date,
+                start_time: selection.start_time,
+                end_time: selection.end_time,
+                instructor_id: formData.instructor_id,
+                payment_amount: perClassAmount,
+                schedule_type: 'monthly',
+                assigned_by: currentUserId,
+                booking_type: formData.booking_type || 'individual',
+                class_status: 'scheduled',
+                payment_status: 'pending',
+                instructor_status: 'pending'
+            }
+
+            // Add optional fields only if they have values
+            if (formData.notes) assignment.notes = formData.notes
+            if (formData.booking_id) assignment.booking_id = formData.booking_id
+            if (formData.client_name) assignment.client_name = formData.client_name
+            if (formData.client_email) assignment.client_email = formData.client_email
+
+            return assignment
+        })
     }
 
     private static async createCrashCourseAssignment(formData: FormData, packages: Package[]) {
+        const currentUserId = await getCurrentUserId()
         const selectedPackage = packages.find(p => p.id === formData.package_id)
         if (!selectedPackage) {
             throw new Error('Selected package not found')
         }
 
-        // Generate class dates based on frequency
+        // Generate class dates (weekly by default for crash courses)
         const classDates = this.generateCrashCourseDates(
             formData.start_date,
             selectedPackage.class_count,
-            formData.class_frequency
+            'weekly'
         )
 
         // Calculate per-class amount based on payment type
         const perClassAmount = this.calculatePaymentAmount(formData, 'crash_course', selectedPackage.class_count)
 
         // Create assignments for each date
-        const assignments = classDates.map(date => ({
-            class_type_id: formData.class_type_id,
-            date: date,
-            start_time: formData.start_time,
-            end_time: formData.end_time,
-            instructor_id: formData.instructor_id,
-            payment_amount: perClassAmount,
-            notes: formData.notes,
-            schedule_type: 'crash',
-            assigned_at: new Date().toISOString(),
-            assigned_by: 'system',
-            booking_id: formData.booking_id || null,
-            client_name: formData.client_name || null,
-            client_email: formData.client_email || null
-        }))
+        const assignments = classDates.map(date => {
+            const assignment: any = {
+                package_id: formData.package_id,
+                date: date,
+                start_time: formData.start_time,
+                end_time: formData.end_time,
+                instructor_id: formData.instructor_id,
+                payment_amount: perClassAmount,
+                schedule_type: 'crash',
+                assigned_by: currentUserId,
+                booking_type: formData.booking_type || 'individual',
+                class_status: 'scheduled',
+                payment_status: 'pending',
+                instructor_status: 'pending'
+            }
 
+            // Add optional fields only if they have values
+            if (formData.notes) assignment.notes = formData.notes
+            if (formData.booking_id) assignment.booking_id = formData.booking_id
+            if (formData.client_name) assignment.client_name = formData.client_name
+            if (formData.client_email) assignment.client_email = formData.client_email
+
+            return assignment
+        })
+
+        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData))
         const { error } = await supabase
             .from('class_assignments')
-            .insert(assignments)
+            .insert(cleanedAssignments)
 
         if (error) throw error
 
@@ -412,15 +641,16 @@ export class AssignmentCreationService {
 
         if (formData.monthly_assignment_method === 'weekly_recurrence') {
             // Weekly recurrence method
-            assignments.push(...this.generateWeeklyRecurrenceAssignments(formData, perClassAmount))
+            assignments.push(...await this.generateWeeklyRecurrenceAssignments(formData, perClassAmount))
         } else {
             // Manual calendar selection method
-            assignments.push(...this.generateManualCalendarAssignments(formData, perClassAmount))
+            assignments.push(...await this.generateManualCalendarAssignments(formData, perClassAmount))
         }
 
+        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData))
         const { error } = await supabase
             .from('class_assignments')
-            .insert(assignments)
+            .insert(cleanedAssignments)
 
         if (error) throw error
 

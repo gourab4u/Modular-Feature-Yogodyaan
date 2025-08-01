@@ -261,7 +261,7 @@ export const CalendarView = ({
                                                                 {/* Payment Amount */}
                                                                 <div className="text-xs opacity-75 truncate flex items-center">
                                                                     <DollarSign className="w-3 h-3 mr-1" />
-                                                                    ${assignment.payment_amount.toFixed(0)}
+                                                                    ₹{assignment.payment_amount.toFixed(0)}
                                                                 </div>
 
                                                                 {/* Client Name if available */}

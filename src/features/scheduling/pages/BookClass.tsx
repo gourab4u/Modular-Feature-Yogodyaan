@@ -4,15 +4,19 @@ import { Button } from '../../../shared/components/ui/Button'
 import { supabase } from '../../../shared/lib/supabase'
 import { useAuth } from '../../auth/contexts/AuthContext'
 
-interface ClassType {
+interface ClassPackage {
   id: string
   name: string
   description: string | null
-  difficulty_level: string | null
-  price: number | null
-  duration_minutes: number | null
-  max_participants: number | null
-  is_active: boolean
+  class_count: number
+  price: number
+  validity_days?: number
+  class_type_restrictions: string[] | null
+  is_active?: boolean
+  is_archived: boolean
+  type: string | null
+  duration: string | null
+  course_type: string | null
 }
 
 export function BookClass() {
@@ -21,12 +25,14 @@ export function BookClass() {
   const [selectedTime, setSelectedTime] = useState('')
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [showBookingForm, setShowBookingForm] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(false)
+  const [bookingId, setBookingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<any>({})
-  const [classTypes, setClassTypes] = useState<ClassType[]>([])
-  const [loadingClassTypes, setLoadingClassTypes] = useState(true)
-  const [classTypeSearch, setClassTypeSearch] = useState('')
-  const [selectedClassType, setSelectedClassType] = useState<ClassType | null>(null)
+  const [classPackages, setClassPackages] = useState<ClassPackage[]>([])
+  const [loadingPackages, setLoadingPackages] = useState(true)
+  const [packageSearch, setPackageSearch] = useState('')
+  const [selectedPackage, setSelectedPackage] = useState<ClassPackage | null>(null)
 
   const [formData, setFormData] = useState({
     fullName: '',
@@ -49,52 +55,42 @@ export function BookClass() {
     'South Africa', 'Nigeria', 'Other'
   ]
 
-  // Fetch class types from database
+  // Fetch class packages from database
   useEffect(() => {
-    fetchClassTypes()
+    fetchClassPackages()
   }, [])
 
-  const fetchClassTypes = async () => {
+  const fetchClassPackages = async () => {
     try {
-      setLoadingClassTypes(true)
+      setLoadingPackages(true)
       const { data, error } = await supabase
-        .from('class_types')
+        .from('class_packages')
         .select('*')
         .eq('is_active', true)
         .eq('is_archived', false)
-        .order('name')
+        .eq('type', 'Private group')
+        .order('price')
 
       if (error) {
         throw error
       }
 
-      setClassTypes(data || [])
+      setClassPackages(data || [])
     } catch (error) {
-      console.error('Error fetching class types:', error)
-      setErrors({ classTypes: 'Failed to load class types. Please refresh the page.' })
+      console.error('Error fetching class packages:', error)
+      setErrors({ classPackages: 'Failed to load class packages. Please refresh the page.' })
     } finally {
-      setLoadingClassTypes(false)
+      setLoadingPackages(false)
     }
   }
 
-  // Filter class types based on search
-  const filteredClassTypes = classTypes.filter(classType =>
-    classType.name.toLowerCase().includes(classTypeSearch.toLowerCase()) ||
-    (classType.description && classType.description.toLowerCase().includes(classTypeSearch.toLowerCase()))
+  // Filter class packages based on search
+  const filteredPackages = classPackages.filter(pkg =>
+    pkg.name.toLowerCase().includes(packageSearch.toLowerCase()) ||
+    (pkg.description && pkg.description.toLowerCase().includes(packageSearch.toLowerCase()))
   )
 
-  const getDifficultyColor = (level: string | null) => {
-    switch (level?.toLowerCase()) {
-      case 'beginner':
-        return 'bg-green-100 text-green-800 border-green-200'
-      case 'intermediate':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      case 'advanced':
-        return 'bg-red-100 text-red-800 border-red-200'
-      default:
-        return 'bg-gray-100 text-gray-800 dark:text-white border-gray-200 dark:border-slate-600'
-    }
-  }
+  // Removed unused getDifficultyColor function
 
   // Calendar functionality
   const getDaysInMonth = (date: Date) => {
@@ -138,13 +134,7 @@ export function BookClass() {
     }
   }
 
-  const handleClassTypeSelect = (classType: ClassType) => {
-    setSelectedClassType(classType)
-    setFormData(prev => ({ ...prev, classType: classType.name }))
-    if (errors.classType) {
-      setErrors((prev: any) => ({ ...prev, classType: '' }))
-    }
-  }
+  // Removed handleClassTypeSelect (no longer needed)
 
   const validateForm = () => {
     const newErrors: any = {}
@@ -153,7 +143,7 @@ export function BookClass() {
     if (!formData.email.trim()) newErrors.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Email is invalid'
     if (!formData.country) newErrors.country = 'Country is required'
-    if (!formData.classType) newErrors.classType = 'Class type is required'
+    // Remove classType validation for group package booking
     if (!formData.groupSize) newErrors.groupSize = 'Group size is required'
     if (!selectedDate) newErrors.date = 'Please select a date'
     if (!selectedTime) newErrors.time = 'Please select a time'
@@ -185,7 +175,8 @@ export function BookClass() {
         emergency_contact: '',
         emergency_phone: '',
         status: 'confirmed',
-        class_type_id: selectedClassType?.id || null
+        booking_type: 'private_group',
+        class_package_id: selectedPackage?.id || null
       }
 
       const { data: bookingResult, error } = await supabase
@@ -210,10 +201,10 @@ export function BookClass() {
       })
       setSelectedDate('')
       setSelectedTime('')
-      setSelectedClassType(null)
+      setSelectedPackage(null)
+      setBookingId(bookingId)
       setShowBookingForm(false)
-
-      alert(`Booking confirmed! You will receive a confirmation email shortly.\n\nYour Booking ID: ${bookingId}\n\nPlease save this ID for your records.`)
+      setShowConfirmation(true)
     } catch (error: any) {
       setErrors({ general: error.message || 'An error occurred while booking your class.' })
     } finally {
@@ -249,7 +240,40 @@ export function BookClass() {
       </section>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {!showBookingForm ? (
+        {showConfirmation ? (
+          <div className="max-w-2xl mx-auto">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-8 text-center">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Booking Confirmed!</h2>
+              <p className="text-gray-600 dark:text-white mb-4">
+                Thank you for booking your Private Group Class! You will receive a confirmation email shortly.
+              </p>
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-8">
+                <h3 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Your Booking ID</h3>
+                <p className="text-2xl font-bold text-blue-900 dark:text-blue-100 mb-1">{bookingId}</p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">Please save this ID for your records</p>
+              </div>
+              <div className="space-y-4">
+                <Button
+                  onClick={() => window.location.href = '/'}
+                  className="bg-blue-600 hover:bg-blue-700 mr-4"
+                >
+                  Return to Home
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => window.location.reload()}
+                >
+                  Book Another Class
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : !showBookingForm ? (
           <div className="space-y-12">
             {/* Calendar */}
             <div>
@@ -378,16 +402,16 @@ export function BookClass() {
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-white">Duration:</span>
                     <span className="font-medium">
-                      {selectedClassType?.duration_minutes
-                        ? `${selectedClassType.duration_minutes} minutes`
+                      {selectedPackage?.duration
+                        ? `${selectedPackage.duration}`
                         : '60-90 minutes'
                       }
                     </span>
                   </div>
-                  {selectedClassType && (
+                  {selectedPackage && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-white">Class Type:</span>
-                      <span className="font-medium">{selectedClassType.name}</span>
+                      <span className="text-gray-600 dark:text-white">Package:</span>
+                      <span className="font-medium">{selectedPackage.name}</span>
                     </div>
                   )}
                 </div>
@@ -482,16 +506,16 @@ export function BookClass() {
                   {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
                 </div>
 
-                {/* Enhanced Class Type Selection */}
+                {/* Enhanced Package Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-white mb-3">
-                    Preferred Class Type *
+                    Preferred Group Package *
                   </label>
 
-                  {loadingClassTypes ? (
+                  {loadingPackages ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 dark:border-blue-400"></div>
-                      <span className="ml-2 text-gray-600 dark:text-white">Loading class types...</span>
+                      <span className="ml-2 text-gray-600 dark:text-white">Loading packages...</span>
                     </div>
                   ) : (
                     <>
@@ -500,66 +524,65 @@ export function BookClass() {
                         <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                         <input
                           type="text"
-                          placeholder="Search class types..."
-                          value={classTypeSearch}
-                          onChange={(e) => setClassTypeSearch(e.target.value)}
+                          placeholder="Search packages..."
+                          value={packageSearch}
+                          onChange={(e) => setPackageSearch(e.target.value)}
                           className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                         />
                       </div>
 
-                      {/* Class Type Cards */}
+                      {/* Package Cards */}
                       <div className="grid gap-3 max-h-80 overflow-y-auto">
-                        {filteredClassTypes.length === 0 ? (
+                        {filteredPackages.length === 0 ? (
                           <div className="text-center py-8 text-gray-500 dark:text-gray-300">
-                            {classTypeSearch ? 'No class types found matching your search.' : 'No class types available.'}
+                            {packageSearch ? 'No packages found matching your search.' : 'No packages available.'}
                           </div>
                         ) : (
-                          filteredClassTypes.map((classType) => (
+                          filteredPackages.map((pkg) => (
                             <div
-                              key={classType.id}
-                              onClick={() => handleClassTypeSelect(classType)}
-                              className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${selectedClassType?.id === classType.id
-                                  ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md'
-                                  : 'border-gray-200 dark:border-slate-600 hover:border-blue-300 dark:border-blue-500'
+                              key={pkg.id}
+                              onClick={() => setSelectedPackage(pkg)}
+                              className={`p-4 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${selectedPackage?.id === pkg.id
+                                ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md'
+                                : 'border-gray-200 dark:border-slate-600 hover:border-blue-300 dark:border-blue-500'
                                 }`}
                             >
                               <div className="flex items-start justify-between">
                                 <div className="flex-1">
-                                  <h4 className="font-semibold text-gray-900 dark:text-white mb-1">{classType.name}</h4>
-                                  {classType.description && (
-                                    <p className="text-sm text-gray-600 dark:text-white mb-2">{classType.description}</p>
+                                  <h4 className="font-semibold text-gray-900 dark:text-white mb-1">{pkg.name}</h4>
+                                  {pkg.description && (
+                                    <p className="text-sm text-gray-600 dark:text-white mb-2">{pkg.description}</p>
                                   )}
 
                                   <div className="flex flex-wrap gap-2 items-center">
-                                    {classType.difficulty_level && (
-                                      <span className={`px-2 py-1 text-xs font-medium rounded-full border ${getDifficultyColor(classType.difficulty_level)}`}>
-                                        {classType.difficulty_level}
+                                    <span className="flex items-center text-xs text-gray-500 dark:text-gray-300">
+                                      <Clock className="w-3 h-3 mr-1" />
+                                      {pkg.duration ? pkg.duration : '60-90 min'}
+                                    </span>
+                                    <span className="flex items-center text-xs text-gray-500 dark:text-gray-300">
+                                      <Users className="w-3 h-3 mr-1" />
+                                      {pkg.class_count} Sessions
+                                    </span>
+                                    <span className="text-sm font-semibold text-green-600">
+                                      ₹{pkg.price}
+                                    </span>
+                                    {pkg.validity_days && (
+                                      <span className="text-xs text-gray-500 dark:text-gray-300">
+                                        {pkg.validity_days} Days Validity
                                       </span>
                                     )}
-
-                                    {classType.duration_minutes && (
-                                      <span className="flex items-center text-xs text-gray-500 dark:text-gray-300">
-                                        <Clock className="w-3 h-3 mr-1" />
-                                        {classType.duration_minutes} min
-                                      </span>
-                                    )}
-
-                                    {classType.max_participants && (
-                                      <span className="flex items-center text-xs text-gray-500 dark:text-gray-300">
-                                        <Users className="w-3 h-3 mr-1" />
-                                        Max {classType.max_participants}
-                                      </span>
-                                    )}
-
-                                    {classType.price && (
-                                      <span className="text-sm font-semibold text-green-600">
-                                        ${classType.price}
+                                    {pkg.course_type && (
+                                      <span className={`text-xs px-2 py-1 rounded ${pkg.course_type === 'crash'
+                                        ? 'bg-orange-100 text-orange-800'
+                                        : 'bg-green-100 text-green-800'
+                                        }`}>
+                                        {pkg.course_type === 'crash' ? 'Crash Course' : 'Regular Course'}
                                       </span>
                                     )}
                                   </div>
                                 </div>
 
-                                {selectedClassType?.id === classType.id && (
+                                {selectedPackage?.id === pkg.id && (
                                   <div className="ml-3">
                                     <div className="w-5 h-5 bg-blue-50 dark:bg-blue-900/200 rounded-full flex items-center justify-center">
                                       <div className="w-2 h-2 bg-white dark:bg-slate-800 rounded-full"></div>

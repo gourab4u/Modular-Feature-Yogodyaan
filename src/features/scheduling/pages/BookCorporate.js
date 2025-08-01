@@ -54,7 +54,7 @@ export function BookCorporate() {
                 .from('class_packages')
                 .select('*')
                 .eq('is_active', true)
-                .eq('type', 'corporate')
+                .eq('type', 'Corporate')
                 .order('price');
             if (error) {
                 throw error;
@@ -261,7 +261,7 @@ export function BookCorporate() {
                 last_name: formData.contactName.split(' ').slice(1).join(' ') || '',
                 email: formData.email,
                 phone: formData.phone,
-                experience_level: 'corporate',
+                experience_level: 'intermediate', // Default for corporate bookings
                 special_requests: formData.specialRequests,
                 status: 'pending',
                 booking_type: 'corporate',

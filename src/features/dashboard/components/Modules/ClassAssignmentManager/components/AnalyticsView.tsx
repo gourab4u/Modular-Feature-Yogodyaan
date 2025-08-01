@@ -156,7 +156,7 @@ export const AnalyticsView = ({ assignments, instructors }: AnalyticsViewProps) 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Total Revenue"
-                    value={`$${analytics.totalRevenue.toFixed(2)}`}
+                    value={`₹${analytics.totalRevenue.toFixed(2)}`}
                     icon={DollarSign}
                     color="green"
                 />
@@ -223,7 +223,7 @@ export const AnalyticsView = ({ assignments, instructors }: AnalyticsViewProps) 
                                         color="green"
                                     />
                                     <span className="text-sm text-gray-600 min-w-[5rem] text-right">
-                                        ${revenue.toFixed(2)}
+                                        ₹${revenue.toFixed(2)}
                                     </span>
                                 </div>
                             </div>
@@ -279,7 +279,7 @@ export const AnalyticsView = ({ assignments, instructors }: AnalyticsViewProps) 
                                         {stat.totalAssignments}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        ${stat.revenue.toFixed(2)}
+                                        ₹${stat.revenue.toFixed(2)}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center">
@@ -360,7 +360,7 @@ export const AnalyticsView = ({ assignments, instructors }: AnalyticsViewProps) 
                             <div className="flex items-center space-x-4">
                                 <div className="text-right">
                                     <div className="text-lg font-semibold text-green-600">
-                                        ${month.revenue.toFixed(2)}
+                                        ₹${month.revenue.toFixed(2)}
                                     </div>
                                     <div className="text-xs text-gray-500">Revenue</div>
                                 </div>

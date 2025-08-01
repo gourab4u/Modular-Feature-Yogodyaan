@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useClassAssignmentData, useFormHandler } from './hooks';
 import { AssignmentForm, AssignmentListView, CalendarView, AnalyticsView, AdvancedFilters, ClassDetailsPopup, Button } from './components';
 import { timeToMinutes, getAssignmentType, formatTime } from './utils';
-import { supabase } from './lib/supabase';
+import { supabase } from '../../../../../shared/lib/supabase';
 import { AssignmentCreationService } from './services/assignmentCreation';
 export function ClassAssignmentManager() {
     // Data fetching hook

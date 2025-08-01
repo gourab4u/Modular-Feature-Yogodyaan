@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../../../../../shared/lib/supabase'
 import { ClassAssignment, ClassSchedule, ClassType, Package, UserProfile, Booking, LoadingStates } from '../types'
 
 export const useClassAssignmentData = () => {
@@ -53,17 +53,20 @@ export const useClassAssignmentData = () => {
                 `).eq('is_active', true).order('day_of_week', { ascending: true }).order('start_time', { ascending: true }),
                 supabase.from('bookings').select(`
                     id,
-                    client_name,
-                    client_email,
-                    client_phone,
-                    class_type_id,
-                    preferred_date,
-                    preferred_time,
+                    user_id,
+                    class_name,
+                    instructor,
+                    class_date,
+                    class_time,
+                    first_name,
+                    last_name,
+                    email,
+                    phone,
                     status,
                     created_at,
-                    notes,
-                    class_type:class_types(id, name, difficulty_level)
-                `).in('status', ['pending', 'confirmed']).order('created_at', { ascending: false })
+                    booking_type,
+                    class_packages(id, name, description, price, class_count, validity_days, type, duration, course_type)
+                `).order('created_at', { ascending: false })
             ])
 
             const classTypesData = classTypesResult.data || []
@@ -90,7 +93,9 @@ export const useClassAssignmentData = () => {
                 setScheduleTemplates([])
                 setBookings(bookingsData.map(booking => ({
                     ...booking,
-                    class_type: classTypeMap.get(booking.class_type_id)
+                    class_packages: Array.isArray(booking.class_packages) && booking.class_packages.length > 0 
+                        ? booking.class_packages[0] 
+                        : null
                 })))
                 return
             }
@@ -143,7 +148,10 @@ export const useClassAssignmentData = () => {
 
             const enrichedBookings = bookingsData.map(booking => ({
                 ...booking,
-                class_type: classTypeMap.get(booking.class_type_id)
+                // Supabase returns class_packages as array, but we expect single object
+                class_packages: Array.isArray(booking.class_packages) && booking.class_packages.length > 0 
+                    ? booking.class_packages[0] 
+                    : null
             }))
 
             // Update state

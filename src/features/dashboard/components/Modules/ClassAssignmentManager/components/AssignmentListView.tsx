@@ -1,4 +1,5 @@
-import { Calendar, Clock, DollarSign, MapPin, User, Trash2 } from 'lucide-react'
+import { Calendar, Clock, DollarSign, MapPin, User, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
 import { ClassAssignment } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
 import { LoadingSpinner } from './LoadingSpinner'
@@ -36,6 +37,17 @@ export const AssignmentListView = ({
     onDeleteAssignment,
     onOpenClassDetails
 }: AssignmentListViewProps) => {
+    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set(groupedAssignments.map(g => g.key)))
+
+    const toggleGroupExpansion = (groupKey: string) => {
+        const newExpanded = new Set(expandedGroups)
+        if (newExpanded.has(groupKey)) {
+            newExpanded.delete(groupKey)
+        } else {
+            newExpanded.add(groupKey)
+        }
+        setExpandedGroups(newExpanded)
+    }
     if (loading) {
         return (
             <div className="flex justify-center py-12">
@@ -60,14 +72,37 @@ export const AssignmentListView = ({
                 {groupedAssignments.map(group => (
                     <div key={group.key} className="bg-white border border-gray-200 rounded-lg overflow-hidden">
                         {/* Group Header */}
-                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                        <div 
+                            className="bg-gray-50 px-6 py-4 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => toggleGroupExpansion(group.key)}
+                        >
                             <div className="flex items-center justify-between">
                                 <div className="flex-1">
                                     <div className="flex items-center space-x-4">
+                                        {/* Expand/Contract Button */}
+                                        <button className="p-1 hover:bg-gray-200 rounded transition-colors">
+                                            {expandedGroups.has(group.key) ? (
+                                                <ChevronDown className="w-5 h-5 text-gray-600" />
+                                            ) : (
+                                                <ChevronRight className="w-5 h-5 text-gray-600" />
+                                            )}
+                                        </button>
                                         <div className="flex-1">
-                                            <h3 className="text-lg font-semibold text-gray-900">
-                                                {group.groupInfo.class_type_name}
-                                            </h3>
+                                            <div className="flex items-center space-x-3">
+                                                <h3 className="text-lg font-semibold text-gray-900">
+                                                    {group.groupInfo.class_type_name}
+                                                </h3>
+                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                                                    group.type === 'weekly' ? 'bg-blue-100 text-blue-800' :
+                                                    group.type === 'monthly' ? 'bg-green-100 text-green-800' :
+                                                    group.type === 'crash_course' ? 'bg-red-100 text-red-800' :
+                                                    group.type === 'package' ? 'bg-purple-100 text-purple-800' :
+                                                    'bg-gray-100 text-gray-800'
+                                                }`}>
+                                                    {group.type === 'crash_course' ? 'Crash Course' : 
+                                                     group.type.charAt(0).toUpperCase() + group.type.slice(1)}
+                                                </span>
+                                            </div>
                                             <div className="flex items-center mt-1 text-sm text-gray-600 space-x-4">
                                                 <span className="flex items-center">
                                                     <User className="w-4 h-4 mr-1" />
@@ -91,7 +126,7 @@ export const AssignmentListView = ({
                                 {/* Payment Summary for Group */}
                                 <div className="text-right">
                                     <div className="text-lg font-semibold text-green-600">
-                                        ${group.groupInfo.total_revenue.toFixed(2)}
+                                        ₹{group.groupInfo.total_revenue.toFixed(2)}
                                     </div>
                                     <div className="text-sm text-gray-500">
                                         {group.groupInfo.assignment_count} class{group.groupInfo.assignment_count !== 1 ? 'es' : ''}
@@ -100,8 +135,9 @@ export const AssignmentListView = ({
                             </div>
                         </div>
 
-                        {/* Group Assignments */}
-                        <div className="divide-y divide-gray-100">
+                        {/* Group Assignments - Collapsible */}
+                        {expandedGroups.has(group.key) && (
+                            <div className="divide-y divide-gray-100">
                             {group.assignments.map(assignment => {
                                 const statusStyle = getStatusStyle(assignment)
                                 return (
@@ -169,7 +205,7 @@ export const AssignmentListView = ({
                                                 <div className="text-right">
                                                     <div className="flex items-center text-lg font-semibold text-green-600">
                                                         <DollarSign className="w-4 h-4" />
-                                                        {assignment.payment_amount.toFixed(2)}
+                                                        ₹{assignment.payment_amount.toFixed(2)}
                                                     </div>
                                                     {assignment.payment_status && (
                                                         <div className={`text-xs ${
@@ -209,7 +245,8 @@ export const AssignmentListView = ({
                                     </div>
                                 )
                             })}
-                        </div>
+                            </div>
+                        )}
                     </div>
                 ))}
             </div>

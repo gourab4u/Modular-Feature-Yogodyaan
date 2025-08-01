@@ -26,6 +26,7 @@ const initialFormData = {
     specific_days: [],
     // Package fields
     package_id: '',
+    booking_type: 'individual',
     // Generated/calculated fields
     timeline_description: '',
     total_classes: 1,
@@ -155,6 +156,11 @@ export const useFormHandler = (conflictCheckCallback) => {
         // Common validations
         if (!formData.instructor_id)
             newErrors.instructor_id = 'Instructor is required';
+        // Class type validation - only required for adhoc assignments
+        // For other types, class_type_id comes from package selection
+        if (formData.assignment_type === 'adhoc' && !formData.class_type_id) {
+            newErrors.class_type_id = 'Class type is required';
+        }
         // Time validations - not required when using templates (since templates contain time info)
         const usingTemplate = formData.assignment_type === 'weekly' && formData.monthly_assignment_method === 'weekly_recurrence' && formData.selected_template_id;
         if (!usingTemplate) {

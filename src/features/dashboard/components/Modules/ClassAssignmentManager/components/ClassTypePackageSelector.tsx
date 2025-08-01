@@ -85,7 +85,7 @@ export const ClassTypePackageSelector = ({
                     <option value="">Select Package</option>
                     {getFilteredPackages().map(pkg => (
                         <option key={pkg.id} value={pkg.id}>
-                            {pkg.name} - {pkg.class_count} classes (${pkg.price})
+                            {pkg.name} - {pkg.class_count} classes (₹{pkg.price})
                         </option>
                     ))}
                 </select>
@@ -110,7 +110,7 @@ export const ClassTypePackageSelector = ({
                                 <p>{selectedPackage.description}</p>
                                 <p>Duration: {selectedPackage.duration}</p>
                                 <p>Classes: {selectedPackage.class_count}</p>
-                                <p>Price: ${selectedPackage.price}</p>
+                                <p>Price: ₹{selectedPackage.price}</p>
                                 {selectedPackage.validity_days && (
                                     <p>Valid for: {selectedPackage.validity_days} days</p>
                                 )}
