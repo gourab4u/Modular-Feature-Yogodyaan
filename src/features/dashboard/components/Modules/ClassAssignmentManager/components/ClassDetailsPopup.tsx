@@ -6,9 +6,10 @@ interface ClassDetailsPopupProps {
     assignment: ClassAssignment | null
     isVisible: boolean
     onClose: () => void
+    onEdit?: (assignment: ClassAssignment) => void
 }
 
-export const ClassDetailsPopup = ({ assignment, isVisible, onClose }: ClassDetailsPopupProps) => {
+export const ClassDetailsPopup = ({ assignment, isVisible, onClose, onEdit }: ClassDetailsPopupProps) => {
     if (!isVisible || !assignment) return null
 
     const statusStyle = getStatusStyle(assignment)
@@ -216,16 +217,16 @@ export const ClassDetailsPopup = ({ assignment, isVisible, onClose }: ClassDetai
                         >
                             Close
                         </button>
-                        <button
-                            onClick={() => {
-                                // Close popup and trigger edit functionality
-                                onClose()
-                                // You could add edit functionality here
-                            }}
-                            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                            Edit Assignment
-                        </button>
+                        {onEdit && (
+                            <button
+                                onClick={() => {
+                                    onEdit(assignment)
+                                }}
+                                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                                Edit Assignment
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

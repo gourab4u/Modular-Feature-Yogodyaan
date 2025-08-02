@@ -9,75 +9,30 @@ export function useClassSchedule() {
             setLoading(true);
             setError(null);
             console.log('🔍 Fetching class schedules...');
-            // Method 1: Try with explicit foreign key references
-            const { data: method1Data, error: method1Error } = await supabase
-                .from('class_schedules')
-                .select(`
-          *,
-          class_types!class_schedules_class_type_id_fkey(name, description, difficulty_level, price),
-          profiles!class_schedules_instructor_id_fkey(full_name, email, user_id)
-        `)
-                .eq('is_active', true)
-                .order('day_of_week')
-                .order('start_time');
-            if (!method1Error && method1Data) {
-                console.log('✅ Method 1 (explicit FK) succeeded:', method1Data);
-                setSchedules(processScheduleData(method1Data));
-                return;
+            // Use the same approach as the class assignment manager for consistency
+            const [classTypesResult, scheduleResult] = await Promise.all([
+                supabase.from('class_types').select('id, name, description, difficulty_level, price'),
+                supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true }).order('start_time', { ascending: true })
+            ]);
+            console.log('📊 Raw schedule result:', scheduleResult);
+            console.log('📊 Raw class types result:', classTypesResult);
+            const classTypesData = classTypesResult.data || [];
+            const scheduleData = scheduleResult.data || [];
+            if (scheduleResult.error) {
+                throw new Error(`Failed to fetch schedules: ${scheduleResult.error.message}`);
             }
-            console.log('⚠️ Method 1 failed, trying Method 2:', method1Error);
-            // Method 2: Try with column name aliases
-            const { data: method2Data, error: method2Error } = await supabase
-                .from('class_schedules')
-                .select(`
-          *,
-          class_type:class_types!inner(name, description, difficulty_level, price),
-          instructor:profiles!inner(full_name, email, user_id)
-        `)
-                .eq('is_active', true)
-                .order('day_of_week')
-                .order('start_time');
-            if (!method2Error && method2Data) {
-                console.log('✅ Method 2 (inner join) succeeded:', method2Data);
-                setSchedules(processScheduleData(method2Data));
-                return;
+            if (classTypesResult.error) {
+                console.warn('⚠️ Failed to fetch class types:', classTypesResult.error);
             }
-            console.log('⚠️ Method 2 failed, trying Method 3:', method2Error);
-            // Method 3: Try with simple aliases (most compatible)
-            const { data: method3Data, error: method3Error } = await supabase
-                .from('class_schedules')
-                .select(`
-          *,
-          class_type:class_types(name, description, difficulty_level, price),
-          instructor:profiles(full_name, email, user_id)
-        `)
-                .eq('is_active', true)
-                .order('day_of_week')
-                .order('start_time');
-            if (!method3Error && method3Data) {
-                console.log('✅ Method 3 (simple join) succeeded:', method3Data);
-                setSchedules(processScheduleData(method3Data));
-                return;
-            }
-            console.log('⚠️ All join methods failed, using fallback method');
-            // Method 4: Fallback - fetch separately and combine
-            const { data: scheduleData, error: scheduleError } = await supabase
-                .from('class_schedules')
-                .select('*')
-                .eq('is_active', true)
-                .order('day_of_week')
-                .order('start_time');
-            if (scheduleError) {
-                throw new Error(`Failed to fetch schedules: ${scheduleError.message}`);
-            }
-            if (!scheduleData || scheduleData.length === 0) {
+            if (scheduleData.length === 0) {
                 console.log('📭 No active schedules found');
                 setSchedules([]);
                 return;
             }
-            console.log('📊 Basic schedule data fetched:', scheduleData);
-            // Fetch related data separately
-            const combinedData = await fetchRelatedDataSeparately(scheduleData);
+            console.log('📊 Schedule data fetched:', scheduleData.length, 'schedules');
+            console.log('📊 Class types fetched:', classTypesData.length, 'types');
+            // Fetch related data separately using the same pattern as class assignment manager
+            const combinedData = await fetchRelatedDataSeparately(scheduleData, classTypesData);
             setSchedules(combinedData);
         }
         catch (err) {
@@ -88,28 +43,12 @@ export function useClassSchedule() {
             setLoading(false);
         }
     };
-    const fetchRelatedDataSeparately = async (schedules) => {
+    const fetchRelatedDataSeparately = async (schedules, classTypes) => {
         try {
-            // Get unique IDs
-            const classTypeIds = [...new Set(schedules.map(s => s.class_type_id).filter(Boolean))];
+            // Get unique instructor IDs
             const instructorIds = [...new Set(schedules.map(s => s.instructor_id).filter(Boolean))];
-            console.log('🔗 Fetching related data - Class Types:', classTypeIds.length, 'Instructors:', instructorIds.length);
-            // Fetch class types
-            let classTypes = [];
-            if (classTypeIds.length > 0) {
-                const { data: classTypeData, error: classTypeError } = await supabase
-                    .from('class_types')
-                    .select('id, name, description, difficulty_level, price')
-                    .in('id', classTypeIds);
-                if (classTypeError) {
-                    console.error('❌ Error fetching class types:', classTypeError);
-                }
-                else {
-                    classTypes = classTypeData || [];
-                    console.log('✅ Class types fetched:', classTypes.length);
-                }
-            }
-            // Fetch instructors
+            console.log('🔗 Fetching instructor data for', instructorIds.length, 'instructors');
+            // Fetch instructors (we already have class types from the parallel fetch)
             let instructors = [];
             if (instructorIds.length > 0) {
                 const { data: instructorData, error: instructorError } = await supabase
@@ -163,38 +102,6 @@ export function useClassSchedule() {
                 }
             }));
         }
-    };
-    const processScheduleData = (data) => {
-        return data
-            .filter(schedule => {
-            // Filter out schedules with missing required data
-            const hasValidClass = schedule.class_type || schedule.class_types;
-            const hasValidInstructor = schedule.instructor || schedule.profiles;
-            if (!hasValidClass || !hasValidInstructor) {
-                console.warn('⚠️ Filtering out incomplete schedule:', schedule.id);
-                return false;
-            }
-            return true;
-        })
-            .map(schedule => {
-            // Normalize the data structure
-            const classType = schedule.class_type || schedule.class_types;
-            const instructor = schedule.instructor || schedule.profiles;
-            return {
-                ...schedule,
-                class_type: {
-                    name: classType?.name || 'Unknown Class',
-                    description: classType?.description || '',
-                    difficulty_level: classType?.difficulty_level || 'beginner',
-                    price: classType?.price || 0
-                },
-                instructor: {
-                    full_name: instructor?.full_name?.trim() || 'TBD',
-                    email: instructor?.email || '',
-                    user_id: instructor?.user_id || schedule.instructor_id
-                }
-            };
-        });
     };
     useEffect(() => {
         fetchSchedules();

@@ -2,7 +2,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 import { BarChart3, Calendar, CheckSquare, Filter, List, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useClassAssignmentData, useFormHandler } from './hooks';
-import { AssignmentForm, AssignmentListView, CalendarView, AnalyticsView, AdvancedFilters, ClassDetailsPopup, Button } from './components';
+import { AssignmentForm, AssignmentListView, CalendarView, AnalyticsView, AdvancedFilters, ClassDetailsPopup, EditAssignmentModal, Button } from './components';
 import { timeToMinutes, getAssignmentType, formatTime } from './utils';
 import { supabase } from '../../../../../shared/lib/supabase';
 import { AssignmentCreationService } from './services/assignmentCreation';
@@ -34,6 +34,9 @@ export function ClassAssignmentManager() {
     // Class details popup state
     const [selectedClassDetails, setSelectedClassDetails] = useState(null);
     const [showClassDetailsPopup, setShowClassDetailsPopup] = useState(false);
+    // Edit assignment modal state
+    const [selectedEditAssignment, setSelectedEditAssignment] = useState(null);
+    const [showEditAssignmentModal, setShowEditAssignmentModal] = useState(false);
     const instructors = userProfiles;
     const createDateInTimeZone = (dateString) => {
         return new Date(dateString + 'T00:00:00');
@@ -288,6 +291,16 @@ export function ClassAssignmentManager() {
         setSelectedClassDetails(null);
         setShowClassDetailsPopup(false);
     };
+    const openEditAssignment = (assignment) => {
+        setSelectedEditAssignment(assignment);
+        setShowEditAssignmentModal(true);
+        // Close class details popup if it's open
+        setShowClassDetailsPopup(false);
+    };
+    const closeEditAssignment = () => {
+        setSelectedEditAssignment(null);
+        setShowEditAssignmentModal(false);
+    };
     const deleteAssignment = async (assignmentId, assignmentTitle) => {
         if (!confirm(`Are you sure you want to delete "${assignmentTitle}"?`))
             return;
@@ -381,7 +394,26 @@ export function ClassAssignmentManager() {
         try {
             setSaving(true);
             setLoadingStates(prev => ({ ...prev, creatingAssignment: true }));
-            const result = await AssignmentCreationService.createAssignment(formData, packages);
+            // Calculate student count based on selected booking(s)
+            const calculateStudentCount = () => {
+                // If no booking is selected, default to 1 student
+                if (!formData.booking_id || formData.booking_id.trim() === '') {
+                    return 1;
+                }
+                // Find the selected booking
+                const selectedBooking = bookings.find(booking => booking.id === formData.booking_id);
+                if (!selectedBooking) {
+                    return 1; // Fallback if booking not found
+                }
+                // For group bookings, check if there's any participant-related field
+                // Note: Currently each booking represents 1 student
+                // In the future, if group bookings need multiple participants,
+                // a participants_count field can be added to the Booking interface
+                // For now, each booking = 1 student
+                return 1;
+            };
+            const studentCount = calculateStudentCount();
+            const result = await AssignmentCreationService.createAssignment(formData, packages, studentCount);
             await fetchData();
             resetForm();
             setShowAssignForm(false);
@@ -394,6 +426,59 @@ export function ClassAssignmentManager() {
         finally {
             setSaving(false);
             setLoadingStates(prev => ({ ...prev, creatingAssignment: false }));
+        }
+    };
+    // Save assignment function
+    const saveAssignment = async (assignmentId, updates) => {
+        try {
+            setLoadingStates(prev => ({ ...prev, updatingStatus: true }));
+            // Clean the updates object to only include valid database fields
+            const cleanUpdates = {};
+            // Only include fields that exist in the database
+            if (updates.class_status !== undefined)
+                cleanUpdates.class_status = updates.class_status;
+            if (updates.payment_amount !== undefined)
+                cleanUpdates.payment_amount = updates.payment_amount;
+            if (updates.payment_status !== undefined)
+                cleanUpdates.payment_status = updates.payment_status;
+            if (updates.notes !== undefined)
+                cleanUpdates.notes = updates.notes;
+            // Handle booking_id with validation
+            if (updates.booking_id !== undefined) {
+                if (updates.booking_id === '' || updates.booking_id === null) {
+                    // Clear the booking_id by setting it to null
+                    cleanUpdates.booking_id = null;
+                }
+                else {
+                    // Validate that the booking exists before updating
+                    const bookingExists = bookings.find(b => b.id === updates.booking_id);
+                    if (bookingExists) {
+                        cleanUpdates.booking_id = updates.booking_id;
+                    }
+                    else {
+                        throw new Error(`Booking with ID ${updates.booking_id} does not exist. Please select a valid booking or clear the booking selection.`);
+                    }
+                }
+            }
+            console.log('Updating assignment with:', cleanUpdates);
+            const { error } = await supabase
+                .from('class_assignments')
+                .update(cleanUpdates)
+                .eq('id', assignmentId);
+            if (error) {
+                console.error('Supabase update error:', error);
+                throw error;
+            }
+            // Refresh data to update the UI
+            await fetchData();
+            console.log('Assignment updated successfully');
+        }
+        catch (error) {
+            console.error('Error updating assignment:', error);
+            throw error;
+        }
+        finally {
+            setLoadingStates(prev => ({ ...prev, updatingStatus: false }));
         }
     };
     // Filter management
@@ -419,6 +504,6 @@ export function ClassAssignmentManager() {
                                                     ? 'bg-blue-100 text-blue-700'
                                                     : 'text-gray-500 hover:text-gray-700'}`, children: [_jsx(Calendar, { className: "w-4 h-4 mr-1" }), "Calendar"] }), _jsxs("button", { onClick: () => setActiveView('analytics'), className: `px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${activeView === 'analytics'
                                                     ? 'bg-blue-100 text-blue-700'
-                                                    : 'text-gray-500 hover:text-gray-700'}`, children: [_jsx(BarChart3, { className: "w-4 h-4 mr-1" }), "Analytics"] })] }), activeView === 'list' && (_jsxs("div", { className: "flex items-center space-x-3", children: [filteredAssignments.length > 0 && (_jsxs("span", { className: "text-sm text-gray-500", children: [filteredAssignments.length, " assignment", filteredAssignments.length !== 1 ? 's' : ''] })), _jsx(Button, { variant: "outline", size: "sm", onClick: toggleSelectMode, children: isSelectMode ? (_jsxs(_Fragment, { children: [_jsx(X, { className: "w-4 h-4 mr-1" }), "Cancel Select"] })) : (_jsxs(_Fragment, { children: [_jsx(CheckSquare, { className: "w-4 h-4 mr-1" }), "Select Multiple"] })) })] }))] }), isSelectMode && selectedAssignments.size > 0 && (_jsx("div", { className: "mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("span", { className: "text-sm font-medium text-blue-900", children: [selectedAssignments.size, " assignment", selectedAssignments.size !== 1 ? 's' : '', " selected"] }), _jsxs("div", { className: "flex items-center space-x-2", children: [_jsx(Button, { variant: "outline", size: "sm", onClick: clearAllSelections, children: "Clear" }), _jsx(Button, { variant: "outline", size: "sm", onClick: selectAllFilteredAssignments, children: "Select All" }), _jsx(Button, { variant: "outline", size: "sm", onClick: deleteBulkAssignments, className: "text-red-600 hover:text-red-800", children: "Delete Selected" })] })] }) }))] }), _jsxs("div", { className: activeView === 'analytics' ? '' : 'p-6', children: [activeView === 'list' && (_jsx(AssignmentListView, { loading: loading, groupedAssignments: groupedAssignments, isSelectMode: isSelectMode, selectedAssignments: selectedAssignments, onToggleSelection: toggleAssignmentSelection, onDeleteAssignment: deleteAssignment, onOpenClassDetails: openClassDetails })), activeView === 'calendar' && (_jsx(CalendarView, { assignments: filteredAssignments, isSelectMode: isSelectMode, selectedAssignments: selectedAssignments, onToggleSelection: toggleAssignmentSelection, onDeleteAssignment: deleteAssignment, onOpenClassDetails: openClassDetails })), activeView === 'analytics' && (_jsx(AnalyticsView, { assignments: assignments, instructors: instructors }))] })] }), _jsx(AssignmentForm, { isVisible: showAssignForm, formData: formData, errors: errors, conflictWarning: conflictWarning, classTypes: classTypes, packages: packages, instructors: instructors, scheduleTemplates: scheduleTemplates, bookings: bookings, saving: saving, onClose: () => setShowAssignForm(false), onSubmit: createAssignment, onInputChange: handleInputChange, onTimeChange: handleTimeChange, onDurationChange: handleDurationChange }), _jsx(AdvancedFilters, { isVisible: showFilters, filters: filters, classTypes: classTypes, instructors: instructors, packages: packages, onFiltersChange: setFilters, onClose: () => setShowFilters(false), onClearAll: clearAllFilters }), _jsx(ClassDetailsPopup, { assignment: selectedClassDetails, isVisible: showClassDetailsPopup, onClose: closeClassDetails })] }));
+                                                    : 'text-gray-500 hover:text-gray-700'}`, children: [_jsx(BarChart3, { className: "w-4 h-4 mr-1" }), "Analytics"] })] }), activeView === 'list' && (_jsxs("div", { className: "flex items-center space-x-3", children: [filteredAssignments.length > 0 && (_jsxs("span", { className: "text-sm text-gray-500", children: [filteredAssignments.length, " assignment", filteredAssignments.length !== 1 ? 's' : ''] })), _jsx(Button, { variant: "outline", size: "sm", onClick: toggleSelectMode, children: isSelectMode ? (_jsxs(_Fragment, { children: [_jsx(X, { className: "w-4 h-4 mr-1" }), "Cancel Select"] })) : (_jsxs(_Fragment, { children: [_jsx(CheckSquare, { className: "w-4 h-4 mr-1" }), "Select Multiple"] })) })] }))] }), isSelectMode && selectedAssignments.size > 0 && (_jsx("div", { className: "mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("span", { className: "text-sm font-medium text-blue-900", children: [selectedAssignments.size, " assignment", selectedAssignments.size !== 1 ? 's' : '', " selected"] }), _jsxs("div", { className: "flex items-center space-x-2", children: [_jsx(Button, { variant: "outline", size: "sm", onClick: clearAllSelections, children: "Clear" }), _jsx(Button, { variant: "outline", size: "sm", onClick: selectAllFilteredAssignments, children: "Select All" }), _jsx(Button, { variant: "outline", size: "sm", onClick: deleteBulkAssignments, className: "text-red-600 hover:text-red-800", children: "Delete Selected" })] })] }) }))] }), _jsxs("div", { className: activeView === 'analytics' ? '' : 'p-6', children: [activeView === 'list' && (_jsx(AssignmentListView, { loading: loading, groupedAssignments: groupedAssignments, isSelectMode: isSelectMode, selectedAssignments: selectedAssignments, onToggleSelection: toggleAssignmentSelection, onDeleteAssignment: deleteAssignment, onOpenClassDetails: openClassDetails })), activeView === 'calendar' && (_jsx(CalendarView, { assignments: filteredAssignments, isSelectMode: isSelectMode, selectedAssignments: selectedAssignments, onToggleSelection: toggleAssignmentSelection, onDeleteAssignment: deleteAssignment, onOpenClassDetails: openClassDetails })), activeView === 'analytics' && (_jsx(AnalyticsView, { assignments: assignments, instructors: instructors }))] })] }), _jsx(AssignmentForm, { isVisible: showAssignForm, formData: formData, errors: errors, conflictWarning: conflictWarning, classTypes: classTypes, packages: packages, instructors: instructors, scheduleTemplates: scheduleTemplates, bookings: bookings, saving: saving, onClose: () => setShowAssignForm(false), onSubmit: createAssignment, onInputChange: handleInputChange, onTimeChange: handleTimeChange, onDurationChange: handleDurationChange }), _jsx(AdvancedFilters, { isVisible: showFilters, filters: filters, classTypes: classTypes, instructors: instructors, packages: packages, onFiltersChange: setFilters, onClose: () => setShowFilters(false), onClearAll: clearAllFilters }), _jsx(ClassDetailsPopup, { assignment: selectedClassDetails, isVisible: showClassDetailsPopup, onClose: closeClassDetails, onEdit: openEditAssignment }), _jsx(EditAssignmentModal, { assignment: selectedEditAssignment, isVisible: showEditAssignmentModal, bookings: bookings, userProfiles: userProfiles, onClose: closeEditAssignment, onSave: saveAssignment })] }));
 }
 export default ClassAssignmentManager;

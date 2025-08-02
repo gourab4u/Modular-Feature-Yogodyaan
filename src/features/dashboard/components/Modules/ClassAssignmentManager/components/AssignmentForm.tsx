@@ -41,6 +41,30 @@ export const AssignmentForm = ({
     onTimeChange,
     onDurationChange
 }: AssignmentFormProps) => {
+    
+    // Calculate student count based on selected booking(s)
+    const calculateStudentCount = () => {
+        // If no booking is selected, default to 1 student
+        if (!formData.booking_id || formData.booking_id.trim() === '') {
+            return 1;
+        }
+        
+        // Find the selected booking
+        const selectedBooking = bookings.find(booking => booking.id === formData.booking_id);
+        if (!selectedBooking) {
+            return 1; // Fallback if booking not found
+        }
+        
+        // For group bookings, check if there's any participant-related field
+        // Note: Currently each booking represents 1 student
+        // In the future, if group bookings need multiple participants,
+        // a participants_count field can be added to the Booking interface
+        
+        // For now, each booking = 1 student
+        return 1;
+    };
+    
+    const studentCount = calculateStudentCount();
     if (!isVisible) return null
 
     const getFilteredPackages = () => {
@@ -127,9 +151,24 @@ export const AssignmentForm = ({
                                             <p className="text-sm text-blue-700 mt-1">{formData.timeline_description}</p>
                                             {formData.total_classes > 1 && (
                                                 <p className="text-sm text-blue-600 mt-1">
-                                                    Total Classes: {formData.total_classes}
+                                                    <strong>Total Classes to Create: {formData.total_classes}</strong>
                                                 </p>
                                             )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Weekly Assignment Date Notice */}
+                            {formData.assignment_type === 'weekly' && !formData.timeline_description && (
+                                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                                    <div className="flex items-start">
+                                        <Calendar className="w-5 h-5 text-yellow-500 mt-0.5 mr-2" />
+                                        <div>
+                                            <h4 className="font-medium text-yellow-900">Start Date Required</h4>
+                                            <p className="text-sm text-yellow-700 mt-1">
+                                                Please fill in the Start Date to see how many recurring classes will be created. Leave "Effective Until" empty to continue until end of {new Date().getFullYear()}.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -247,8 +286,43 @@ export const AssignmentForm = ({
                                 </div>
                             )}
 
-                            {/* Recurring Assignment Fields */}
-                            {['weekly', 'monthly', 'crash_course', 'package'].includes(formData.assignment_type) && (
+                            {/* Weekly Assignment Date Fields */}
+                            {formData.assignment_type === 'weekly' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Start Date <span className="text-red-500">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.start_date}
+                                            onChange={(e) => onInputChange('start_date', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        {errors.start_date && <p className="text-red-500 text-sm mt-1">{errors.start_date}</p>}
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Effective Until
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={formData.end_date}
+                                            onChange={(e) => onInputChange('end_date', e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="Leave empty for end of year"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            Leave empty to continue until end of {new Date().getFullYear()}
+                                        </p>
+                                        {errors.end_date && <p className="text-red-500 text-sm mt-1">{errors.end_date}</p>}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Other Recurring Assignment Fields */}
+                            {['monthly', 'crash_course', 'package'].includes(formData.assignment_type) && (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -448,7 +522,9 @@ export const AssignmentForm = ({
                                     </div>
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Class Duration (Minutes)
+                                        </label>
                                         <select
                                             value={formData.duration}
                                             onChange={(e) => onDurationChange(parseInt(e.target.value))}
@@ -511,18 +587,18 @@ export const AssignmentForm = ({
                                         onChange={(e) => onInputChange('payment_type', e.target.value)}
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     >
-                                        <option value="per_class">Per Class</option>
+                                        <option value="per_class">Per Class - Amount charged per individual class</option>
                                         {formData.assignment_type === 'weekly' && (
                                             <>
-                                                <option value="monthly">Monthly Rate</option>
-                                                <option value="per_member">Per Member Monthly</option>
+                                                <option value="monthly">Monthly Rate - Fixed amount per month</option>
+                                                <option value="per_member">Per Member Monthly - Monthly amount per student</option>
                                             </>
                                         )}
                                         {['monthly', 'crash_course', 'package'].includes(formData.assignment_type) && (
-                                            <option value="total_duration">Total Duration</option>
+                                            <option value="total_duration">Total Duration - Total amount for entire course</option>
                                         )}
-                                        <option value="per_class_total">Per Class Total</option>
-                                        <option value="per_student_per_class">Per Student Per Class</option>
+                                        <option value="per_class_total">Per Class Total - Total amount for all students per class</option>
+                                        <option value="per_student_per_class">Per Student Per Class - Amount per student per class</option>
                                     </select>
                                 </div>
 
@@ -544,6 +620,7 @@ export const AssignmentForm = ({
                                 </div>
                             </div>
 
+
                             {/* Payment Summary */}
                             {formData.payment_amount > 0 && formData.total_classes > 1 && (
                                 <div className="p-4 bg-green-50 border border-green-200 rounded-md">
@@ -552,27 +629,87 @@ export const AssignmentForm = ({
                                         <div>
                                             <span className="text-green-700">Total Amount:</span>
                                             <span className="font-medium ml-2">
-                                                ₹{(formData.payment_type === 'per_class' 
-                                                    ? formData.payment_amount * formData.total_classes 
-                                                    : formData.payment_amount).toFixed(2)}
+                                                ₹{(() => {
+                                                    const { payment_type, payment_amount, total_classes } = formData;
+                                                    switch (payment_type) {
+                                                        case 'per_class':
+                                                            // Amount per class × total classes
+                                                            return (payment_amount * total_classes).toFixed(2);
+                                                        case 'per_student_per_class':
+                                                            // Amount per student per class × students × total classes
+                                                            return (payment_amount * studentCount * total_classes).toFixed(2);
+                                                        case 'per_member':
+                                                            // Monthly amount per member × students × months
+                                                            const months = Math.ceil(total_classes / 4); // Assuming ~4 classes per month
+                                                            return (payment_amount * studentCount * months).toFixed(2);
+                                                        case 'monthly':
+                                                            // Fixed monthly rate × months
+                                                            const totalMonths = Math.ceil(total_classes / 4);
+                                                            return (payment_amount * totalMonths).toFixed(2);
+                                                        case 'per_class_total':
+                                                            // Total amount for all students per class × total classes
+                                                            return (payment_amount * total_classes).toFixed(2);
+                                                        case 'total_duration':
+                                                            // Total amount for entire duration (fixed)
+                                                            return payment_amount.toFixed(2);
+                                                        default:
+                                                            return payment_amount.toFixed(2);
+                                                    }
+                                                })()}
                                             </span>
                                         </div>
                                         <div>
                                             <span className="text-green-700">Per Class:</span>
                                             <span className="font-medium ml-2">
-                                                ₹{(formData.payment_type === 'per_class' 
-                                                    ? formData.payment_amount 
-                                                    : formData.payment_amount / formData.total_classes).toFixed(2)}
+                                                ₹{(() => {
+                                                    const { payment_type, payment_amount, total_classes } = formData;
+                                                    switch (payment_type) {
+                                                        case 'per_class':
+                                                            // Amount per class (as entered)
+                                                            return payment_amount.toFixed(2);
+                                                        case 'per_student_per_class':
+                                                            // Amount per student per class × students
+                                                            return (payment_amount * studentCount).toFixed(2);
+                                                        case 'per_member':
+                                                            // Monthly amount per member × students ÷ classes per month
+                                                            const classesPerMonth = total_classes / Math.ceil(total_classes / 4);
+                                                            return (payment_amount * studentCount / classesPerMonth).toFixed(2);
+                                                        case 'monthly':
+                                                            // Fixed monthly rate ÷ classes per month
+                                                            const avgClassesPerMonth = total_classes / Math.ceil(total_classes / 4);
+                                                            return (payment_amount / avgClassesPerMonth).toFixed(2);
+                                                        case 'per_class_total':
+                                                            // Total amount for all students per class (as entered)
+                                                            return payment_amount.toFixed(2);
+                                                        case 'total_duration':
+                                                            // Total duration amount ÷ total classes
+                                                            return (payment_amount / total_classes).toFixed(2);
+                                                        default:
+                                                            return (payment_amount / total_classes).toFixed(2);
+                                                    }
+                                                })()}
                                             </span>
                                         </div>
                                         <div>
                                             <span className="text-green-700">Total Classes:</span>
                                             <span className="font-medium ml-2">{formData.total_classes}</span>
                                         </div>
+                                        {(formData.payment_type === 'per_student_per_class' || formData.payment_type === 'per_member' || formData.payment_type === 'per_class_total') && (
+                                            <div>
+                                                <span className="text-green-700">Students:</span>
+                                                <span className="font-medium ml-2">{studentCount}</span>
+                                                <span className="text-xs text-gray-500 ml-1">
+                                                    {formData.booking_id ? '(from selected booking)' : '(default)'}
+                                                </span>
+                                            </div>
+                                        )}
                                         <div>
                                             <span className="text-green-700">Duration:</span>
                                             <span className="font-medium ml-2">
-                                                {formData.course_duration_value} {formData.course_duration_unit}
+                                                {formData.assignment_type === 'weekly' 
+                                                    ? `Until ${formData.end_date ? new Date(formData.end_date).toLocaleDateString() : 'end of year'}`
+                                                    : `${formData.course_duration_value} ${formData.course_duration_unit}`
+                                                }
                                             </span>
                                         </div>
                                     </div>

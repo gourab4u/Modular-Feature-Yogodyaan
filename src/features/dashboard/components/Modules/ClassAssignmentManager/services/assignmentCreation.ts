@@ -110,24 +110,24 @@ const getCurrentUserId = async (): Promise<string> => {
 }
 
 export class AssignmentCreationService {
-    static async createAssignment(formData: FormData, packages: Package[]) {
+    static async createAssignment(formData: FormData, packages: Package[], studentCount?: number) {
         switch (formData.assignment_type) {
             case 'adhoc':
-                return this.createAdhocAssignment(formData)
+                return this.createAdhocAssignment(formData, studentCount)
             case 'weekly':
-                return this.createWeeklyAssignment(formData)
+                return this.createWeeklyAssignment(formData, studentCount)
             case 'monthly':
-                return this.createMonthlyAssignment(formData)
+                return this.createMonthlyAssignment(formData, studentCount)
             case 'crash_course':
-                return this.createCrashCourseAssignment(formData, packages)
+                return this.createCrashCourseAssignment(formData, packages, studentCount)
             case 'package':
-                return this.createPackageAssignment(formData, packages)
+                return this.createPackageAssignment(formData, packages, studentCount)
             default:
                 throw new Error(`Unknown assignment type: ${formData.assignment_type}`)
         }
     }
 
-    private static async createAdhocAssignment(formData: FormData) {
+    private static async createAdhocAssignment(formData: FormData, studentCount?: number) {
         const currentUserId = await getCurrentUserId()
         
         // Validate required fields
@@ -175,10 +175,12 @@ export class AssignmentCreationService {
         }
 
         // Validate payment amount is a valid number
-        const paymentAmount = parseFloat(formData.payment_amount?.toString() || '0')
-        if (isNaN(paymentAmount) || paymentAmount < 0) {
+        if (isNaN(formData.payment_amount) || formData.payment_amount < 0) {
             throw new Error('Payment amount must be a valid positive number')
         }
+        
+        // Calculate payment amount using centralized logic
+        const paymentAmount = this.calculatePaymentAmount(formData, 'adhoc', 1, studentCount)
         
         // Create assignment data with required fields only, add others conditionally
         const assignmentData: any = {
@@ -242,15 +244,15 @@ export class AssignmentCreationService {
         return { success: true, count: 1 }
     }
 
-    private static async createWeeklyAssignment(formData: FormData) {
+    private static async createWeeklyAssignment(formData: FormData, studentCount?: number) {
         if (formData.monthly_assignment_method === 'weekly_recurrence' && formData.selected_template_id) {
-            return this.createWeeklyFromTemplate(formData)
+            return this.createWeeklyFromTemplate(formData, studentCount)
         } else {
-            return this.createNewWeeklySchedule(formData)
+            return this.createNewWeeklySchedule(formData, studentCount)
         }
     }
 
-    private static async createWeeklyFromTemplate(formData: FormData) {
+    private static async createWeeklyFromTemplate(formData: FormData, studentCount?: number) {
         // Get template details
         const { data: template, error: templateError } = await supabase
             .from('class_schedules')
@@ -277,7 +279,8 @@ export class AssignmentCreationService {
             template.day_of_week,
             template.start_time,
             template.end_time,
-            template.class_type_id
+            template.class_type_id,
+            studentCount
         )
 
         const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData))
@@ -295,7 +298,7 @@ export class AssignmentCreationService {
         return { success: true, count: assignments.length }
     }
 
-    private static async createNewWeeklySchedule(formData: FormData) {
+    private static async createNewWeeklySchedule(formData: FormData, studentCount?: number) {
         // Create new weekly schedule template
         const scheduleData = {
             class_type_id: formData.class_type_id,
@@ -321,7 +324,8 @@ export class AssignmentCreationService {
             formData.day_of_week,
             formData.start_time,
             formData.end_time,
-            formData.class_type_id
+            formData.class_type_id,
+            studentCount
         )
 
         const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData))
@@ -344,19 +348,17 @@ export class AssignmentCreationService {
         dayOfWeek: number,
         startTime: string,
         endTime: string,
-        classTypeId: string
+        classTypeId: string,
+        studentCount?: number
     ) {
         const currentUserId = await getCurrentUserId()
         const assignments = []
         const startDate = new Date(formData.start_date)
-        const endDate = new Date(formData.start_date)
         
-        // Calculate end date based on duration
-        if (formData.course_duration_unit === 'weeks') {
-            endDate.setDate(startDate.getDate() + (formData.course_duration_value * 7))
-        } else {
-            endDate.setMonth(startDate.getMonth() + formData.course_duration_value)
-        }
+        // Use end_date if provided, otherwise default to end of current year
+        const endDate = formData.end_date 
+            ? new Date(formData.end_date) 
+            : new Date(`${new Date().getFullYear()}-12-31`)
 
         // Find the first occurrence of the specified day
         const currentDate = new Date(startDate)
@@ -364,16 +366,15 @@ export class AssignmentCreationService {
             currentDate.setDate(currentDate.getDate() + 1)
         }
 
-        // Create assignments for each occurrence
-        let classCount = 0
-        while (currentDate <= endDate && classCount < formData.total_classes) {
+        // Create assignments for each occurrence until end date
+        while (currentDate <= endDate) {
             const assignment: any = {
                 class_type_id: classTypeId,
                 date: currentDate.toISOString().split('T')[0],
                 start_time: startTime,
                 end_time: endTime,
                 instructor_id: formData.instructor_id,
-                payment_amount: this.calculatePaymentAmount(formData, 'weekly'),
+                payment_amount: this.calculatePaymentAmount(formData, 'weekly', undefined, studentCount),
                 schedule_type: 'weekly',
                 assigned_by: currentUserId,
                 booking_type: formData.booking_type || 'public_group',
@@ -389,7 +390,6 @@ export class AssignmentCreationService {
             if (formData.client_email) assignment.client_email = formData.client_email
 
             assignments.push(assignment)
-            classCount++
 
             // Move to next week
             currentDate.setDate(currentDate.getDate() + 7)
@@ -398,24 +398,12 @@ export class AssignmentCreationService {
         return assignments
     }
 
-    private static async createMonthlyAssignment(formData: FormData) {
+    private static async createMonthlyAssignment(formData: FormData, studentCount?: number) {
         const assignments = []
         let perClassAmount: number
 
         // Calculate per-class amount based on payment type
-        if (formData.payment_type === 'monthly') {
-            // Monthly payment should be divided across all classes in the package
-            perClassAmount = formData.payment_amount / formData.total_classes
-        } else if (formData.payment_type === 'total_duration') {
-            // Total duration payment should be divided across all classes in the package
-            perClassAmount = formData.payment_amount / formData.total_classes
-        } else if (formData.payment_type === 'per_class') {
-            // Per class payment stays as entered
-            perClassAmount = formData.payment_amount
-        } else {
-            // For other payment types, use the amount as entered
-            perClassAmount = formData.payment_amount
-        }
+        perClassAmount = this.calculatePaymentAmount(formData, 'monthly', undefined, studentCount)
 
         if (formData.monthly_assignment_method === 'weekly_recurrence') {
             assignments.push(...await this.generateWeeklyRecurrenceAssignments(formData, perClassAmount))
@@ -528,7 +516,7 @@ export class AssignmentCreationService {
         })
     }
 
-    private static async createCrashCourseAssignment(formData: FormData, packages: Package[]) {
+    private static async createCrashCourseAssignment(formData: FormData, packages: Package[], studentCount?: number) {
         const currentUserId = await getCurrentUserId()
         const selectedPackage = packages.find(p => p.id === formData.package_id)
         if (!selectedPackage) {
@@ -543,7 +531,7 @@ export class AssignmentCreationService {
         )
 
         // Calculate per-class amount based on payment type
-        const perClassAmount = this.calculatePaymentAmount(formData, 'crash_course', selectedPackage.class_count)
+        const perClassAmount = this.calculatePaymentAmount(formData, 'crash_course', selectedPackage.class_count, studentCount)
 
         // Create assignments for each date
         const assignments = classDates.map(date => {
@@ -610,7 +598,7 @@ export class AssignmentCreationService {
         return dates
     }
 
-    private static async createPackageAssignment(formData: FormData, packages: Package[]) {
+    private static async createPackageAssignment(formData: FormData, packages: Package[], studentCount?: number) {
         const selectedPackage = packages.find(p => p.id === formData.package_id)
         if (!selectedPackage) {
             throw new Error('Selected package not found')
@@ -619,25 +607,7 @@ export class AssignmentCreationService {
         const assignments = []
 
         // Calculate per-class amount based on payment type
-        let perClassAmount: number
-        switch (formData.payment_type) {
-            case 'monthly':
-                // Monthly payment should be divided across all classes in the package
-                perClassAmount = formData.payment_amount / selectedPackage.class_count
-                break
-            case 'total_duration':
-                // Total duration payment should be divided across all classes in the package
-                perClassAmount = formData.payment_amount / selectedPackage.class_count
-                break
-            case 'per_class':
-                // Per class payment stays as entered
-                perClassAmount = formData.payment_amount
-                break
-            default:
-                // For other payment types, use the amount as entered
-                perClassAmount = formData.payment_amount
-                break
-        }
+        const perClassAmount = this.calculatePaymentAmount(formData, 'package', selectedPackage.class_count, studentCount)
 
         if (formData.monthly_assignment_method === 'weekly_recurrence') {
             // Weekly recurrence method
@@ -662,14 +632,30 @@ export class AssignmentCreationService {
         return { success: true, count: assignments.length }
     }
 
-    private static calculatePaymentAmount(formData: FormData, _assignmentType: string, classCount?: number): number {
+    private static calculatePaymentAmount(formData: FormData, _assignmentType: string, classCount?: number, studentCount?: number): number {
         const totalClasses = classCount || formData.total_classes
+        const actualStudentCount = studentCount || 1
 
         switch (formData.payment_type) {
             case 'per_class':
+                // Amount per class (as entered)
+                return formData.payment_amount
+            case 'per_student_per_class':
+                // Amount per student per class × students
+                return formData.payment_amount * actualStudentCount
+            case 'per_member':
+                // Monthly amount per member × students ÷ classes per month
+                const classesPerMonth = totalClasses / Math.ceil(totalClasses / 4) || 1
+                return (formData.payment_amount * actualStudentCount) / classesPerMonth
+            case 'monthly':
+                // Fixed monthly rate ÷ classes per month
+                const avgClassesPerMonth = totalClasses / Math.ceil(totalClasses / 4) || 1
+                return formData.payment_amount / avgClassesPerMonth
+            case 'per_class_total':
+                // Total amount for all students per class (as entered)
                 return formData.payment_amount
             case 'total_duration':
-            case 'monthly':
+                // Total duration amount ÷ total classes
                 return totalClasses > 0 ? formData.payment_amount / totalClasses : formData.payment_amount
             default:
                 return formData.payment_amount

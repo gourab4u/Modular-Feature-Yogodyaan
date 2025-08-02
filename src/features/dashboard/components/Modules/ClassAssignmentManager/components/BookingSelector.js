@@ -12,8 +12,8 @@ export const BookingSelector = ({ bookings, selectedBookingId, onBookingSelect, 
         let matchesBookingType = true;
         let matchesCourseType = true;
         if (assignmentType === 'weekly') {
-            // Weekly classes - show all bookings (or later filter by public_group)
-            matchesBookingType = true; // Show all booking types for now
+            // Weekly classes - show only public group bookings
+            matchesBookingType = booking.booking_type === 'public_group';
             matchesCourseType = true; // Allow any course type for weekly
         }
         else if (assignmentType === 'monthly') {

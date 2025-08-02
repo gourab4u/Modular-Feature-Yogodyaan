@@ -65,18 +65,22 @@ export const useFormHandler = (conflictCheckCallback) => {
         let totalClasses = 0;
         switch (formData.assignment_type) {
             case 'weekly':
-                if (formData.monthly_assignment_method === 'weekly_recurrence') {
-                    // Template assignment mode
-                    description = 'Weekly class assignment using existing template';
-                    totalClasses = 1;
+                if (formData.start_date) {
+                    // Use end_date if provided, otherwise default to end of current year
+                    calculatedEndDate = formData.end_date || `${new Date().getFullYear()}-12-31`;
+                    totalClasses = calculateWeeklyClasses(formData.start_date, calculatedEndDate);
+                    if (formData.monthly_assignment_method === 'weekly_recurrence') {
+                        // Template assignment mode
+                        description = `Weekly class assignment using existing template until ${new Date(calculatedEndDate).toLocaleDateString()} (${totalClasses} classes)`;
+                    }
+                    else {
+                        // New recurring schedule mode
+                        description = `Weekly classes until ${new Date(calculatedEndDate).toLocaleDateString()} (${totalClasses} classes)`;
+                    }
                 }
                 else {
-                    // New recurring schedule mode
-                    if (formData.start_date && formData.course_duration_value && formData.course_duration_unit) {
-                        calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value, formData.course_duration_unit);
-                        totalClasses = calculateWeeklyClasses(formData.start_date, calculatedEndDate);
-                        description = `Weekly classes for ${formData.course_duration_value} ${formData.course_duration_unit} (${totalClasses} classes)`;
-                    }
+                    description = 'Weekly class assignment - please set start date';
+                    totalClasses = 1;
                 }
                 break;
             case 'monthly':

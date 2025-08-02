@@ -1,22 +1,22 @@
-import { ChevronDown, User, Calendar, Clock, Phone, Mail } from 'lucide-react'
+import { ChevronDown, User, Calendar, Clock, Phone, Mail, X, Check } from 'lucide-react'
 import { useState } from 'react'
 import { Booking } from '../types'
 
-interface BookingSelectorProps {
+interface MultipleBookingSelectorProps {
     bookings: Booking[]
-    selectedBookingId: string
-    onBookingSelect: (bookingId: string, clientName: string, clientEmail: string) => void
+    selectedBookingIds: string[]
+    onBookingSelectionChange: (bookingIds: string[]) => void
     bookingTypeFilter?: 'individual' | 'corporate' | 'private_group' | 'public_group' | null
     assignmentType?: string
 }
 
-export const BookingSelector = ({ 
+export const MultipleBookingSelector = ({ 
     bookings, 
-    selectedBookingId, 
-    onBookingSelect,
+    selectedBookingIds, 
+    onBookingSelectionChange,
     bookingTypeFilter,
     assignmentType
-}: BookingSelectorProps) => {
+}: MultipleBookingSelectorProps) => {
     const [isOpen, setIsOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
 
@@ -75,16 +75,18 @@ export const BookingSelector = ({
         return matchesStatus && matchesBookingType && matchesCourseType && matchesSearch
     })
 
-    const selectedBooking = bookings.find(b => b.id === selectedBookingId)
+    const selectedBookings = bookings.filter(b => selectedBookingIds.includes(b.id))
 
-    const handleBookingSelect = (booking: Booking) => {
-        onBookingSelect(booking.id, `${booking.first_name} ${booking.last_name}`, booking.email)
-        setIsOpen(false)
-        setSearchTerm('')
+    const handleBookingToggle = (booking: Booking) => {
+        const newSelectedIds = selectedBookingIds.includes(booking.id)
+            ? selectedBookingIds.filter(id => id !== booking.id)
+            : [...selectedBookingIds, booking.id]
+        
+        onBookingSelectionChange(newSelectedIds)
     }
 
-    const clearSelection = () => {
-        onBookingSelect('', '', '')
+    const clearAllSelections = () => {
+        onBookingSelectionChange([])
         setIsOpen(false)
     }
 
@@ -108,30 +110,42 @@ export const BookingSelector = ({
         }
     }
 
+    const removeBooking = (bookingId: string) => {
+        const newSelectedIds = selectedBookingIds.filter(id => id !== bookingId)
+        onBookingSelectionChange(newSelectedIds)
+    }
+
     return (
         <div className="relative">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-                Link to Booking (Optional)
+                Link to Bookings (Optional)
             </label>
             
             <div className="relative">
                 <button
                     type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between min-h-[40px]"
                 >
                     <span className="flex-1">
-                        {selectedBooking ? (
-                            <div className="flex items-center">
-                                <User className="w-4 h-4 mr-2 text-gray-400" />
-                                <span className="font-medium">{selectedBooking.first_name} {selectedBooking.last_name}</span>
-                                <span className="ml-2 text-sm text-gray-500">({selectedBooking.email})</span>
-                                <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`}>
-                                    {selectedBooking.status}
-                                </span>
+                        {selectedBookings.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                                {selectedBookings.slice(0, 2).map((booking) => (
+                                    <span 
+                                        key={booking.id}
+                                        className="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-medium px-2 py-1 rounded-full"
+                                    >
+                                        {booking.first_name} {booking.last_name}
+                                    </span>
+                                ))}
+                                {selectedBookings.length > 2 && (
+                                    <span className="inline-flex items-center bg-gray-100 text-gray-600 text-xs font-medium px-2 py-1 rounded-full">
+                                        +{selectedBookings.length - 2} more
+                                    </span>
+                                )}
                             </div>
                         ) : (
-                            <span className="text-gray-500">Select a booking...</span>
+                            <span className="text-gray-500">Select bookings...</span>
                         )}
                     </span>
                     <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -155,10 +169,10 @@ export const BookingSelector = ({
                         <div className="border-b border-gray-200">
                             <button
                                 type="button"
-                                onClick={clearSelection}
+                                onClick={clearAllSelections}
                                 className="w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-600"
                             >
-                                <span className="italic">No booking (manual entry)</span>
+                                <span className="italic">Clear all selections</span>
                             </button>
                         </div>
 
@@ -173,15 +187,24 @@ export const BookingSelector = ({
                                     <button
                                         key={booking.id}
                                         type="button"
-                                        onClick={() => handleBookingSelect(booking)}
+                                        onClick={() => handleBookingToggle(booking)}
                                         className={`w-full px-3 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${
-                                            selectedBookingId === booking.id ? 'bg-blue-50' : ''
+                                            selectedBookingIds.includes(booking.id) ? 'bg-blue-50' : ''
                                         }`}
                                     >
                                         <div className="space-y-1">
-                                            {/* Client name and status */}
+                                            {/* Client name, status, and checkbox */}
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center">
+                                                    <div className={`w-4 h-4 mr-2 border-2 rounded flex items-center justify-center ${
+                                                        selectedBookingIds.includes(booking.id) 
+                                                            ? 'bg-blue-600 border-blue-600' 
+                                                            : 'border-gray-300'
+                                                    }`}>
+                                                        {selectedBookingIds.includes(booking.id) && (
+                                                            <Check className="w-3 h-3 text-white" />
+                                                        )}
+                                                    </div>
                                                     <User className="w-4 h-4 mr-2 text-gray-400" />
                                                     <span className="font-medium text-gray-900">{booking.first_name} {booking.last_name}</span>
                                                 </div>
@@ -191,7 +214,7 @@ export const BookingSelector = ({
                                             </div>
 
                                             {/* Contact info */}
-                                            <div className="flex items-center text-sm text-gray-600">
+                                            <div className="flex items-center text-sm text-gray-600 ml-6">
                                                 <Mail className="w-3 h-3 mr-1" />
                                                 <span className="mr-3">{booking.email}</span>
                                                 {booking.phone && (
@@ -203,13 +226,13 @@ export const BookingSelector = ({
                                             </div>
 
                                             {/* Class type */}
-                                            <div className="text-sm text-gray-600">
+                                            <div className="text-sm text-gray-600 ml-6">
                                                 <span className="font-medium">Class:</span> {booking.class_name || 'Unknown'}
                                             </div>
 
                                             {/* Preferred date/time */}
                                             {(booking.class_date || booking.class_time) && (
-                                                <div className="flex items-center text-sm text-gray-600">
+                                                <div className="flex items-center text-sm text-gray-600 ml-6">
                                                     <Calendar className="w-3 h-3 mr-1" />
                                                     <span className="mr-2">{formatDate(booking.class_date)}</span>
                                                     {booking.class_time && (
@@ -220,8 +243,6 @@ export const BookingSelector = ({
                                                     )}
                                                 </div>
                                             )}
-
-                                            {/* Notes section removed as it's not in the new structure */}
                                         </div>
                                     </button>
                                 ))
@@ -231,29 +252,29 @@ export const BookingSelector = ({
                 )}
             </div>
 
-            {/* Selected booking details */}
-            {selectedBooking && (
+            {/* Selected bookings details */}
+            {selectedBookings.length > 0 && (
                 <div className="mt-2 p-3 bg-blue-50 rounded-md border border-blue-200">
                     <div className="text-sm">
-                        <div className="font-medium text-blue-900 mb-1">Linked Booking Details:</div>
-                        <div className="text-blue-800">
-                            <div><strong>Client:</strong> {selectedBooking.first_name} {selectedBooking.last_name}</div>
-                            <div><strong>Email:</strong> {selectedBooking.email}</div>
-                            {selectedBooking.phone && (
-                                <div><strong>Phone:</strong> {selectedBooking.phone}</div>
-                            )}
-                            <div><strong>Class:</strong> {selectedBooking.class_name || 'Unknown'}</div>
-                            {selectedBooking.class_date && (
-                                <div><strong>Date:</strong> {formatDate(selectedBooking.class_date)}</div>
-                            )}
-                            {selectedBooking.class_time && (
-                                <div><strong>Time:</strong> {formatTime(selectedBooking.class_time)}</div>
-                            )}
-                            <div><strong>Status:</strong> 
-                                <span className={`ml-1 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`}>
-                                    {selectedBooking.status}
-                                </span>
-                            </div>
+                        <div className="font-medium text-blue-900 mb-2">
+                            Selected Bookings ({selectedBookings.length}):
+                        </div>
+                        <div className="space-y-2">
+                            {selectedBookings.map((booking) => (
+                                <div key={booking.id} className="flex items-center justify-between text-blue-800 bg-white rounded px-2 py-1">
+                                    <div className="flex-1">
+                                        <div><strong>{booking.first_name} {booking.last_name}</strong> - {booking.email}</div>
+                                        <div className="text-xs">{booking.class_name || 'Unknown'}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => removeBooking(booking.id)}
+                                        className="ml-2 text-red-600 hover:text-red-800"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>

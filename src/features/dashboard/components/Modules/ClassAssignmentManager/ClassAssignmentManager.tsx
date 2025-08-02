@@ -9,6 +9,7 @@ import {
     AnalyticsView, 
     AdvancedFilters,
     ClassDetailsPopup, 
+    EditAssignmentModal,
     Button 
 } from './components'
 import { 
@@ -78,6 +79,10 @@ export function ClassAssignmentManager() {
     // Class details popup state
     const [selectedClassDetails, setSelectedClassDetails] = useState<ClassAssignment | null>(null)
     const [showClassDetailsPopup, setShowClassDetailsPopup] = useState(false)
+    
+    // Edit assignment modal state
+    const [selectedEditAssignment, setSelectedEditAssignment] = useState<ClassAssignment | null>(null)
+    const [showEditAssignmentModal, setShowEditAssignmentModal] = useState(false)
 
     const instructors = userProfiles
 
@@ -369,6 +374,18 @@ export function ClassAssignmentManager() {
         setShowClassDetailsPopup(false)
     }
 
+    const openEditAssignment = (assignment: ClassAssignment) => {
+        setSelectedEditAssignment(assignment)
+        setShowEditAssignmentModal(true)
+        // Close class details popup if it's open
+        setShowClassDetailsPopup(false)
+    }
+
+    const closeEditAssignment = () => {
+        setSelectedEditAssignment(null)
+        setShowEditAssignmentModal(false)
+    }
+
     const deleteAssignment = async (assignmentId: string, assignmentTitle: string) => {
         if (!confirm(`Are you sure you want to delete "${assignmentTitle}"?`)) return
 
@@ -472,7 +489,31 @@ export function ClassAssignmentManager() {
             setSaving(true)
             setLoadingStates(prev => ({ ...prev, creatingAssignment: true }))
 
-            const result = await AssignmentCreationService.createAssignment(formData, packages)
+            // Calculate student count based on selected booking(s)
+            const calculateStudentCount = () => {
+                // If no booking is selected, default to 1 student
+                if (!formData.booking_id || formData.booking_id.trim() === '') {
+                    return 1;
+                }
+                
+                // Find the selected booking
+                const selectedBooking = bookings.find(booking => booking.id === formData.booking_id);
+                if (!selectedBooking) {
+                    return 1; // Fallback if booking not found
+                }
+                
+                // For group bookings, check if there's any participant-related field
+                // Note: Currently each booking represents 1 student
+                // In the future, if group bookings need multiple participants,
+                // a participants_count field can be added to the Booking interface
+                
+                // For now, each booking = 1 student
+                return 1;
+            };
+            
+            const studentCount = calculateStudentCount();
+
+            const result = await AssignmentCreationService.createAssignment(formData, packages, studentCount)
 
             await fetchData()
             resetForm()
@@ -485,6 +526,63 @@ export function ClassAssignmentManager() {
         } finally {
             setSaving(false)
             setLoadingStates(prev => ({ ...prev, creatingAssignment: false }))
+        }
+    }
+
+    // Save assignment function
+    const saveAssignment = async (assignmentId: string, updates: Partial<ClassAssignment>) => {
+        try {
+            setLoadingStates(prev => ({ ...prev, updatingStatus: true }))
+
+            // Clean the updates object to only include valid database fields
+            const cleanUpdates: any = {}
+            
+            // Only include fields that exist in the database
+            if (updates.class_status !== undefined) cleanUpdates.class_status = updates.class_status
+            if (updates.payment_amount !== undefined) cleanUpdates.payment_amount = updates.payment_amount
+            if (updates.payment_status !== undefined) cleanUpdates.payment_status = updates.payment_status
+            if (updates.notes !== undefined) cleanUpdates.notes = updates.notes
+            
+            // Handle booking_id with validation
+            if (updates.booking_id !== undefined) {
+                if (updates.booking_id === '' || updates.booking_id === null) {
+                    // Clear the booking_id by setting it to null
+                    cleanUpdates.booking_id = null
+                } else {
+                    // Validate that the booking exists before updating
+                    console.log('Validating booking ID:', updates.booking_id)
+                    console.log('Available bookings:', bookings.map(b => ({ id: b.id, name: `${b.first_name} ${b.last_name}` })))
+                    
+                    const bookingExists = bookings.find(b => b.id === updates.booking_id)
+                    if (bookingExists) {
+                        cleanUpdates.booking_id = updates.booking_id
+                    } else {
+                        throw new Error(`Booking with ID ${updates.booking_id} does not exist in the current bookings list. Available bookings: ${bookings.length}. Please refresh the page and try again, or clear the booking selection.`)
+                    }
+                }
+            }
+
+            console.log('Updating assignment with:', cleanUpdates)
+
+            const { error } = await supabase
+                .from('class_assignments')
+                .update(cleanUpdates)
+                .eq('id', assignmentId)
+
+            if (error) {
+                console.error('Supabase update error:', error)
+                throw error
+            }
+
+            // Refresh data to update the UI
+            await fetchData()
+
+            console.log('Assignment updated successfully')
+        } catch (error) {
+            console.error('Error updating assignment:', error)
+            throw error
+        } finally {
+            setLoadingStates(prev => ({ ...prev, updatingStatus: false }))
         }
     }
 
@@ -716,6 +814,17 @@ export function ClassAssignmentManager() {
                 assignment={selectedClassDetails}
                 isVisible={showClassDetailsPopup}
                 onClose={closeClassDetails}
+                onEdit={openEditAssignment}
+            />
+
+            {/* Edit Assignment Modal */}
+            <EditAssignmentModal
+                assignment={selectedEditAssignment}
+                isVisible={showEditAssignmentModal}
+                bookings={bookings}
+                userProfiles={userProfiles}
+                onClose={closeEditAssignment}
+                onSave={saveAssignment}
             />
         </div>
     )
