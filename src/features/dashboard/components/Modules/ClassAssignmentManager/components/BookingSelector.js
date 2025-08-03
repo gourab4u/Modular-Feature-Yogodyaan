@@ -1,9 +1,14 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { ChevronDown, User, Calendar, Clock, Phone, Mail } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 export const BookingSelector = ({ bookings, selectedBookingId, onBookingSelect, bookingTypeFilter, assignmentType }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    // Close dropdown and clear search when assignment type changes
+    useEffect(() => {
+        setIsOpen(false);
+        setSearchTerm('');
+    }, [assignmentType]);
     // Filter bookings based on assignment type, booking type, course type, status, and search term
     const filteredBookings = bookings.filter(booking => {
         // Filter by status - only show pending/confirmed, not completed/cancelled/assigned
@@ -13,7 +18,9 @@ export const BookingSelector = ({ bookings, selectedBookingId, onBookingSelect, 
         let matchesCourseType = true;
         if (assignmentType === 'weekly') {
             // Weekly classes - show only public group bookings
-            matchesBookingType = booking.booking_type === 'public_group';
+            // Also include bookings where booking_type is null/undefined as a fallback
+            matchesBookingType = booking.booking_type === 'public_group' ||
+                (!booking.booking_type && booking.status === 'confirmed');
             matchesCourseType = true; // Allow any course type for weekly
         }
         else if (assignmentType === 'monthly') {
@@ -37,12 +44,16 @@ export const BookingSelector = ({ bookings, selectedBookingId, onBookingSelect, 
             // Crash courses should show selected booking type with crash course type
             if (bookingTypeFilter && bookingTypeFilter.trim() !== '') {
                 matchesBookingType = booking.booking_type === bookingTypeFilter;
-                // Filter by course_type if package exists, otherwise exclude booking for crash courses
+                // Filter by course_type if package exists
                 if (booking.class_packages && booking.class_packages.course_type) {
                     matchesCourseType = booking.class_packages.course_type === 'crash';
                 }
+                else if (booking.class_package_id) {
+                    // If package ID exists but package data not loaded, allow it (will be filtered at runtime)
+                    matchesCourseType = true;
+                }
                 else {
-                    // If no package linked, exclude from crash course assignments
+                    // If no package linked at all, exclude from crash course assignments
                     matchesCourseType = false;
                 }
             }
@@ -61,6 +72,34 @@ export const BookingSelector = ({ bookings, selectedBookingId, onBookingSelect, 
             booking.email.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesStatus && matchesBookingType && matchesCourseType && matchesSearch;
     });
+    // Debug logging for weekly assignments
+    if (assignmentType === 'weekly') {
+        console.log('Weekly assignment booking debug:', {
+            totalBookings: bookings.length,
+            publicGroupBookings: bookings.filter(b => b.booking_type === 'public_group').length,
+            pendingConfirmedBookings: bookings.filter(b => ['pending', 'confirmed'].includes(b.status)).length,
+            publicGroupPendingConfirmed: bookings.filter(b => b.booking_type === 'public_group' && ['pending', 'confirmed'].includes(b.status)).length,
+            filteredCount: filteredBookings.length,
+            bookingTypes: [...new Set(bookings.map(b => b.booking_type))],
+            statuses: [...new Set(bookings.map(b => b.status))]
+        });
+    }
+    // Debug logging for crash course assignments  
+    if (assignmentType === 'crash_course') {
+        console.log('Crash course assignment booking debug:', {
+            totalBookings: bookings.length,
+            corporateBookings: bookings.filter(b => b.booking_type === 'corporate').length,
+            pendingConfirmedBookings: bookings.filter(b => ['pending', 'confirmed'].includes(b.status)).length,
+            corporatePendingConfirmed: bookings.filter(b => b.booking_type === 'corporate' && ['pending', 'confirmed'].includes(b.status)).length,
+            bookingsWithPackageId: bookings.filter(b => b.class_package_id).length,
+            bookingsWithCrashPackage: bookings.filter(b => b.class_packages?.course_type === 'crash').length,
+            filteredCount: filteredBookings.length,
+            bookingTypeFilter: bookingTypeFilter,
+            bookingTypes: [...new Set(bookings.map(b => b.booking_type))],
+            statuses: [...new Set(bookings.map(b => b.status))],
+            packageCourseTypes: [...new Set(bookings.map(b => b.class_packages?.course_type).filter(Boolean))]
+        });
+    }
     const selectedBooking = bookings.find(b => b.id === selectedBookingId);
     const handleBookingSelect = (booking) => {
         onBookingSelect(booking.id, `${booking.first_name} ${booking.last_name}`, booking.email);
@@ -90,5 +129,10 @@ export const BookingSelector = ({ bookings, selectedBookingId, onBookingSelect, 
             default: return 'bg-gray-100 text-gray-800';
         }
     };
-    return (_jsxs("div", { className: "relative", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Link to Booking (Optional)" }), _jsxs("div", { className: "relative", children: [_jsxs("button", { type: "button", onClick: () => setIsOpen(!isOpen), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between", children: [_jsx("span", { className: "flex-1", children: selectedBooking ? (_jsxs("div", { className: "flex items-center", children: [_jsx(User, { className: "w-4 h-4 mr-2 text-gray-400" }), _jsxs("span", { className: "font-medium", children: [selectedBooking.first_name, " ", selectedBooking.last_name] }), _jsxs("span", { className: "ml-2 text-sm text-gray-500", children: ["(", selectedBooking.email, ")"] }), _jsx("span", { className: `ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`, children: selectedBooking.status })] })) : (_jsx("span", { className: "text-gray-500", children: "Select a booking..." })) }), _jsx(ChevronDown, { className: `w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}` })] }), isOpen && (_jsxs("div", { className: "absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden", children: [_jsx("div", { className: "p-3 border-b border-gray-200", children: _jsx("input", { type: "text", placeholder: "Search bookings...", value: searchTerm, onChange: (e) => setSearchTerm(e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500", autoFocus: true }) }), _jsx("div", { className: "border-b border-gray-200", children: _jsx("button", { type: "button", onClick: clearSelection, className: "w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-600", children: _jsx("span", { className: "italic", children: "No booking (manual entry)" }) }) }), _jsx("div", { className: "max-h-60 overflow-y-auto", children: filteredBookings.length === 0 ? (_jsx("div", { className: "p-3 text-sm text-gray-500 text-center", children: searchTerm ? 'No bookings match your search' : 'No available bookings' })) : (filteredBookings.map((booking) => (_jsx("button", { type: "button", onClick: () => handleBookingSelect(booking), className: `w-full px-3 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${selectedBookingId === booking.id ? 'bg-blue-50' : ''}`, children: _jsxs("div", { className: "space-y-1", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center", children: [_jsx(User, { className: "w-4 h-4 mr-2 text-gray-400" }), _jsxs("span", { className: "font-medium text-gray-900", children: [booking.first_name, " ", booking.last_name] })] }), _jsx("span", { className: `px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`, children: booking.status })] }), _jsxs("div", { className: "flex items-center text-sm text-gray-600", children: [_jsx(Mail, { className: "w-3 h-3 mr-1" }), _jsx("span", { className: "mr-3", children: booking.email }), booking.phone && (_jsxs(_Fragment, { children: [_jsx(Phone, { className: "w-3 h-3 mr-1" }), _jsx("span", { children: booking.phone })] }))] }), _jsxs("div", { className: "text-sm text-gray-600", children: [_jsx("span", { className: "font-medium", children: "Class:" }), " ", booking.class_name || 'Unknown'] }), (booking.class_date || booking.class_time) && (_jsxs("div", { className: "flex items-center text-sm text-gray-600", children: [_jsx(Calendar, { className: "w-3 h-3 mr-1" }), _jsx("span", { className: "mr-2", children: formatDate(booking.class_date) }), booking.class_time && (_jsxs(_Fragment, { children: [_jsx(Clock, { className: "w-3 h-3 mr-1" }), _jsx("span", { children: formatTime(booking.class_time) })] }))] }))] }) }, booking.id)))) })] }))] }), selectedBooking && (_jsx("div", { className: "mt-2 p-3 bg-blue-50 rounded-md border border-blue-200", children: _jsxs("div", { className: "text-sm", children: [_jsx("div", { className: "font-medium text-blue-900 mb-1", children: "Linked Booking Details:" }), _jsxs("div", { className: "text-blue-800", children: [_jsxs("div", { children: [_jsx("strong", { children: "Client:" }), " ", selectedBooking.first_name, " ", selectedBooking.last_name] }), _jsxs("div", { children: [_jsx("strong", { children: "Email:" }), " ", selectedBooking.email] }), selectedBooking.phone && (_jsxs("div", { children: [_jsx("strong", { children: "Phone:" }), " ", selectedBooking.phone] })), _jsxs("div", { children: [_jsx("strong", { children: "Class:" }), " ", selectedBooking.class_name || 'Unknown'] }), selectedBooking.class_date && (_jsxs("div", { children: [_jsx("strong", { children: "Date:" }), " ", formatDate(selectedBooking.class_date)] })), selectedBooking.class_time && (_jsxs("div", { children: [_jsx("strong", { children: "Time:" }), " ", formatTime(selectedBooking.class_time)] })), _jsxs("div", { children: [_jsx("strong", { children: "Status:" }), _jsx("span", { className: `ml-1 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`, children: selectedBooking.status })] })] })] }) }))] }));
+    return (_jsxs("div", { className: "relative", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Link to Booking (Optional)" }), _jsxs("div", { className: "relative", children: [_jsxs("button", { type: "button", onClick: () => setIsOpen(!isOpen), className: "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-left flex items-center justify-between", children: [_jsx("span", { className: "flex-1", children: selectedBooking ? (_jsxs("div", { className: "flex items-center", children: [_jsx(User, { className: "w-4 h-4 mr-2 text-gray-400" }), _jsxs("span", { className: "font-medium", children: [selectedBooking.first_name, " ", selectedBooking.last_name] }), _jsxs("span", { className: "ml-2 text-sm text-gray-500", children: ["(", selectedBooking.email, ")"] }), _jsx("span", { className: `ml-2 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`, children: selectedBooking.status })] })) : (_jsx("span", { className: "text-gray-500", children: "Select a booking..." })) }), _jsx(ChevronDown, { className: `w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}` })] }), isOpen && (_jsxs("div", { className: "absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-80 overflow-hidden", children: [_jsx("div", { className: "p-3 border-b border-gray-200", children: _jsx("input", { type: "text", placeholder: "Search bookings...", value: searchTerm, onChange: (e) => setSearchTerm(e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500", autoFocus: true }) }), _jsx("div", { className: "border-b border-gray-200", children: _jsx("button", { type: "button", onClick: clearSelection, className: "w-full px-3 py-2 text-left hover:bg-gray-50 text-sm text-gray-600", children: _jsx("span", { className: "italic", children: "No booking (manual entry)" }) }) }), _jsx("div", { className: "max-h-60 overflow-y-auto", children: filteredBookings.length === 0 ? (_jsxs("div", { className: "p-3 text-sm text-gray-500", children: [_jsx("div", { className: "text-center mb-2", children: searchTerm ? 'No bookings match your search' :
+                                                assignmentType === 'weekly' ?
+                                                    'No public group bookings available. Weekly classes require bookings with booking_type = "public_group" or confirmed bookings without a booking type.' :
+                                                    assignmentType === 'crash_course' ?
+                                                        'No corporate crash course bookings available. Crash courses require bookings with booking_type = "corporate" and linked to crash course packages (course_type = "crash").' :
+                                                        'No available bookings' }), (assignmentType === 'weekly' || assignmentType === 'crash_course') && bookings.length > 0 && (_jsxs("div", { className: "text-xs text-gray-400 border-t pt-2", children: [_jsx("div", { children: "Debug info:" }), _jsxs("div", { children: ["Total bookings: ", bookings.length] }), _jsxs("div", { children: ["Booking types: ", [...new Set(bookings.map(b => b.booking_type || 'null'))].join(', ')] }), _jsxs("div", { children: ["Statuses: ", [...new Set(bookings.map(b => b.status))].join(', ')] }), assignmentType === 'crash_course' && (_jsxs(_Fragment, { children: [_jsxs("div", { children: ["Package course types: ", [...new Set(bookings.map(b => b.class_packages?.course_type || 'null'))].join(', ')] }), _jsxs("div", { children: ["Bookings with package ID: ", bookings.filter(b => b.class_package_id).length] })] }))] }))] })) : (filteredBookings.map((booking) => (_jsx("button", { type: "button", onClick: () => handleBookingSelect(booking), className: `w-full px-3 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${selectedBookingId === booking.id ? 'bg-blue-50' : ''}`, children: _jsxs("div", { className: "space-y-1", children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { className: "flex items-center", children: [_jsx(User, { className: "w-4 h-4 mr-2 text-gray-400" }), _jsxs("span", { className: "font-medium text-gray-900", children: [booking.first_name, " ", booking.last_name] })] }), _jsx("span", { className: `px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`, children: booking.status })] }), _jsxs("div", { className: "flex items-center text-sm text-gray-600", children: [_jsx(Mail, { className: "w-3 h-3 mr-1" }), _jsx("span", { className: "mr-3", children: booking.email }), booking.phone && (_jsxs(_Fragment, { children: [_jsx(Phone, { className: "w-3 h-3 mr-1" }), _jsx("span", { children: booking.phone })] }))] }), _jsxs("div", { className: "text-sm text-gray-600", children: [_jsx("span", { className: "font-medium", children: "Class:" }), " ", booking.class_name || 'Unknown'] }), (booking.class_date || booking.class_time) && (_jsxs("div", { className: "flex items-center text-sm text-gray-600", children: [_jsx(Calendar, { className: "w-3 h-3 mr-1" }), _jsx("span", { className: "mr-2", children: formatDate(booking.class_date) }), booking.class_time && (_jsxs(_Fragment, { children: [_jsx(Clock, { className: "w-3 h-3 mr-1" }), _jsx("span", { children: formatTime(booking.class_time) })] }))] }))] }) }, booking.id)))) })] }))] }), selectedBooking && (_jsx("div", { className: "mt-2 p-3 bg-blue-50 rounded-md border border-blue-200", children: _jsxs("div", { className: "text-sm", children: [_jsx("div", { className: "font-medium text-blue-900 mb-1", children: "Linked Booking Details:" }), _jsxs("div", { className: "text-blue-800", children: [_jsxs("div", { children: [_jsx("strong", { children: "Client:" }), " ", selectedBooking.first_name, " ", selectedBooking.last_name] }), _jsxs("div", { children: [_jsx("strong", { children: "Email:" }), " ", selectedBooking.email] }), selectedBooking.phone && (_jsxs("div", { children: [_jsx("strong", { children: "Phone:" }), " ", selectedBooking.phone] })), _jsxs("div", { children: [_jsx("strong", { children: "Class:" }), " ", selectedBooking.class_name || 'Unknown'] }), selectedBooking.class_date && (_jsxs("div", { children: [_jsx("strong", { children: "Date:" }), " ", formatDate(selectedBooking.class_date)] })), selectedBooking.class_time && (_jsxs("div", { children: [_jsx("strong", { children: "Time:" }), " ", formatTime(selectedBooking.class_time)] })), _jsxs("div", { children: [_jsx("strong", { children: "Status:" }), _jsx("span", { className: `ml-1 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`, children: selectedBooking.status })] })] })] }) }))] }));
 };

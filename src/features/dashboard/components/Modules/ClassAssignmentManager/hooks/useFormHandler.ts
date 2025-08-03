@@ -140,10 +140,32 @@ export const useFormHandler = (conflictCheckCallback?: (formData: FormData) => v
     }
 
     const handleInputChange = (field: string, value: any) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }))
+        setFormData(prev => {
+            const newData = {
+                ...prev,
+                [field]: value
+            }
+
+            // Auto-set booking type and clear booking selection when assignment type changes
+            if (field === 'assignment_type') {
+                // Clear booking-related fields to refresh the selector
+                newData.booking_id = ''
+                newData.client_name = ''
+                newData.client_email = ''
+                
+                // Auto-set booking type based on assignment type
+                if (value === 'crash_course') {
+                    newData.booking_type = 'corporate'
+                } else if (value === 'weekly') {
+                    newData.booking_type = 'public_group'
+                } else {
+                    // For other types (adhoc, monthly, package), reset to default
+                    newData.booking_type = 'individual'
+                }
+            }
+
+            return newData
+        })
 
         // Clear related errors when field is updated
         if (errors[field]) {

@@ -1,4 +1,4 @@
-import { AlertTriangle, Calendar, DollarSign, Save, X } from 'lucide-react'
+import { AlertTriangle, Calendar, IndianRupee, Save, X } from 'lucide-react'
 import { FormData, ValidationErrors, ConflictDetails, ClassType, Package, UserProfile, Booking } from '../types'
 import { getDurationOptions } from '../utils'
 import { Button } from './Button'
@@ -141,6 +141,41 @@ export const AssignmentForm = ({
                                 )}
                             </div>
 
+                            {/* Booking Type Selector for Monthly/Crash/Package */}
+                            {showBookingTypeSelector && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Booking Type <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        value={formData.booking_type}
+                                        onChange={(e) => onInputChange('booking_type', e.target.value)}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Select booking type</option>
+                                        <option value="individual">Individual</option>
+                                        <option value="corporate">Corporate</option>
+                                        <option value="private_group">Private Group</option>
+                                    </select>
+                                    {errors.booking_type && <p className="text-red-500 text-sm mt-1">{errors.booking_type}</p>}
+                                </div>
+                            )}
+
+                            {/* Booking Reference Selector */}
+                            <div>
+                                <BookingSelector
+                                    bookings={bookings}
+                                    selectedBookingId={formData.booking_id || ''}
+                                    onBookingSelect={(bookingId, clientName, clientEmail) => {
+                                        onInputChange('booking_id', bookingId)
+                                        onInputChange('client_name', clientName)
+                                        onInputChange('client_email', clientEmail)
+                                    }}
+                                    bookingTypeFilter={formData.booking_type as any}
+                                    assignmentType={formData.assignment_type}
+                                />
+                            </div>
+
                             {/* Timeline Description Display */}
                             {formData.timeline_description && (
                                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
@@ -175,7 +210,7 @@ export const AssignmentForm = ({
                             )}
 
                             {/* Class Type / Package Selection */}
-                            {!usingTemplate && (
+                            {!usingTemplate && (showPackageSelector || showClassTypeSelector) && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">
                                         {showPackageSelector ? 
@@ -246,26 +281,6 @@ export const AssignmentForm = ({
                                             })()}
                                         </div>
                                     )}
-                                </div>
-                            )}
-
-                            {/* Booking Type Selector for Monthly/Crash/Package */}
-                            {showBookingTypeSelector && (
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Booking Type <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        value={formData.booking_type}
-                                        onChange={(e) => onInputChange('booking_type', e.target.value)}
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    >
-                                        <option value="">Select booking type</option>
-                                        <option value="individual">Individual</option>
-                                        <option value="corporate">Corporate</option>
-                                        <option value="private_group">Private Group</option>
-                                    </select>
-                                    {errors.booking_type && <p className="text-red-500 text-sm mt-1">{errors.booking_type}</p>}
                                 </div>
                             )}
 
@@ -604,7 +619,7 @@ export const AssignmentForm = ({
 
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        <DollarSign className="w-4 h-4 inline mr-1" />
+                                        <IndianRupee className="w-4 h-4 inline mr-1" />
                                         Payment Amount (INR) <span className="text-red-500">*</span>
                                     </label>
                                     <input
@@ -715,21 +730,6 @@ export const AssignmentForm = ({
                                     </div>
                                 </div>
                             )}
-
-                            {/* Booking Reference Selector */}
-                            <div>
-                                <BookingSelector
-                                    bookings={bookings}
-                                    selectedBookingId={formData.booking_id || ''}
-                                    onBookingSelect={(bookingId, clientName, clientEmail) => {
-                                        onInputChange('booking_id', bookingId)
-                                        onInputChange('client_name', clientName)
-                                        onInputChange('client_email', clientEmail)
-                                    }}
-                                    bookingTypeFilter={formData.booking_type as any}
-                                    assignmentType={formData.assignment_type}
-                                />
-                            </div>
 
                             {/* Client Info Display */}
                             {(formData.client_name || formData.client_email) && (

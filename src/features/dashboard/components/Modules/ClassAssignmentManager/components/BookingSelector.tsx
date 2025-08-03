@@ -1,5 +1,5 @@
 import { ChevronDown, User, Calendar, Clock, Phone, Mail } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Booking } from '../types'
 
 interface BookingSelectorProps {
@@ -20,6 +20,12 @@ export const BookingSelector = ({
     const [isOpen, setIsOpen] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
 
+    // Close dropdown and clear search when assignment type changes
+    useEffect(() => {
+        setIsOpen(false)
+        setSearchTerm('')
+    }, [assignmentType])
+
     // Filter bookings based on assignment type, booking type, course type, status, and search term
     const filteredBookings = bookings.filter(booking => {
         // Filter by status - only show pending/confirmed, not completed/cancelled/assigned
@@ -31,7 +37,9 @@ export const BookingSelector = ({
         
         if (assignmentType === 'weekly') {
             // Weekly classes - show only public group bookings
-            matchesBookingType = booking.booking_type === 'public_group'
+            // Also include bookings where booking_type is null/undefined as a fallback
+            matchesBookingType = booking.booking_type === 'public_group' || 
+                                (!booking.booking_type && booking.status === 'confirmed')
             matchesCourseType = true // Allow any course type for weekly
         } else if (assignmentType === 'monthly') {
             // Monthly packages should show selected booking type with regular course type
@@ -51,11 +59,14 @@ export const BookingSelector = ({
             // Crash courses should show selected booking type with crash course type
             if (bookingTypeFilter && bookingTypeFilter.trim() !== '') {
                 matchesBookingType = booking.booking_type === bookingTypeFilter
-                // Filter by course_type if package exists, otherwise exclude booking for crash courses
+                // Filter by course_type if package exists
                 if (booking.class_packages && booking.class_packages.course_type) {
                     matchesCourseType = booking.class_packages.course_type === 'crash'
+                } else if (booking.class_package_id) {
+                    // If package ID exists but package data not loaded, allow it (will be filtered at runtime)
+                    matchesCourseType = true
                 } else {
-                    // If no package linked, exclude from crash course assignments
+                    // If no package linked at all, exclude from crash course assignments
                     matchesCourseType = false
                 }
             } else {
@@ -74,6 +85,36 @@ export const BookingSelector = ({
         
         return matchesStatus && matchesBookingType && matchesCourseType && matchesSearch
     })
+
+    // Debug logging for weekly assignments
+    if (assignmentType === 'weekly') {
+        console.log('Weekly assignment booking debug:', {
+            totalBookings: bookings.length,
+            publicGroupBookings: bookings.filter(b => b.booking_type === 'public_group').length,
+            pendingConfirmedBookings: bookings.filter(b => ['pending', 'confirmed'].includes(b.status)).length,
+            publicGroupPendingConfirmed: bookings.filter(b => b.booking_type === 'public_group' && ['pending', 'confirmed'].includes(b.status)).length,
+            filteredCount: filteredBookings.length,
+            bookingTypes: [...new Set(bookings.map(b => b.booking_type))],
+            statuses: [...new Set(bookings.map(b => b.status))]
+        })
+    }
+
+    // Debug logging for crash course assignments  
+    if (assignmentType === 'crash_course') {
+        console.log('Crash course assignment booking debug:', {
+            totalBookings: bookings.length,
+            corporateBookings: bookings.filter(b => b.booking_type === 'corporate').length,
+            pendingConfirmedBookings: bookings.filter(b => ['pending', 'confirmed'].includes(b.status)).length,
+            corporatePendingConfirmed: bookings.filter(b => b.booking_type === 'corporate' && ['pending', 'confirmed'].includes(b.status)).length,
+            bookingsWithPackageId: bookings.filter(b => b.class_package_id).length,
+            bookingsWithCrashPackage: bookings.filter(b => b.class_packages?.course_type === 'crash').length,
+            filteredCount: filteredBookings.length,
+            bookingTypeFilter: bookingTypeFilter,
+            bookingTypes: [...new Set(bookings.map(b => b.booking_type))],
+            statuses: [...new Set(bookings.map(b => b.status))],
+            packageCourseTypes: [...new Set(bookings.map(b => b.class_packages?.course_type).filter(Boolean))]
+        })
+    }
 
     const selectedBooking = bookings.find(b => b.id === selectedBookingId)
 
@@ -165,8 +206,29 @@ export const BookingSelector = ({
                         {/* Bookings list */}
                         <div className="max-h-60 overflow-y-auto">
                             {filteredBookings.length === 0 ? (
-                                <div className="p-3 text-sm text-gray-500 text-center">
-                                    {searchTerm ? 'No bookings match your search' : 'No available bookings'}
+                                <div className="p-3 text-sm text-gray-500">
+                                    <div className="text-center mb-2">
+                                        {searchTerm ? 'No bookings match your search' : 
+                                         assignmentType === 'weekly' ? 
+                                         'No public group bookings available. Weekly classes require bookings with booking_type = "public_group" or confirmed bookings without a booking type.' :
+                                         assignmentType === 'crash_course' ?
+                                         'No corporate crash course bookings available. Crash courses require bookings with booking_type = "corporate" and linked to crash course packages (course_type = "crash").' :
+                                         'No available bookings'}
+                                    </div>
+                                    {(assignmentType === 'weekly' || assignmentType === 'crash_course') && bookings.length > 0 && (
+                                        <div className="text-xs text-gray-400 border-t pt-2">
+                                            <div>Debug info:</div>
+                                            <div>Total bookings: {bookings.length}</div>
+                                            <div>Booking types: {[...new Set(bookings.map(b => b.booking_type || 'null'))].join(', ')}</div>
+                                            <div>Statuses: {[...new Set(bookings.map(b => b.status))].join(', ')}</div>
+                                            {assignmentType === 'crash_course' && (
+                                                <>
+                                                    <div>Package course types: {[...new Set(bookings.map(b => b.class_packages?.course_type || 'null'))].join(', ')}</div>
+                                                    <div>Bookings with package ID: {bookings.filter(b => b.class_package_id).length}</div>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
                                 filteredBookings.map((booking) => (

@@ -1,4 +1,4 @@
-import { Calendar, ChevronLeft, ChevronRight, DollarSign, MapPin, Trash2, User } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, IndianRupee, MapPin, Trash2, User } from 'lucide-react'
 import { useState } from 'react'
 import { ClassAssignment } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
@@ -260,7 +260,7 @@ export const CalendarView = ({
 
                                                                 {/* Payment Amount */}
                                                                 <div className="text-xs opacity-75 truncate flex items-center">
-                                                                    <DollarSign className="w-3 h-3 mr-1" />
+                                                                    <IndianRupee className="w-3 h-3 mr-1" />
                                                                     ₹{assignment.payment_amount.toFixed(0)}
                                                                 </div>
 

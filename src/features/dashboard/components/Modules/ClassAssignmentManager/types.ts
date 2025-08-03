@@ -111,6 +111,7 @@ export interface Booking {
     status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
     created_at: string
     booking_type?: 'individual' | 'corporate' | 'private_group' | 'public_group'
+    class_package_id?: string
     class_packages?: {
         id: string
         name: string

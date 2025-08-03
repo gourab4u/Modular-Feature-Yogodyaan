@@ -1,4 +1,4 @@
-import { X, Calendar, Clock, User, DollarSign, CheckSquare } from 'lucide-react'
+import { X, Calendar, Clock, User, IndianRupee, CheckSquare } from 'lucide-react'
 import { ClassAssignment } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
 
@@ -134,7 +134,7 @@ export const ClassDetailsPopup = ({ assignment, isVisible, onClose, onEdit }: Cl
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <div className="flex items-center space-x-2">
-                                        <DollarSign className="w-4 h-4 text-green-500" />
+                                        <IndianRupee className="w-4 h-4 text-green-500" />
                                         <p className="text-lg font-semibold text-green-600">
                                             ₹{assignment.payment_amount.toFixed(2)}
                                         </p>

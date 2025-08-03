@@ -53,7 +53,8 @@ export const useClassAssignmentData = () => {
                     status,
                     created_at,
                     booking_type,
-                    class_packages(id, name, description, price, class_count, validity_days, type, duration, course_type)
+                    class_package_id,
+                    class_packages:class_package_id(id, name, description, price, class_count, validity_days, type, duration, course_type)
                 `).order('created_at', { ascending: false })
             ]);
             const classTypesData = classTypesResult.data || [];
@@ -121,13 +122,20 @@ export const useClassAssignmentData = () => {
                 class_type: classTypeMap.get(schedule.class_type_id),
                 instructor_profile: profileMap.get(schedule.instructor_id)
             }));
-            const enrichedBookings = bookingsData.map(booking => ({
-                ...booking,
-                // Supabase returns class_packages as array, but we expect single object
-                class_packages: Array.isArray(booking.class_packages) && booking.class_packages.length > 0
-                    ? booking.class_packages[0]
-                    : null
-            }));
+            const enrichedBookings = bookingsData.map(booking => {
+                // Normalize class_packages to single object or null
+                let normalizedPackage = null;
+                if (Array.isArray(booking.class_packages) && booking.class_packages.length > 0) {
+                    normalizedPackage = booking.class_packages[0];
+                }
+                else if (booking.class_packages && !Array.isArray(booking.class_packages)) {
+                    normalizedPackage = booking.class_packages;
+                }
+                return {
+                    ...booking,
+                    class_packages: normalizedPackage
+                };
+            });
             // Update state
             setClassTypes(classTypesData);
             setPackages(packagesData);

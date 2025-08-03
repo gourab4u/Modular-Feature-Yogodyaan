@@ -1,4 +1,4 @@
-import { Calendar, Clock, DollarSign, MapPin, User, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
+import { Calendar, Clock, IndianRupee, MapPin, User, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
 import { ClassAssignment } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
@@ -204,7 +204,7 @@ export const AssignmentListView = ({
                                             <div className="flex items-center space-x-4">
                                                 <div className="text-right">
                                                     <div className="flex items-center text-lg font-semibold text-green-600">
-                                                        <DollarSign className="w-4 h-4" />
+                                                        <IndianRupee className="w-4 h-4" />
                                                         ₹{assignment.payment_amount.toFixed(2)}
                                                     </div>
                                                     {assignment.payment_status && (

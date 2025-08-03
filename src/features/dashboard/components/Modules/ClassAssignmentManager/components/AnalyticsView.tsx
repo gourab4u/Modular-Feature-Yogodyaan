@@ -1,4 +1,4 @@
-import { BarChart3, Calendar, CheckSquare, Clock, DollarSign, TrendingUp, User, Users, X } from 'lucide-react'
+import { BarChart3, Calendar, CheckSquare, Clock, IndianRupee, TrendingUp, User, Users, X } from 'lucide-react'
 import { useMemo } from 'react'
 import { ClassAssignment, UserProfile } from '../types'
 import { getAssignmentType } from '../utils'
@@ -157,7 +157,7 @@ export const AnalyticsView = ({ assignments, instructors }: AnalyticsViewProps) 
                 <StatCard
                     title="Total Revenue"
                     value={`₹${analytics.totalRevenue.toFixed(2)}`}
-                    icon={DollarSign}
+                    icon={IndianRupee}
                     color="green"
                 />
                 <StatCard

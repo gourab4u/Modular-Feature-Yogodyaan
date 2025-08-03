@@ -19,6 +19,7 @@ const validateBookingExists = async (bookingId: string): Promise<boolean> => {
     }
     
     try {
+        console.log('Validating booking ID:', bookingId.trim())
         const { data: booking, error: bookingError } = await supabase
             .from('bookings')
             .select('id')
@@ -26,13 +27,18 @@ const validateBookingExists = async (bookingId: string): Promise<boolean> => {
             .single()
         
         if (bookingError || !booking) {
-            console.warn('Booking not found:', bookingId)
+            console.error('Booking validation failed:', {
+                bookingId: bookingId.trim(),
+                error: bookingError,
+                data: booking
+            })
             return false
         }
         
+        console.log('Booking validation successful for ID:', bookingId.trim())
         return true
     } catch (error) {
-        console.warn('Error validating booking:', error)
+        console.error('Exception during booking validation:', error)
         return false
     }
 }
@@ -48,8 +54,8 @@ const cleanAssignmentData = async (data: any): Promise<any> => {
     if (cleaned.booking_id && cleaned.booking_id.trim() !== '') {
         const bookingExists = await validateBookingExists(cleaned.booking_id)
         if (!bookingExists) {
-            console.warn('Removing invalid booking_id:', cleaned.booking_id)
-            cleaned.booking_id = ''
+            console.error('Invalid booking_id found - booking does not exist in database:', cleaned.booking_id)
+            throw new Error(`Selected booking is invalid or has been deleted. Please select a different booking or remove the booking selection.`)
         }
     }
     
@@ -385,7 +391,9 @@ export class AssignmentCreationService {
 
             // Add optional fields only if they have values
             if (formData.notes) assignment.notes = formData.notes
-            if (formData.booking_id) assignment.booking_id = formData.booking_id
+            if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                assignment.booking_id = formData.booking_id.trim()
+            }
             if (formData.client_name) assignment.client_name = formData.client_name
             if (formData.client_email) assignment.client_email = formData.client_email
 
@@ -461,7 +469,9 @@ export class AssignmentCreationService {
 
                 // Add optional fields only if they have values
                 if (formData.notes) assignment.notes = formData.notes
-                if (formData.booking_id) assignment.booking_id = formData.booking_id
+                if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                    assignment.booking_id = formData.booking_id.trim()
+                }
                 if (formData.client_name) assignment.client_name = formData.client_name
                 if (formData.client_email) assignment.client_email = formData.client_email
 
@@ -508,7 +518,9 @@ export class AssignmentCreationService {
 
             // Add optional fields only if they have values
             if (formData.notes) assignment.notes = formData.notes
-            if (formData.booking_id) assignment.booking_id = formData.booking_id
+            if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                assignment.booking_id = formData.booking_id.trim()
+            }
             if (formData.client_name) assignment.client_name = formData.client_name
             if (formData.client_email) assignment.client_email = formData.client_email
 
@@ -552,7 +564,9 @@ export class AssignmentCreationService {
 
             // Add optional fields only if they have values
             if (formData.notes) assignment.notes = formData.notes
-            if (formData.booking_id) assignment.booking_id = formData.booking_id
+            if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                assignment.booking_id = formData.booking_id.trim()
+            }
             if (formData.client_name) assignment.client_name = formData.client_name
             if (formData.client_email) assignment.client_email = formData.client_email
 

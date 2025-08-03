@@ -451,12 +451,14 @@ export function ClassAssignmentManager() {
                 }
                 else {
                     // Validate that the booking exists before updating
+                    console.log('Validating booking ID:', updates.booking_id);
+                    console.log('Available bookings:', bookings.map(b => ({ id: b.id, name: `${b.first_name} ${b.last_name}` })));
                     const bookingExists = bookings.find(b => b.id === updates.booking_id);
                     if (bookingExists) {
                         cleanUpdates.booking_id = updates.booking_id;
                     }
                     else {
-                        throw new Error(`Booking with ID ${updates.booking_id} does not exist. Please select a valid booking or clear the booking selection.`);
+                        throw new Error(`Booking with ID ${updates.booking_id} does not exist in the current bookings list. Available bookings: ${bookings.length}. Please refresh the page and try again, or clear the booking selection.`);
                     }
                 }
             }
