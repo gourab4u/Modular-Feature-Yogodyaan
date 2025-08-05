@@ -75,12 +75,13 @@ export const MultipleBookingSelector = ({
         return matchesStatus && matchesBookingType && matchesCourseType && matchesSearch
     })
 
-    const selectedBookings = bookings.filter(b => selectedBookingIds.includes(b.id))
+    const selectedBookings = bookings.filter(b => selectedBookingIds.includes(b.booking_id || ''))
 
     const handleBookingToggle = (booking: Booking) => {
-        const newSelectedIds = selectedBookingIds.includes(booking.id)
-            ? selectedBookingIds.filter(id => id !== booking.id)
-            : [...selectedBookingIds, booking.id]
+        const bookingId = booking.booking_id || ''
+        const newSelectedIds = selectedBookingIds.includes(bookingId)
+            ? selectedBookingIds.filter(id => id !== bookingId)
+            : [...selectedBookingIds, bookingId]
         
         onBookingSelectionChange(newSelectedIds)
     }
@@ -189,7 +190,7 @@ export const MultipleBookingSelector = ({
                                         type="button"
                                         onClick={() => handleBookingToggle(booking)}
                                         className={`w-full px-3 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${
-                                            selectedBookingIds.includes(booking.id) ? 'bg-blue-50' : ''
+                                            selectedBookingIds.includes(booking.booking_id || '') ? 'bg-blue-50' : ''
                                         }`}
                                     >
                                         <div className="space-y-1">
@@ -197,11 +198,11 @@ export const MultipleBookingSelector = ({
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center">
                                                     <div className={`w-4 h-4 mr-2 border-2 rounded flex items-center justify-center ${
-                                                        selectedBookingIds.includes(booking.id) 
+                                                        selectedBookingIds.includes(booking.booking_id || '') 
                                                             ? 'bg-blue-600 border-blue-600' 
                                                             : 'border-gray-300'
                                                     }`}>
-                                                        {selectedBookingIds.includes(booking.id) && (
+                                                        {selectedBookingIds.includes(booking.booking_id || '') && (
                                                             <Check className="w-3 h-3 text-white" />
                                                         )}
                                                     </div>
@@ -268,7 +269,7 @@ export const MultipleBookingSelector = ({
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => removeBooking(booking.id)}
+                                        onClick={() => removeBooking(booking.booking_id || '')}
                                         className="ml-2 text-red-600 hover:text-red-800"
                                     >
                                         <X className="w-4 h-4" />

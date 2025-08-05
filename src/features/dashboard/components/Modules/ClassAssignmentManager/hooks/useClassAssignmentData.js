@@ -30,9 +30,24 @@ export const useClassAssignmentData = () => {
                     class_type:class_types(id, name, difficulty_level),
                     instructor_status,
                     instructor_response_at,
-                    client_name,
-                    client_email,
-                    booking_id
+                    assignment_bookings(
+                        id,
+                        booking_id,
+                        created_at,
+                        booking:bookings!assignment_bookings_booking_id_fkey(
+                            id,
+                            booking_id,
+                            first_name,
+                            last_name,
+                            email,
+                            phone,
+                            status,
+                            class_name,
+                            class_date,
+                            class_time,
+                            booking_type
+                        )
+                    )
                 `).order('assigned_at', { ascending: false }),
                 supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true }),
                 supabase.from('class_schedules').select(`
@@ -41,6 +56,7 @@ export const useClassAssignmentData = () => {
                 `).eq('is_active', true).order('day_of_week', { ascending: true }).order('start_time', { ascending: true }),
                 supabase.from('bookings').select(`
                     id,
+                    booking_id,
                     user_id,
                     class_name,
                     instructor,

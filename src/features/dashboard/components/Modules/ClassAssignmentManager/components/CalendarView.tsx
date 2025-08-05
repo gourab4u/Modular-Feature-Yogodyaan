@@ -1,6 +1,6 @@
 import { Calendar, ChevronLeft, ChevronRight, IndianRupee, MapPin, Trash2, User } from 'lucide-react'
 import { useState } from 'react'
-import { ClassAssignment } from '../types'
+import { ClassAssignment, getClientNames } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
 import { Button } from './Button'
 
@@ -265,10 +265,10 @@ export const CalendarView = ({
                                                                 </div>
 
                                                                 {/* Client Name if available */}
-                                                                {assignment.client_name && (
+                                                                {getClientNames(assignment) && (
                                                                     <div className="text-xs opacity-75 truncate flex items-center">
                                                                         <MapPin className="w-3 h-3 mr-1" />
-                                                                        {assignment.client_name}
+                                                                        {getClientNames(assignment)}
                                                                     </div>
                                                                 )}
 

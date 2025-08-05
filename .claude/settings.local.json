@@ -12,7 +12,11 @@
       "Bash(mkdir:*)",
       "Bash(rm:*)",
       "Bash(npm run dev:*)",
-      "Bash(timeout 10s npm run dev)"
+      "Bash(timeout 10s npm run dev)",
+      "Bash(psql:*)",
+      "Bash(\"/c/Program Files/PostgreSQL/17/bin/psql\" --version)",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe\" \"postgresql://postgres:yogodyaan@db.iddvvefpwgwmgpyelzcv.supabase.co:5432/postgres\" -f migration_generic_rates.sql)",
+      "Bash(ls:*)"
     ],
     "deny": []
   }

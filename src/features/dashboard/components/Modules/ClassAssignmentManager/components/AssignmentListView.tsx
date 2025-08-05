@@ -1,6 +1,6 @@
 import { Calendar, Clock, IndianRupee, MapPin, User, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
-import { ClassAssignment } from '../types'
+import { ClassAssignment, getClientNames } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
 import { LoadingSpinner } from './LoadingSpinner'
 
@@ -13,7 +13,7 @@ interface AssignmentGroup {
         class_type_name: string
         total_revenue: number
         assignment_count: number
-        client_name?: string
+        client_names?: string
         pattern_description?: string
     }
 }
@@ -108,10 +108,10 @@ export const AssignmentListView = ({
                                                     <User className="w-4 h-4 mr-1" />
                                                     {group.groupInfo.instructor_name}
                                                 </span>
-                                                {group.groupInfo.client_name && (
+                                                {group.groupInfo.client_names && (
                                                     <span className="flex items-center">
                                                         <MapPin className="w-4 h-4 mr-1" />
-                                                        {group.groupInfo.client_name}
+                                                        {group.groupInfo.client_names}
                                                     </span>
                                                 )}
                                                 {group.groupInfo.pattern_description && (
@@ -190,10 +190,10 @@ export const AssignmentListView = ({
                                                             {formatTime(assignment.start_time)} - {formatTime(assignment.end_time)}
                                                         </div>
                                                         {/* Client info - only show if different from group */}
-                                                        {assignment.client_name && assignment.client_name !== group.groupInfo.client_name && (
+                                                        {getClientNames(assignment) && getClientNames(assignment) !== group.groupInfo.client_names && (
                                                             <div className="flex items-center text-sm text-gray-600">
                                                                 <MapPin className="w-4 h-4 mr-1" />
-                                                                {assignment.client_name}
+                                                                {getClientNames(assignment)}
                                                             </div>
                                                         )}
                                                     </div>

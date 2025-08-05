@@ -15,7 +15,8 @@ import {
 import { 
     ClassAssignment, 
     ConflictDetails, 
-    Filters 
+    Filters,
+    getClientNames
 } from './types'
 import { 
     timeToMinutes, 
@@ -229,7 +230,7 @@ export function ClassAssignmentManager() {
                 const matchesSearch = 
                     assignment.class_type?.name?.toLowerCase().includes(searchLower) ||
                     assignment.instructor_profile?.full_name?.toLowerCase().includes(searchLower) ||
-                    assignment.client_name?.toLowerCase().includes(searchLower) ||
+                    getClientNames(assignment)?.toLowerCase().includes(searchLower) ||
                     assignment.notes?.toLowerCase().includes(searchLower)
                 
                 if (!matchesSearch) return false
@@ -261,7 +262,7 @@ export function ClassAssignmentManager() {
             if (filters.classTypes.length > 0 && assignment.class_type_id && !filters.classTypes.includes(assignment.class_type_id)) return false
 
             // Client name filter
-            if (filters.clientName && assignment.client_name && !assignment.client_name.toLowerCase().includes(filters.clientName.toLowerCase())) return false
+            if (filters.clientName && !getClientNames(assignment).toLowerCase().includes(filters.clientName.toLowerCase())) return false
 
             return true
         })
@@ -278,7 +279,7 @@ export function ClassAssignmentManager() {
                 class_type_name: string
                 total_revenue: number
                 assignment_count: number
-                client_name?: string
+                client_names?: string
                 pattern_description?: string
             }
         }>()
@@ -296,13 +297,13 @@ export function ClassAssignmentManager() {
                     break
                 case 'monthly':
                     // Group by instructor + class type + client (monthly sessions for same client)
-                    groupKey = `monthly_${assignment.instructor_id}_${assignment.class_type_id}_${assignment.client_name || 'unknown'}`
+                    groupKey = `monthly_${assignment.instructor_id}_${assignment.class_type_id}_${getClientNames(assignment) || 'unknown'}`
                     groupType = 'monthly'
                     break
                 case 'crash':
                     // Group by instructor + class type + client + assigned date range (crash courses typically span days/weeks)
                     const datePrefix = assignment.date.substring(0, 7) // Group by year-month
-                    groupKey = `crash_${assignment.instructor_id}_${assignment.class_type_id}_${assignment.client_name || 'unknown'}_${datePrefix}`
+                    groupKey = `crash_${assignment.instructor_id}_${assignment.class_type_id}_${getClientNames(assignment) || 'unknown'}_${datePrefix}`
                     groupType = 'crash_course'
                     break
                 case 'adhoc':
@@ -323,7 +324,7 @@ export function ClassAssignmentManager() {
                         class_type_name: assignment.class_type?.name || 'Unknown Class',
                         total_revenue: 0,
                         assignment_count: 0,
-                        client_name: assignment.client_name,
+                        client_names: getClientNames(assignment),
                         pattern_description: groupType === 'weekly' ? 'Weekly Recurring' : 
                                            groupType === 'monthly' ? 'Monthly Package' :
                                            groupType === 'crash_course' ? 'Crash Course' : undefined
@@ -491,23 +492,10 @@ export function ClassAssignmentManager() {
 
             // Calculate student count based on selected booking(s)
             const calculateStudentCount = () => {
-                // If no booking is selected, default to 1 student
-                if (!formData.booking_id || formData.booking_id.trim() === '') {
-                    return 1;
-                }
-                
-                // Find the selected booking
-                const selectedBooking = bookings.find(booking => booking.id === formData.booking_id);
-                if (!selectedBooking) {
-                    return 1; // Fallback if booking not found
-                }
-                
-                // For group bookings, check if there's any participant-related field
-                // Note: Currently each booking represents 1 student
-                // In the future, if group bookings need multiple participants,
-                // a participants_count field can be added to the Booking interface
-                
-                // For now, each booking = 1 student
+                // For the new multiple booking system, each booking represents 1 student
+                // The booking selection is now handled by BookingSelector/MultipleBookingSelector
+                // For now, we'll use a default of 1 student - the booking count will be handled
+                // in the assignment creation service
                 return 1;
             };
             
@@ -543,24 +531,8 @@ export function ClassAssignmentManager() {
             if (updates.payment_status !== undefined) cleanUpdates.payment_status = updates.payment_status
             if (updates.notes !== undefined) cleanUpdates.notes = updates.notes
             
-            // Handle booking_id with validation
-            if (updates.booking_id !== undefined) {
-                if (updates.booking_id === '' || updates.booking_id === null) {
-                    // Clear the booking_id by setting it to null
-                    cleanUpdates.booking_id = null
-                } else {
-                    // Validate that the booking exists before updating
-                    console.log('Validating booking ID:', updates.booking_id)
-                    console.log('Available bookings:', bookings.map(b => ({ id: b.id, name: `${b.first_name} ${b.last_name}` })))
-                    
-                    const bookingExists = bookings.find(b => b.id === updates.booking_id)
-                    if (bookingExists) {
-                        cleanUpdates.booking_id = updates.booking_id
-                    } else {
-                        throw new Error(`Booking with ID ${updates.booking_id} does not exist in the current bookings list. Available bookings: ${bookings.length}. Please refresh the page and try again, or clear the booking selection.`)
-                    }
-                }
-            }
+            // Note: booking_id is no longer handled here since we use the junction table
+            // assignment_bookings for multiple booking support
 
             console.log('Updating assignment with:', cleanUpdates)
 
@@ -825,6 +797,7 @@ export function ClassAssignmentManager() {
                 userProfiles={userProfiles}
                 onClose={closeEditAssignment}
                 onSave={saveAssignment}
+                onRefresh={fetchData}
             />
         </div>
     )

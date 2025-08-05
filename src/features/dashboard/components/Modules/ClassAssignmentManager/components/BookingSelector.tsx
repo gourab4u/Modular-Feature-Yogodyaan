@@ -28,6 +28,10 @@ export const BookingSelector = ({
 
     // Filter bookings based on assignment type, booking type, course type, status, and search term
     const filteredBookings = bookings.filter(booking => {
+        // Only show bookings that have a booking_id (required for foreign key constraint)
+        if (!booking.booking_id || booking.booking_id.trim() === '') {
+            return false
+        }
         // Filter by status - only show pending/confirmed, not completed/cancelled/assigned
         const matchesStatus = ['pending', 'confirmed'].includes(booking.status)
         
@@ -116,10 +120,16 @@ export const BookingSelector = ({
         })
     }
 
-    const selectedBooking = bookings.find(b => b.id === selectedBookingId)
+    const selectedBooking = bookings.find(b => b.booking_id === selectedBookingId)
 
     const handleBookingSelect = (booking: Booking) => {
-        onBookingSelect(booking.id, `${booking.first_name} ${booking.last_name}`, booking.email)
+        console.log('BOOKING SELECTOR DEBUG - Selected booking:', booking)
+        console.log('BOOKING SELECTOR DEBUG - booking.booking_id:', booking.booking_id)
+        console.log('BOOKING SELECTOR DEBUG - booking.id:', booking.id)
+        // Only pass booking_id if it exists and is not empty, otherwise pass empty string
+        const bookingIdToPass = booking.booking_id && booking.booking_id.trim() !== '' ? booking.booking_id : ''
+        console.log('BOOKING SELECTOR DEBUG - Will pass:', bookingIdToPass)
+        onBookingSelect(bookingIdToPass, `${booking.first_name} ${booking.last_name}`, booking.email)
         setIsOpen(false)
         setSearchTerm('')
     }
@@ -237,7 +247,7 @@ export const BookingSelector = ({
                                         type="button"
                                         onClick={() => handleBookingSelect(booking)}
                                         className={`w-full px-3 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 ${
-                                            selectedBookingId === booking.id ? 'bg-blue-50' : ''
+                                            selectedBookingId === (booking.booking_id || booking.id) ? 'bg-blue-50' : ''
                                         }`}
                                     >
                                         <div className="space-y-1">

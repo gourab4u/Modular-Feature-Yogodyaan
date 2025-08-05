@@ -1,6 +1,8 @@
-import { X, Users, Save, AlertTriangle } from 'lucide-react'
-import { useState, useEffect } from 'react'
-import { ClassAssignment, Booking, UserProfile } from '../types'
+import { AlertTriangle, Save, Users, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { supabase } from '../../../../../../shared/lib/supabase'
+import { AssignmentCreationService } from '../services/assignmentCreation'
+import { Booking, ClassAssignment, UserProfile } from '../types'
 import { MultipleBookingSelector } from './MultipleBookingSelector'
 
 interface EditAssignmentModalProps {
@@ -10,48 +12,57 @@ interface EditAssignmentModalProps {
     userProfiles: UserProfile[]
     onClose: () => void
     onSave: (assignmentId: string, updates: Partial<ClassAssignment>) => Promise<void>
+    onRefresh?: () => Promise<void>
 }
 
-export const EditAssignmentModal = ({ 
-    assignment, 
-    isVisible, 
-    bookings, 
-    onClose, 
-    onSave 
+export const EditAssignmentModal = ({
+    assignment,
+    isVisible,
+    bookings,
+    onClose,
+    onSave,
+    onRefresh
 }: EditAssignmentModalProps) => {
     const [formData, setFormData] = useState({
         class_status: '',
         payment_amount: 0,
         payment_status: '',
         notes: '',
-        booking_ids: [] as string[]
+        booking_ids: [] as string[],
+        payment_type: 'per_class',
+        total_classes: 1,
+        weekly_days: [] as number[],
+        monthly_assignment_method: 'weekly_recurrence',
+        manual_selections: []
     })
+    const [perStudentAmount, setPerStudentAmount] = useState(0)
     const [saving, setSaving] = useState(false)
     const [studentCount, setStudentCount] = useState(1)
 
     useEffect(() => {
         if (assignment) {
-            // Convert single booking_id to array for backwards compatibility
-            // But first validate that the booking exists
+            // Get booking IDs from the new junction table structure
             let bookingIds: string[] = []
-            if (assignment.booking_id) {
-                const bookingExists = bookings.find(b => b.id === assignment.booking_id)
-                if (bookingExists) {
-                    bookingIds = [assignment.booking_id]
-                } else {
-                    console.warn(`Assignment has booking ID ${assignment.booking_id} but booking not found in available bookings`)
-                    // Don't include the invalid booking ID
-                }
+            if (assignment.assignment_bookings && assignment.assignment_bookings.length > 0) {
+                bookingIds = assignment.assignment_bookings.map(ab => ab.booking_id)
             }
-            
+
             setFormData({
                 class_status: assignment.class_status || 'scheduled',
                 payment_amount: assignment.payment_amount || 0,
                 payment_status: assignment.payment_status || 'pending',
                 notes: assignment.notes || '',
-                booking_ids: bookingIds
+                booking_ids: bookingIds,
+                payment_type: (assignment as any).payment_type || 'per_class',
+                total_classes: (assignment as any).total_classes || 1,
+                weekly_days: (assignment as any).weekly_days || [],
+                monthly_assignment_method: (assignment as any).monthly_assignment_method || 'weekly_recurrence',
+                manual_selections: (assignment as any).manual_selections || []
             })
-            
+            // Set per-student amount based on initial total and number of bookings
+            const n = bookingIds.length > 0 ? bookingIds.length : 1
+            setPerStudentAmount((assignment.payment_amount || 0) / n)
+
             // Calculate current student count based on selected bookings
             setStudentCount(bookingIds.length > 0 ? bookingIds.length : 1)
         }
@@ -60,6 +71,9 @@ export const EditAssignmentModal = ({
     if (!isVisible || !assignment) return null
 
     const handleInputChange = (field: string, value: any) => {
+        if (field === 'payment_amount') {
+            setPerStudentAmount(value)
+        }
         setFormData(prev => ({
             ...prev,
             [field]: value
@@ -67,13 +81,40 @@ export const EditAssignmentModal = ({
     }
 
     const handleBookingSelectionChange = (bookingIds: string[]) => {
-        setFormData(prev => ({
-            ...prev,
-            booking_ids: bookingIds
-        }))
-        
-        // Update student count based on booking selections (each booking = 1 student)
-        setStudentCount(bookingIds.length > 0 ? bookingIds.length : 1)
+        const newStudentCount = bookingIds.length > 0 ? bookingIds.length : 1
+        setStudentCount(newStudentCount)
+
+        setFormData(prev => {
+            // Recalculate payment amount using updated booking IDs and student count
+            const updatedFormData = {
+                ...prev,
+                booking_ids: bookingIds
+            }
+            // Build minimal FormData for calculation
+            const paymentType = updatedFormData.payment_type || 'per_class'
+            const totalClasses = updatedFormData.total_classes || 1
+            const minimalFormData = {
+                payment_type: paymentType,
+                payment_amount: perStudentAmount,
+                total_classes: totalClasses,
+                assignment_type: (assignment as any).schedule_type || 'adhoc',
+                class_type_id: (assignment as any).class_type_id || '',
+                instructor_id: (assignment as any).instructor_id || '',
+                date: (assignment as any).date || '',
+                booking_ids: bookingIds,
+            }
+            // Calculate new payment amount
+            const recalculatedAmount = AssignmentCreationService['calculatePaymentAmount'](
+                minimalFormData as any,
+                (assignment as any).schedule_type || 'adhoc',
+                totalClasses,
+                newStudentCount
+            )
+            return {
+                ...updatedFormData,
+                payment_amount: recalculatedAmount
+            }
+        })
     }
 
 
@@ -82,20 +123,116 @@ export const EditAssignmentModal = ({
 
         try {
             setSaving(true)
-            
-            // For now, we'll save the first booking ID to maintain compatibility with the current database schema
-            // In the future, this should be updated to support multiple booking IDs in the database
-            const primaryBookingId = formData.booking_ids.length > 0 ? formData.booking_ids[0] : null
-            
+
+            // If booking_type is individual and weekly_days are selected, distribute classes using AssignmentCreationService
+            if (
+                assignment.booking_type === 'individual' &&
+                Array.isArray(formData.weekly_days) &&
+                formData.weekly_days.length > 0
+            ) {
+                // Prepare formData for monthly assignment creation
+                const monthlyFormData: any = {
+                    ...formData,
+                    assignment_type: 'monthly',
+                    booking_type: assignment.booking_type,
+                    schedule_type: 'monthly',
+                    start_date: assignment.date, // fallback, ideally should be editable
+                    end_date: undefined, // can be set if needed
+                    package_id: (assignment as any).package_id || undefined,
+                    class_type_id: assignment.class_type_id,
+                    instructor_id: assignment.instructor_id,
+                    start_time: assignment.start_time,
+                    end_time: assignment.end_time,
+                    notes: formData.notes,
+                    payment_type: formData.payment_type,
+                    payment_amount: formData.payment_amount,
+                    total_classes: formData.total_classes,
+                    weekly_days: formData.weekly_days,
+                    booking_ids: formData.booking_ids,
+                    // Add other fields as needed
+                }
+                // Distribute classes using weekly_days
+                await AssignmentCreationService.createAssignment(monthlyFormData, [], formData.booking_ids.length)
+                if (onRefresh) {
+                    await onRefresh()
+                }
+                onClose()
+                setSaving(false)
+                return
+            }
+
+            // Default: single assignment update
+            // Recalculate payment amount before saving
+            const paymentType = formData.payment_type || 'per_class'
+            const totalClasses = formData.total_classes || 1
+            const newStudentCount = formData.booking_ids.length > 0 ? formData.booking_ids.length : 1
+            const minimalFormData = {
+                payment_type: paymentType,
+                payment_amount: paymentType === 'per_student_per_class' ? perStudentAmount : formData.payment_amount,
+                total_classes: totalClasses,
+                assignment_type: (assignment as any).schedule_type || 'adhoc',
+                class_type_id: (assignment as any).class_type_id || '',
+                instructor_id: (assignment as any).instructor_id || '',
+                date: (assignment as any).date || '',
+                booking_ids: formData.booking_ids,
+            }
+            const recalculatedAmount = AssignmentCreationService['calculatePaymentAmount'](
+                minimalFormData as any,
+                (assignment as any).schedule_type || 'adhoc',
+                totalClasses,
+                newStudentCount
+            )
+
+            // 1. Save assignment updates
             const updates: Partial<ClassAssignment> = {
                 class_status: formData.class_status as any,
-                payment_amount: formData.payment_amount,
+                payment_amount: recalculatedAmount,
                 payment_status: formData.payment_status as any,
-                notes: formData.notes || undefined,
-                booking_id: primaryBookingId
+                notes: formData.notes || undefined
             }
 
             await onSave(assignment.id, updates)
+
+            // 2. Update booking associations in junction table
+            // First, delete existing associations
+            const { error: deleteError } = await supabase
+                .from('assignment_bookings')
+                .delete()
+                .eq('assignment_id', assignment.id)
+
+            if (deleteError) {
+                console.error('Failed to delete existing booking associations:', deleteError)
+                throw new Error(`Failed to update booking associations: ${deleteError.message}`)
+            }
+
+            // Then, insert new associations if any bookings are selected
+            if (formData.booking_ids.length > 0) {
+                const associations = formData.booking_ids
+                    .filter(bookingId => bookingId && bookingId.trim() !== '')
+                    .map(bookingId => ({
+                        assignment_id: assignment.id,
+                        booking_id: bookingId.trim()
+                    }))
+
+                if (associations.length > 0) {
+                    const { error: insertError } = await supabase
+                        .from('assignment_bookings')
+                        .insert(associations)
+
+                    if (insertError) {
+                        console.error('Failed to create new booking associations:', insertError)
+                        throw new Error(`Failed to link bookings to assignment: ${insertError.message}`)
+                    }
+
+                    console.log(`Successfully updated ${associations.length} booking association(s)`)
+                }
+            }
+
+            // Refresh data to show updated booking associations
+            if (onRefresh) {
+                await onRefresh()
+            }
+
             onClose()
         } catch (error) {
             console.error('Error saving assignment:', error)
@@ -112,11 +249,11 @@ export const EditAssignmentModal = ({
     return (
         <div className="fixed inset-0 z-50 overflow-y-auto">
             {/* Background overlay */}
-            <div 
+            <div
                 className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
                 onClick={onClose}
             />
-            
+
             {/* Modal */}
             <div className="flex min-h-full items-center justify-center p-4">
                 <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
@@ -152,15 +289,15 @@ export const EditAssignmentModal = ({
                             </div>
                         </div>
 
-                        {/* Invalid Booking Warning */}
-                        {assignment.booking_id && !bookings.find(b => b.id === assignment.booking_id) && (
+                        {/* Invalid Booking Warning - Check if any assignment bookings reference non-existent bookings */}
+                        {assignment.assignment_bookings && assignment.assignment_bookings.some(ab => !bookings.find(b => b.booking_id === ab.booking_id)) && (
                             <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                                 <div className="flex items-center">
                                     <AlertTriangle className="w-4 h-4 text-yellow-500 mr-2" />
                                     <div>
                                         <p className="text-sm font-medium text-yellow-800">Invalid Booking Reference</p>
                                         <p className="text-xs text-yellow-700 mt-1">
-                                            This assignment was linked to a booking that no longer exists. The booking selection has been cleared.
+                                            This assignment has booking references that no longer exist. Those bookings have been cleared from the selection.
                                         </p>
                                     </div>
                                 </div>
@@ -183,13 +320,13 @@ export const EditAssignmentModal = ({
                                     <option value="completed">Completed</option>
                                     <option value="cancelled">Cancelled</option>
                                 </select>
-                                
+
                                 {formData.class_status === 'cancelled' && (
                                     <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
                                         <div className="flex items-center">
                                             <AlertTriangle className="w-4 h-4 text-red-500 mr-2" />
                                             <p className="text-sm text-red-700">
-                                                This class will be marked as cancelled. 
+                                                This class will be marked as cancelled.
                                                 {formData.booking_ids.length > 0 && ` Notification emails will be sent to ${formData.booking_ids.length} linked booking${formData.booking_ids.length !== 1 ? 's' : ''}.`}
                                             </p>
                                         </div>
@@ -205,7 +342,7 @@ export const EditAssignmentModal = ({
                                     onBookingSelectionChange={handleBookingSelectionChange}
                                     assignmentType="adhoc"
                                 />
-                                
+
                                 {/* Student Count Display */}
                                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
                                     <div className="flex items-center">
@@ -217,6 +354,96 @@ export const EditAssignmentModal = ({
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Package Assignment Method for Monthly Package */}
+                            {assignment.booking_type === 'individual' && assignment.schedule_type === 'monthly' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                        Package Assignment Method
+                                    </label>
+                                    <div className="space-y-4">
+                                        <div className="border border-gray-200 rounded-lg p-4">
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="radio"
+                                                    id="weekly-recurrence"
+                                                    name="monthly_assignment_method"
+                                                    checked={formData.monthly_assignment_method === 'weekly_recurrence'}
+                                                    onChange={() => setFormData(prev => ({
+                                                        ...prev,
+                                                        monthly_assignment_method: 'weekly_recurrence'
+                                                    }))}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                                />
+                                                <label htmlFor="weekly-recurrence" className="ml-3 text-sm font-medium text-gray-700">
+                                                    Weekly Recurrence
+                                                </label>
+                                            </div>
+                                            <p className="ml-7 text-sm text-gray-500 mt-1">
+                                                Select days of the week and time, auto-generate until package classes are complete
+                                            </p>
+                                            {formData.monthly_assignment_method === 'weekly_recurrence' && (
+                                                <div className="ml-7 mt-3">
+                                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                        Select Days of Week <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <div className="grid grid-cols-7 gap-2">
+                                                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                                                            <label key={day} className="flex items-center justify-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={formData.weekly_days.includes(index)}
+                                                                    onChange={(e) => {
+                                                                        const newDays = e.target.checked
+                                                                            ? [...formData.weekly_days, index]
+                                                                            : formData.weekly_days.filter(d => d !== index)
+                                                                        setFormData(prev => ({
+                                                                            ...prev,
+                                                                            weekly_days: newDays
+                                                                        }))
+                                                                    }}
+                                                                    className="sr-only"
+                                                                />
+                                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border ${formData.weekly_days.includes(index)
+                                                                    ? 'bg-blue-500 text-white border-blue-500'
+                                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
+                                                                    }`}>
+                                                                    {day}
+                                                                </div>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                    {formData.weekly_days.length === 0 && (
+                                                        <p className="text-red-500 text-sm mt-1">Please select at least one day.</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="border border-gray-200 rounded-lg p-4">
+                                            <div className="flex items-center">
+                                                <input
+                                                    type="radio"
+                                                    id="manual-calendar"
+                                                    name="monthly_assignment_method"
+                                                    checked={formData.monthly_assignment_method === 'manual_calendar'}
+                                                    onChange={() => setFormData(prev => ({
+                                                        ...prev,
+                                                        monthly_assignment_method: 'manual_calendar'
+                                                    }))}
+                                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                                />
+                                                <label htmlFor="manual-calendar" className="ml-3 text-sm font-medium text-gray-700">
+                                                    Manual Calendar Selection
+                                                </label>
+                                            </div>
+                                            <p className="ml-7 text-sm text-gray-500 mt-1">
+                                                Manually pick each class date and time from calendar
+                                            </p>
+                                            {/* Manual calendar selection UI can be added here if needed */}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Payment Information */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -233,7 +460,7 @@ export const EditAssignmentModal = ({
                                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                 </div>
-                                
+
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
                                         Payment Status
@@ -302,7 +529,7 @@ export const EditAssignmentModal = ({
                                 </button>
                             )}
                         </div>
-                        
+
                         <div className="flex space-x-3">
                             <button
                                 onClick={onClose}

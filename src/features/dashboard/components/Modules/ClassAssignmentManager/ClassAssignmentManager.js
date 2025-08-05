@@ -3,6 +3,7 @@ import { BarChart3, Calendar, CheckSquare, Filter, List, Plus, RefreshCw, Search
 import { useEffect, useMemo, useState } from 'react';
 import { useClassAssignmentData, useFormHandler } from './hooks';
 import { AssignmentForm, AssignmentListView, CalendarView, AnalyticsView, AdvancedFilters, ClassDetailsPopup, EditAssignmentModal, Button } from './components';
+import { getClientNames } from './types';
 import { timeToMinutes, getAssignmentType, formatTime } from './utils';
 import { supabase } from '../../../../../shared/lib/supabase';
 import { AssignmentCreationService } from './services/assignmentCreation';
@@ -170,7 +171,7 @@ export function ClassAssignmentManager() {
                 const searchLower = searchTerm.toLowerCase();
                 const matchesSearch = assignment.class_type?.name?.toLowerCase().includes(searchLower) ||
                     assignment.instructor_profile?.full_name?.toLowerCase().includes(searchLower) ||
-                    assignment.client_name?.toLowerCase().includes(searchLower) ||
+                    getClientNames(assignment)?.toLowerCase().includes(searchLower) ||
                     assignment.notes?.toLowerCase().includes(searchLower);
                 if (!matchesSearch)
                     return false;
@@ -202,7 +203,7 @@ export function ClassAssignmentManager() {
             if (filters.classTypes.length > 0 && assignment.class_type_id && !filters.classTypes.includes(assignment.class_type_id))
                 return false;
             // Client name filter
-            if (filters.clientName && assignment.client_name && !assignment.client_name.toLowerCase().includes(filters.clientName.toLowerCase()))
+            if (filters.clientName && !getClientNames(assignment).toLowerCase().includes(filters.clientName.toLowerCase()))
                 return false;
             return true;
         });
@@ -222,13 +223,13 @@ export function ClassAssignmentManager() {
                     break;
                 case 'monthly':
                     // Group by instructor + class type + client (monthly sessions for same client)
-                    groupKey = `monthly_${assignment.instructor_id}_${assignment.class_type_id}_${assignment.client_name || 'unknown'}`;
+                    groupKey = `monthly_${assignment.instructor_id}_${assignment.class_type_id}_${getClientNames(assignment) || 'unknown'}`;
                     groupType = 'monthly';
                     break;
                 case 'crash':
                     // Group by instructor + class type + client + assigned date range (crash courses typically span days/weeks)
                     const datePrefix = assignment.date.substring(0, 7); // Group by year-month
-                    groupKey = `crash_${assignment.instructor_id}_${assignment.class_type_id}_${assignment.client_name || 'unknown'}_${datePrefix}`;
+                    groupKey = `crash_${assignment.instructor_id}_${assignment.class_type_id}_${getClientNames(assignment) || 'unknown'}_${datePrefix}`;
                     groupType = 'crash_course';
                     break;
                 case 'adhoc':
@@ -248,7 +249,7 @@ export function ClassAssignmentManager() {
                         class_type_name: assignment.class_type?.name || 'Unknown Class',
                         total_revenue: 0,
                         assignment_count: 0,
-                        client_name: assignment.client_name,
+                        client_names: getClientNames(assignment),
                         pattern_description: groupType === 'weekly' ? 'Weekly Recurring' :
                             groupType === 'monthly' ? 'Monthly Package' :
                                 groupType === 'crash_course' ? 'Crash Course' : undefined
@@ -396,20 +397,10 @@ export function ClassAssignmentManager() {
             setLoadingStates(prev => ({ ...prev, creatingAssignment: true }));
             // Calculate student count based on selected booking(s)
             const calculateStudentCount = () => {
-                // If no booking is selected, default to 1 student
-                if (!formData.booking_id || formData.booking_id.trim() === '') {
-                    return 1;
-                }
-                // Find the selected booking
-                const selectedBooking = bookings.find(booking => booking.id === formData.booking_id);
-                if (!selectedBooking) {
-                    return 1; // Fallback if booking not found
-                }
-                // For group bookings, check if there's any participant-related field
-                // Note: Currently each booking represents 1 student
-                // In the future, if group bookings need multiple participants,
-                // a participants_count field can be added to the Booking interface
-                // For now, each booking = 1 student
+                // For the new multiple booking system, each booking represents 1 student
+                // The booking selection is now handled by BookingSelector/MultipleBookingSelector
+                // For now, we'll use a default of 1 student - the booking count will be handled
+                // in the assignment creation service
                 return 1;
             };
             const studentCount = calculateStudentCount();
@@ -443,25 +434,8 @@ export function ClassAssignmentManager() {
                 cleanUpdates.payment_status = updates.payment_status;
             if (updates.notes !== undefined)
                 cleanUpdates.notes = updates.notes;
-            // Handle booking_id with validation
-            if (updates.booking_id !== undefined) {
-                if (updates.booking_id === '' || updates.booking_id === null) {
-                    // Clear the booking_id by setting it to null
-                    cleanUpdates.booking_id = null;
-                }
-                else {
-                    // Validate that the booking exists before updating
-                    console.log('Validating booking ID:', updates.booking_id);
-                    console.log('Available bookings:', bookings.map(b => ({ id: b.id, name: `${b.first_name} ${b.last_name}` })));
-                    const bookingExists = bookings.find(b => b.id === updates.booking_id);
-                    if (bookingExists) {
-                        cleanUpdates.booking_id = updates.booking_id;
-                    }
-                    else {
-                        throw new Error(`Booking with ID ${updates.booking_id} does not exist in the current bookings list. Available bookings: ${bookings.length}. Please refresh the page and try again, or clear the booking selection.`);
-                    }
-                }
-            }
+            // Note: booking_id is no longer handled here since we use the junction table
+            // assignment_bookings for multiple booking support
             console.log('Updating assignment with:', cleanUpdates);
             const { error } = await supabase
                 .from('class_assignments')
@@ -506,6 +480,6 @@ export function ClassAssignmentManager() {
                                                     ? 'bg-blue-100 text-blue-700'
                                                     : 'text-gray-500 hover:text-gray-700'}`, children: [_jsx(Calendar, { className: "w-4 h-4 mr-1" }), "Calendar"] }), _jsxs("button", { onClick: () => setActiveView('analytics'), className: `px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${activeView === 'analytics'
                                                     ? 'bg-blue-100 text-blue-700'
-                                                    : 'text-gray-500 hover:text-gray-700'}`, children: [_jsx(BarChart3, { className: "w-4 h-4 mr-1" }), "Analytics"] })] }), activeView === 'list' && (_jsxs("div", { className: "flex items-center space-x-3", children: [filteredAssignments.length > 0 && (_jsxs("span", { className: "text-sm text-gray-500", children: [filteredAssignments.length, " assignment", filteredAssignments.length !== 1 ? 's' : ''] })), _jsx(Button, { variant: "outline", size: "sm", onClick: toggleSelectMode, children: isSelectMode ? (_jsxs(_Fragment, { children: [_jsx(X, { className: "w-4 h-4 mr-1" }), "Cancel Select"] })) : (_jsxs(_Fragment, { children: [_jsx(CheckSquare, { className: "w-4 h-4 mr-1" }), "Select Multiple"] })) })] }))] }), isSelectMode && selectedAssignments.size > 0 && (_jsx("div", { className: "mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("span", { className: "text-sm font-medium text-blue-900", children: [selectedAssignments.size, " assignment", selectedAssignments.size !== 1 ? 's' : '', " selected"] }), _jsxs("div", { className: "flex items-center space-x-2", children: [_jsx(Button, { variant: "outline", size: "sm", onClick: clearAllSelections, children: "Clear" }), _jsx(Button, { variant: "outline", size: "sm", onClick: selectAllFilteredAssignments, children: "Select All" }), _jsx(Button, { variant: "outline", size: "sm", onClick: deleteBulkAssignments, className: "text-red-600 hover:text-red-800", children: "Delete Selected" })] })] }) }))] }), _jsxs("div", { className: activeView === 'analytics' ? '' : 'p-6', children: [activeView === 'list' && (_jsx(AssignmentListView, { loading: loading, groupedAssignments: groupedAssignments, isSelectMode: isSelectMode, selectedAssignments: selectedAssignments, onToggleSelection: toggleAssignmentSelection, onDeleteAssignment: deleteAssignment, onOpenClassDetails: openClassDetails })), activeView === 'calendar' && (_jsx(CalendarView, { assignments: filteredAssignments, isSelectMode: isSelectMode, selectedAssignments: selectedAssignments, onToggleSelection: toggleAssignmentSelection, onDeleteAssignment: deleteAssignment, onOpenClassDetails: openClassDetails })), activeView === 'analytics' && (_jsx(AnalyticsView, { assignments: assignments, instructors: instructors }))] })] }), _jsx(AssignmentForm, { isVisible: showAssignForm, formData: formData, errors: errors, conflictWarning: conflictWarning, classTypes: classTypes, packages: packages, instructors: instructors, scheduleTemplates: scheduleTemplates, bookings: bookings, saving: saving, onClose: () => setShowAssignForm(false), onSubmit: createAssignment, onInputChange: handleInputChange, onTimeChange: handleTimeChange, onDurationChange: handleDurationChange }), _jsx(AdvancedFilters, { isVisible: showFilters, filters: filters, classTypes: classTypes, instructors: instructors, packages: packages, onFiltersChange: setFilters, onClose: () => setShowFilters(false), onClearAll: clearAllFilters }), _jsx(ClassDetailsPopup, { assignment: selectedClassDetails, isVisible: showClassDetailsPopup, onClose: closeClassDetails, onEdit: openEditAssignment }), _jsx(EditAssignmentModal, { assignment: selectedEditAssignment, isVisible: showEditAssignmentModal, bookings: bookings, userProfiles: userProfiles, onClose: closeEditAssignment, onSave: saveAssignment })] }));
+                                                    : 'text-gray-500 hover:text-gray-700'}`, children: [_jsx(BarChart3, { className: "w-4 h-4 mr-1" }), "Analytics"] })] }), activeView === 'list' && (_jsxs("div", { className: "flex items-center space-x-3", children: [filteredAssignments.length > 0 && (_jsxs("span", { className: "text-sm text-gray-500", children: [filteredAssignments.length, " assignment", filteredAssignments.length !== 1 ? 's' : ''] })), _jsx(Button, { variant: "outline", size: "sm", onClick: toggleSelectMode, children: isSelectMode ? (_jsxs(_Fragment, { children: [_jsx(X, { className: "w-4 h-4 mr-1" }), "Cancel Select"] })) : (_jsxs(_Fragment, { children: [_jsx(CheckSquare, { className: "w-4 h-4 mr-1" }), "Select Multiple"] })) })] }))] }), isSelectMode && selectedAssignments.size > 0 && (_jsx("div", { className: "mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("span", { className: "text-sm font-medium text-blue-900", children: [selectedAssignments.size, " assignment", selectedAssignments.size !== 1 ? 's' : '', " selected"] }), _jsxs("div", { className: "flex items-center space-x-2", children: [_jsx(Button, { variant: "outline", size: "sm", onClick: clearAllSelections, children: "Clear" }), _jsx(Button, { variant: "outline", size: "sm", onClick: selectAllFilteredAssignments, children: "Select All" }), _jsx(Button, { variant: "outline", size: "sm", onClick: deleteBulkAssignments, className: "text-red-600 hover:text-red-800", children: "Delete Selected" })] })] }) }))] }), _jsxs("div", { className: activeView === 'analytics' ? '' : 'p-6', children: [activeView === 'list' && (_jsx(AssignmentListView, { loading: loading, groupedAssignments: groupedAssignments, isSelectMode: isSelectMode, selectedAssignments: selectedAssignments, onToggleSelection: toggleAssignmentSelection, onDeleteAssignment: deleteAssignment, onOpenClassDetails: openClassDetails })), activeView === 'calendar' && (_jsx(CalendarView, { assignments: filteredAssignments, isSelectMode: isSelectMode, selectedAssignments: selectedAssignments, onToggleSelection: toggleAssignmentSelection, onDeleteAssignment: deleteAssignment, onOpenClassDetails: openClassDetails })), activeView === 'analytics' && (_jsx(AnalyticsView, { assignments: assignments, instructors: instructors }))] })] }), _jsx(AssignmentForm, { isVisible: showAssignForm, formData: formData, errors: errors, conflictWarning: conflictWarning, classTypes: classTypes, packages: packages, instructors: instructors, scheduleTemplates: scheduleTemplates, bookings: bookings, saving: saving, onClose: () => setShowAssignForm(false), onSubmit: createAssignment, onInputChange: handleInputChange, onTimeChange: handleTimeChange, onDurationChange: handleDurationChange }), _jsx(AdvancedFilters, { isVisible: showFilters, filters: filters, classTypes: classTypes, instructors: instructors, packages: packages, onFiltersChange: setFilters, onClose: () => setShowFilters(false), onClearAll: clearAllFilters }), _jsx(ClassDetailsPopup, { assignment: selectedClassDetails, isVisible: showClassDetailsPopup, onClose: closeClassDetails, onEdit: openEditAssignment }), _jsx(EditAssignmentModal, { assignment: selectedEditAssignment, isVisible: showEditAssignmentModal, bookings: bookings, userProfiles: userProfiles, onClose: closeEditAssignment, onSave: saveAssignment, onRefresh: fetchData })] }));
 }
 export default ClassAssignmentManager;

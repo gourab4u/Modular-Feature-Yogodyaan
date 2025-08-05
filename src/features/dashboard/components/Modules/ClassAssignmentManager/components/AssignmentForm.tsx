@@ -3,7 +3,7 @@ import { FormData, ValidationErrors, ConflictDetails, ClassType, Package, UserPr
 import { getDurationOptions } from '../utils'
 import { Button } from './Button'
 import { LoadingSpinner } from './LoadingSpinner'
-import { BookingSelector } from './BookingSelector'
+import { AdaptiveBookingSelector } from './AdaptiveBookingSelector'
 import { ManualCalendarSelector } from './ManualCalendarSelector'
 
 interface AssignmentFormProps {
@@ -163,16 +163,21 @@ export const AssignmentForm = ({
 
                             {/* Booking Reference Selector */}
                             <div>
-                                <BookingSelector
+                                <AdaptiveBookingSelector
                                     bookings={bookings}
+                                    assignmentType={formData.assignment_type}
+                                    bookingType={formData.booking_type as any}
                                     selectedBookingId={formData.booking_id || ''}
                                     onBookingSelect={(bookingId, clientName, clientEmail) => {
                                         onInputChange('booking_id', bookingId)
                                         onInputChange('client_name', clientName)
                                         onInputChange('client_email', clientEmail)
                                     }}
+                                    selectedBookingIds={formData.booking_ids || []}
+                                    onBookingSelectionChange={(bookingIds) => {
+                                        onInputChange('booking_ids', bookingIds)
+                                    }}
                                     bookingTypeFilter={formData.booking_type as any}
-                                    assignmentType={formData.assignment_type}
                                 />
                             </div>
 

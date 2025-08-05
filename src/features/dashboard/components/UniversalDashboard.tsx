@@ -6,7 +6,6 @@ import RoleBasedNavigation from '../../../shared/components/navigation/RoleBased
 import { DashboardModule, getModulesForRole, hasModuleAccess, UserRole } from '../../../shared/config/roleConfig';
 
 // Lazy load components (Modules add here)
-const InstructorManagement = React.lazy(() => import('./Modules/InstructorManagement'));
 const ClassAssignmentManager = React.lazy(() => import('./Modules/ClassAssignmentManager'));
 const ArticleManagement = React.lazy(() => import('./Modules/ArticleManagement'));
 const UserManagement = React.lazy(() => import('./Modules/UserManagement'));
@@ -46,7 +45,6 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
 
   // Component mapping (Modules add here)
   const componentMap = {
-    InstructorManagement,
     ClassAssignmentManager,
     ArticleManagement,
     UserManagement,
@@ -62,6 +60,7 @@ const UniversalDashboard: React.FC<UniversalDashboardProps> = ({ user }) => {
     UserProfile,
     NewsletterManagement,
     TeachingDashboard,
+    InstructorRatesPage: React.lazy(() => import('../../instructor-rates/pages/InstructorRatesPage')),
   };
 
   // Get the first available module for default tab

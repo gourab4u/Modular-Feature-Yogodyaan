@@ -1,5 +1,5 @@
 import { X, Calendar, Clock, User, IndianRupee, CheckSquare } from 'lucide-react'
-import { ClassAssignment } from '../types'
+import { ClassAssignment, getClientNames, getClientEmails, getBookingIds } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
 
 interface ClassDetailsPopupProps {
@@ -69,12 +69,12 @@ export const ClassDetailsPopup = ({ assignment, isVisible, onClose, onEdit }: Cl
                                     )}
                                 </div>
 
-                                {assignment.client_name && (
+                                {getClientNames(assignment) && (
                                     <div>
                                         <h3 className="text-sm font-medium text-gray-500 mb-2">Client Information</h3>
-                                        <p className="text-gray-900">{assignment.client_name}</p>
-                                        {assignment.client_email && (
-                                            <p className="text-sm text-gray-600">{assignment.client_email}</p>
+                                        <p className="text-gray-900">{getClientNames(assignment)}</p>
+                                        {getClientEmails(assignment) && (
+                                            <p className="text-sm text-gray-600">{getClientEmails(assignment)}</p>
                                         )}
                                     </div>
                                 )}
@@ -175,10 +175,14 @@ export const ClassDetailsPopup = ({ assignment, isVisible, onClose, onEdit }: Cl
 
                         {/* Additional Information */}
                         <div className="mt-6 space-y-4">
-                            {assignment.booking_id && (
+                            {getBookingIds(assignment).length > 0 && (
                                 <div>
-                                    <h3 className="text-sm font-medium text-gray-500 mb-2">Booking Reference</h3>
-                                    <p className="text-gray-900 font-mono text-sm">{assignment.booking_id}</p>
+                                    <h3 className="text-sm font-medium text-gray-500 mb-2">Booking Reference{getBookingIds(assignment).length > 1 ? 's' : ''}</h3>
+                                    <div className="space-y-1">
+                                        {getBookingIds(assignment).map((bookingId, index) => (
+                                            <p key={index} className="text-gray-900 font-mono text-sm">{bookingId}</p>
+                                        ))}
+                                    </div>
                                 </div>
                             )}
 

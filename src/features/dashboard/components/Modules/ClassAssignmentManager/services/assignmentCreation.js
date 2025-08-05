@@ -9,22 +9,29 @@ const validateBookingExists = async (bookingId) => {
     if (!bookingId || bookingId.trim() === '' || bookingId.trim() === 'null' || bookingId.trim() === 'undefined') {
         return true; // No booking to validate
     }
-    if (!isValidUUID(bookingId.trim())) {
-        console.warn('Invalid booking ID format:', bookingId);
-        return false;
-    }
+    // booking_id is TEXT format (YOG-YYYYMMDD-XXXX), not UUID, so skip UUID validation
+    // if (!isValidUUID(bookingId.trim())) {
+    //     console.warn('Invalid booking ID format:', bookingId)
+    //     return false
+    // }
     try {
         console.log('Validating booking ID:', bookingId.trim());
-        const { data: booking, error: bookingError } = await supabase
+        const { data: bookings, error: bookingError } = await supabase
             .from('bookings')
-            .select('id')
-            .eq('id', bookingId.trim())
-            .single();
-        if (bookingError || !booking) {
+            .select('booking_id')
+            .eq('booking_id', bookingId.trim());
+        if (bookingError) {
             console.error('Booking validation failed:', {
                 bookingId: bookingId.trim(),
                 error: bookingError,
-                data: booking
+                data: bookings
+            });
+            return false;
+        }
+        if (!bookings || bookings.length === 0) {
+            console.error('Booking validation failed - no booking found:', {
+                bookingId: bookingId.trim(),
+                data: bookings
             });
             return false;
         }
@@ -36,19 +43,74 @@ const validateBookingExists = async (bookingId) => {
         return false;
     }
 };
+// Helper function to validate booking IDs based on assignment type
+const validateBookingsForAssignmentType = async (bookingIds, assignmentType, bookingType) => {
+    if (!bookingIds || bookingIds.length === 0) {
+        return; // No bookings to validate
+    }
+    // Validate booking count based on assignment type and booking type
+    const shouldAllowMultiple = shouldAllowMultipleBookings(assignmentType, bookingType);
+    if (!shouldAllowMultiple && bookingIds.length > 1) {
+        throw new Error(`Individual and private group classes can only have one booking. You have selected ${bookingIds.length} bookings.`);
+    }
+    // Validate each booking exists
+    for (const bookingId of bookingIds) {
+        if (bookingId && bookingId.trim() !== '') {
+            console.log('VALIDATION DEBUG - About to validate booking_id:', bookingId);
+            const bookingExists = await validateBookingExists(bookingId);
+            console.log('VALIDATION DEBUG - Booking validation result:', bookingExists);
+            if (!bookingExists) {
+                console.error('Invalid booking_id found - booking does not exist in database:', bookingId);
+                throw new Error(`Selected booking is invalid or has been deleted. Please select a different booking or remove the booking selection.`);
+            }
+            console.log('VALIDATION DEBUG - Booking validation passed for:', bookingId);
+        }
+    }
+};
+// Helper function to determine if assignment type allows multiple bookings
+const shouldAllowMultipleBookings = (assignmentType, bookingType) => {
+    // Individual classes and private groups: single booking only
+    if (assignmentType === 'adhoc' && (bookingType === 'individual' || bookingType === 'private_group')) {
+        return false;
+    }
+    // All other cases: multiple bookings allowed
+    // - Weekly classes (public_group)
+    // - Corporate bookings
+    // - Monthly packages
+    // - Crash courses
+    return true;
+};
+// Helper function to create assignment-booking associations
+export const createAssignmentBookings = async (assignmentId, bookingIds) => {
+    if (!bookingIds || bookingIds.length === 0) {
+        return; // No bookings to associate
+    }
+    const associations = bookingIds
+        .filter(id => id && id.trim() !== '')
+        .map(bookingId => ({
+        assignment_id: assignmentId,
+        booking_id: bookingId.trim()
+    }));
+    if (associations.length > 0) {
+        const { error } = await supabase
+            .from('assignment_bookings')
+            .insert(associations);
+        if (error) {
+            console.error('Failed to create assignment-booking associations:', error);
+            throw new Error(`Failed to link bookings to assignment: ${error.message}`);
+        }
+        console.log(`Successfully created ${associations.length} assignment-booking associations`);
+    }
+};
 // Helper function to clean assignment data - removes empty UUID fields that would cause 22P02 errors
 const cleanAssignmentData = async (data) => {
     const cleaned = { ...data };
-    // List of ALL UUID fields that could be empty
-    const uuidFields = ['booking_id', 'class_type_id', 'package_id', 'instructor_id', 'assigned_by'];
-    // First validate booking_id if present
-    if (cleaned.booking_id && cleaned.booking_id.trim() !== '') {
-        const bookingExists = await validateBookingExists(cleaned.booking_id);
-        if (!bookingExists) {
-            console.error('Invalid booking_id found - booking does not exist in database:', cleaned.booking_id);
-            throw new Error(`Selected booking is invalid or has been deleted. Please select a different booking or remove the booking selection.`);
-        }
-    }
+    // List of ALL UUID fields that could be empty (removed booking_id since we use junction table now)
+    const uuidFields = ['class_type_id', 'package_id', 'instructor_id', 'assigned_by'];
+    // Remove booking-related fields (now handled via junction table)
+    delete cleaned.booking_id;
+    delete cleaned.client_name;
+    delete cleaned.client_email;
     uuidFields.forEach(field => {
         if (cleaned[field] === '' || cleaned[field] === null || cleaned[field] === undefined ||
             cleaned[field] === 'null' || cleaned[field] === 'undefined' ||
@@ -77,6 +139,15 @@ const cleanAssignmentData = async (data) => {
     console.log('Original data:', JSON.stringify(data, null, 2));
     console.log('Cleaned data:', JSON.stringify(cleaned, null, 2));
     return cleaned;
+};
+// Helper function to clean multiple assignments with booking validation
+const cleanAssignmentsBatch = async (assignments, bookingIds = [], assignmentType = '', bookingType = '') => {
+    if (!assignments || assignments.length === 0)
+        return [];
+    // Validate all booking IDs once with assignment type rules
+    await validateBookingsForAssignmentType(bookingIds, assignmentType, bookingType);
+    // Clean all assignments (booking fields will be removed since we use junction table)
+    return await Promise.all(assignments.map(assignment => cleanAssignmentData(assignment)));
 };
 // Helper function to get current user ID - requires authentication
 const getCurrentUserId = async () => {
@@ -179,6 +250,7 @@ export class AssignmentCreationService {
             end_time: formData.end_time.trim(),
             instructor_id: formData.instructor_id.trim(),
             payment_amount: paymentAmount,
+            payment_type: formData.payment_type,
             schedule_type: 'adhoc',
             assigned_by: currentUserId.trim(),
             booking_type: formData.booking_type || 'individual'
@@ -204,9 +276,17 @@ export class AssignmentCreationService {
         const cleanedAssignmentData = await cleanAssignmentData(assignmentData);
         console.log('Assignment data being inserted:', JSON.stringify(cleanedAssignmentData, null, 2));
         console.log('Current user ID was:', currentUserId);
-        const { error } = await supabase
+        // Debug booking_id specifically
+        if (cleanedAssignmentData.booking_id) {
+            console.log('BOOKING DEBUG - Final booking_id:', cleanedAssignmentData.booking_id);
+            console.log('BOOKING DEBUG - Booking_id type:', typeof cleanedAssignmentData.booking_id);
+            console.log('BOOKING DEBUG - Booking_id length:', cleanedAssignmentData.booking_id.length);
+        }
+        const { data: insertedAssignment, error } = await supabase
             .from('class_assignments')
-            .insert([cleanedAssignmentData]);
+            .insert([cleanedAssignmentData])
+            .select('id')
+            .single();
         if (error) {
             console.error('Supabase insert error:', {
                 error,
@@ -218,9 +298,18 @@ export class AssignmentCreationService {
             });
             throw new Error(`Database error: ${error.message || 'Unknown error occurred while creating assignment'}`);
         }
-        // Update booking status if linked
-        if (formData.booking_id) {
-            await this.updateBookingStatus(formData.booking_id, 'completed');
+        // Create booking associations using the new multiple booking system
+        const bookingIds = formData.booking_ids && formData.booking_ids.length > 0
+            ? formData.booking_ids
+            : (formData.booking_id ? [formData.booking_id] : []);
+        if (bookingIds.length > 0) {
+            await createAssignmentBookings(insertedAssignment.id, bookingIds);
+            // Update booking status for all linked bookings if needed
+            for (const bookingId of bookingIds) {
+                if (bookingId && bookingId.trim() !== '') {
+                    await this.updateBookingStatus(bookingId, 'completed');
+                }
+            }
         }
         return { success: true, count: 1 };
     }
@@ -253,7 +342,7 @@ export class AssignmentCreationService {
             throw updateError;
         // Create weekly assignments based on the template
         const assignments = await this.generateWeeklyAssignments(formData, template.day_of_week, template.start_time, template.end_time, template.class_type_id, studentCount);
-        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData));
+        const cleanedAssignments = await cleanAssignmentsBatch(assignments);
         const { error: insertError } = await supabase
             .from('class_assignments')
             .insert(cleanedAssignments);
@@ -285,7 +374,7 @@ export class AssignmentCreationService {
             throw scheduleError;
         // Generate weekly assignments
         const assignments = await this.generateWeeklyAssignments(formData, formData.day_of_week, formData.start_time, formData.end_time, formData.class_type_id, studentCount);
-        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData));
+        const cleanedAssignments = await cleanAssignmentsBatch(assignments);
         const { error: assignmentError } = await supabase
             .from('class_assignments')
             .insert(cleanedAssignments);
@@ -319,6 +408,7 @@ export class AssignmentCreationService {
                 end_time: endTime,
                 instructor_id: formData.instructor_id,
                 payment_amount: this.calculatePaymentAmount(formData, 'weekly', undefined, studentCount),
+                payment_type: formData.payment_type,
                 schedule_type: 'weekly',
                 assigned_by: currentUserId,
                 booking_type: formData.booking_type || 'public_group',
@@ -353,7 +443,7 @@ export class AssignmentCreationService {
         else {
             assignments.push(...await this.generateManualCalendarAssignments(formData, perClassAmount));
         }
-        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData));
+        const cleanedAssignments = await cleanAssignmentsBatch(assignments);
         const { error } = await supabase
             .from('class_assignments')
             .insert(cleanedAssignments);
@@ -488,7 +578,7 @@ export class AssignmentCreationService {
                 assignment.client_email = formData.client_email;
             return assignment;
         });
-        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData));
+        const cleanedAssignments = await cleanAssignmentsBatch(assignments);
         const { error } = await supabase
             .from('class_assignments')
             .insert(cleanedAssignments);
@@ -536,7 +626,7 @@ export class AssignmentCreationService {
             // Manual calendar selection method
             assignments.push(...await this.generateManualCalendarAssignments(formData, perClassAmount));
         }
-        const cleanedAssignments = await Promise.all(assignments.map(cleanAssignmentData));
+        const cleanedAssignments = await cleanAssignmentsBatch(assignments);
         const { error } = await supabase
             .from('class_assignments')
             .insert(cleanedAssignments);

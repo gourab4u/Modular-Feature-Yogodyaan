@@ -55,6 +55,9 @@ const initialFormData: FormData = {
     booking_id: '',
     client_name: '',
     client_email: '',
+    
+    // Multiple booking support
+    booking_ids: [],
 
     // Weekly template assignment
     selected_template_id: ''
@@ -152,6 +155,7 @@ export const useFormHandler = (conflictCheckCallback?: (formData: FormData) => v
                 newData.booking_id = ''
                 newData.client_name = ''
                 newData.client_email = ''
+                newData.booking_ids = []
                 
                 // Auto-set booking type based on assignment type
                 if (value === 'crash_course') {

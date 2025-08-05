@@ -17,10 +17,9 @@ export interface ClassAssignment {
     // Instructor status fields
     instructor_status?: 'pending' | 'accepted' | 'rejected'
     instructor_response_at?: string
-    // Client information
-    client_name?: string
-    client_email?: string
-    booking_id?: string
+    // Multiple booking support
+    assignment_bookings?: AssignmentBooking[]
+    bookings?: Booking[] // Populated bookings for convenience
     class_type?: {
         id: string
         name: string
@@ -31,6 +30,14 @@ export interface ClassAssignment {
         full_name: string
         email: string
     }
+}
+
+export interface AssignmentBooking {
+    id: string
+    assignment_id: string
+    booking_id: string
+    created_at: string
+    booking?: Booking // Populated booking data
 }
 
 export interface ClassSchedule {
@@ -99,6 +106,7 @@ export interface Package {
 
 export interface Booking {
     id: string
+    booking_id?: string // TEXT field in format YOG-YYYYMMDD-XXXX
     user_id: string
     class_name: string
     instructor: string
@@ -168,10 +176,13 @@ export interface FormData {
     // Manual calendar selections
     manual_selections: ManualClassSelection[]
 
-    // Booking reference fields
+    // Booking reference fields (legacy single booking support)
     booking_id: string
     client_name: string
     client_email: string
+    
+    // Multiple booking support
+    booking_ids: string[]
 
     // Weekly template assignment
     selected_template_id: string
@@ -205,4 +216,37 @@ export interface Filters {
     packages: string[]
     clientName: string
     weeklyClasses: boolean
+}
+
+// Helper functions for working with the new multiple booking structure
+export const getClientNames = (assignment: ClassAssignment): string => {
+    if (!assignment.assignment_bookings?.length) {
+        return ''
+    }
+    
+    const names = assignment.assignment_bookings
+        .map(ab => ab.booking ? `${ab.booking.first_name} ${ab.booking.last_name}`.trim() : '')
+        .filter(name => name !== '')
+    
+    return names.join(', ')
+}
+
+export const getClientEmails = (assignment: ClassAssignment): string => {
+    if (!assignment.assignment_bookings?.length) {
+        return ''
+    }
+    
+    const emails = assignment.assignment_bookings
+        .map(ab => ab.booking?.email || '')
+        .filter(email => email !== '')
+    
+    return emails.join(', ')
+}
+
+export const getBookingIds = (assignment: ClassAssignment): string[] => {
+    if (!assignment.assignment_bookings?.length) {
+        return []
+    }
+    
+    return assignment.assignment_bookings.map(ab => ab.booking_id)
 }
