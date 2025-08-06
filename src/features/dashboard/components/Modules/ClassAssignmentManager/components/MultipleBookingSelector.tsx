@@ -231,16 +231,45 @@ export const MultipleBookingSelector = ({
                                                 <span className="font-medium">Class:</span> {booking.class_name || 'Unknown'}
                                             </div>
 
-                                            {/* Preferred date/time */}
-                                            {(booking.class_date || booking.class_time) && (
-                                                <div className="flex items-center text-sm text-gray-600 ml-6">
-                                                    <Calendar className="w-3 h-3 mr-1" />
-                                                    <span className="mr-2">{formatDate(booking.class_date)}</span>
-                                                    {booking.class_time && (
-                                                        <>
-                                                            <Clock className="w-3 h-3 mr-1" />
-                                                            <span>{formatTime(booking.class_time)}</span>
-                                                        </>
+                                            {/* Preferred days and times */}
+                                            {(booking.preferred_days?.length || booking.preferred_times?.length || booking.class_date || booking.class_time) && (
+                                                <div className="text-sm text-gray-600 ml-6">
+                                                    {/* Multiple preferred days and times */}
+                                                    {booking.preferred_days?.length && booking.preferred_times?.length ? (
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center">
+                                                                <Calendar className="w-3 h-3 mr-1" />
+                                                                <span className="font-medium">Preferred Days:</span>
+                                                            </div>
+                                                            <div className="ml-4 space-y-0.5">
+                                                                {booking.preferred_days.map((day, index) => (
+                                                                    <div key={index} className="flex items-center">
+                                                                        <span className="mr-2">{day}</span>
+                                                                        {booking.preferred_times?.[index] && (
+                                                                            <>
+                                                                                <Clock className="w-3 h-3 mr-1" />
+                                                                                <span>{formatTime(booking.preferred_times[index])}</span>
+                                                                            </>
+                                                                        )}
+                                                                        {booking.timezone && (
+                                                                            <span className="ml-1 text-xs text-gray-500">({booking.timezone})</span>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        /* Fallback to single date/time for backward compatibility */
+                                                        <div className="flex items-center">
+                                                            <Calendar className="w-3 h-3 mr-1" />
+                                                            <span className="mr-2">{formatDate(booking.class_date)}</span>
+                                                            {booking.class_time && (
+                                                                <>
+                                                                    <Clock className="w-3 h-3 mr-1" />
+                                                                    <span>{formatTime(booking.class_time)}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
@@ -266,6 +295,48 @@ export const MultipleBookingSelector = ({
                                     <div className="flex-1">
                                         <div><strong>{booking.first_name} {booking.last_name}</strong> - {booking.email}</div>
                                         <div className="text-xs">{booking.class_name || 'Unknown'}</div>
+                                        {/* Preferred days and times for selected bookings */}
+                                        {(booking.preferred_days?.length || booking.preferred_times?.length || booking.class_date || booking.class_time) && (
+                                            <div className="text-xs text-blue-600 mt-1">
+                                                {/* Multiple preferred days and times */}
+                                                {booking.preferred_days?.length && booking.preferred_times?.length ? (
+                                                    <div className="space-y-1">
+                                                        <div className="flex items-center">
+                                                            <Calendar className="w-3 h-3 mr-1" />
+                                                            <span className="font-medium">Preferred Days:</span>
+                                                        </div>
+                                                        <div className="ml-4 space-y-0.5">
+                                                            {booking.preferred_days.map((day, index) => (
+                                                                <div key={index} className="flex items-center">
+                                                                    <span className="mr-2">{day}</span>
+                                                                    {booking.preferred_times?.[index] && (
+                                                                        <>
+                                                                            <Clock className="w-3 h-3 mr-1" />
+                                                                            <span>{formatTime(booking.preferred_times[index])}</span>
+                                                                        </>
+                                                                    )}
+                                                                    {booking.timezone && (
+                                                                        <span className="ml-1 text-xs text-blue-500">({booking.timezone})</span>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    /* Fallback to single date/time for backward compatibility */
+                                                    <div className="flex items-center">
+                                                        <Calendar className="w-3 h-3 mr-1" />
+                                                        <span className="mr-2">{formatDate(booking.class_date)}</span>
+                                                        {booking.class_time && (
+                                                            <>
+                                                                <Clock className="w-3 h-3 mr-1" />
+                                                                <span>{formatTime(booking.class_time)}</span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                     <button
                                         type="button"

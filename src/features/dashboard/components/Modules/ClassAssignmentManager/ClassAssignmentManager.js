@@ -11,7 +11,7 @@ export function ClassAssignmentManager() {
     // Data fetching hook
     const { assignments, weeklySchedules, scheduleTemplates, classTypes, packages, userProfiles, bookings, loading, loadingStates, setLoadingStates, fetchData } = useClassAssignmentData();
     // Form handling hook with conflict checking
-    const { formData, errors, conflictWarning, setConflictWarning, handleInputChange, handleTimeChange, handleDurationChange, validateForm, resetForm } = useFormHandler(checkForConflicts);
+    const { formData, errors, conflictWarning, setConflictWarning, handleInputChange, handleTimeChange, handleDurationChange, validateForm, resetForm } = useFormHandler(checkForConflicts, packages);
     // UI state
     const [showAssignForm, setShowAssignForm] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -240,13 +240,24 @@ export function ClassAssignmentManager() {
                     break;
             }
             if (!groups.has(groupKey)) {
+                // For package-based assignments, prefer package name over class type name
+                let displayName;
+                if (assignment.package?.name) {
+                    displayName = assignment.package.name;
+                }
+                else if (assignment.class_type?.name) {
+                    displayName = assignment.class_type.name;
+                }
+                else {
+                    displayName = 'Unknown Class';
+                }
                 groups.set(groupKey, {
                     key: groupKey,
                     type: groupType,
                     assignments: [],
                     groupInfo: {
                         instructor_name: assignment.instructor_profile?.full_name || 'Unknown Instructor',
-                        class_type_name: assignment.class_type?.name || 'Unknown Class',
+                        class_type_name: displayName,
                         total_revenue: 0,
                         assignment_count: 0,
                         client_names: getClientNames(assignment),

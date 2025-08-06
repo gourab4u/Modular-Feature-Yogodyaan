@@ -28,6 +28,7 @@ export const useClassAssignmentData = () => {
                 supabase.from('class_assignments').select(`
                     *,
                     class_type:class_types(id, name, difficulty_level),
+                    package:class_packages(id, name, description, class_count, validity_days),
                     instructor_status,
                     instructor_response_at,
                     assignment_bookings(
@@ -62,6 +63,9 @@ export const useClassAssignmentData = () => {
                     instructor,
                     class_date,
                     class_time,
+                    preferred_days,
+                    preferred_times,
+                    timezone,
                     first_name,
                     last_name,
                     email,

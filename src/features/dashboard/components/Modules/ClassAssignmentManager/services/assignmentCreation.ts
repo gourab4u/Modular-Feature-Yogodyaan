@@ -81,16 +81,21 @@ const validateBookingsForAssignmentType = async (bookingIds: string[], assignmen
 
 // Helper function to determine if assignment type allows multiple bookings
 const shouldAllowMultipleBookings = (assignmentType: string, bookingType: string): boolean => {
-    // Individual classes and private groups: single booking only
-    if (assignmentType === 'adhoc' && (bookingType === 'individual' || bookingType === 'private_group')) {
+    // Individual booking type: single booking only regardless of assignment type
+    if (bookingType === 'individual') {
         return false
     }
-
+    
+    // Private group classes: single booking only (for adhoc assignments)
+    if (assignmentType === 'adhoc' && bookingType === 'private_group') {
+        return false
+    }
+    
     // All other cases: multiple bookings allowed
     // - Weekly classes (public_group)
     // - Corporate bookings
-    // - Monthly packages
-    // - Crash courses
+    // - Monthly packages (corporate, private_group, public_group)
+    // - Crash courses (corporate, private_group, public_group)
     return true
 }
 
@@ -552,9 +557,16 @@ export class AssignmentCreationService {
 
         // Continue creating assignments until we hit the class count or end date
         const currentDate = new Date(formData.start_date)
+        const validityEndDate = formData.validity_end_date ? new Date(formData.validity_end_date) : null
         let classesCreated = 0
 
         while (classesCreated < formData.total_classes) {
+            // Check if we've exceeded the validity period
+            if (validityEndDate && currentDate > validityEndDate) {
+                console.warn(`Reached validity end date (${formData.validity_end_date}). Created ${classesCreated} classes out of requested ${formData.total_classes}.`)
+                break
+            }
+            
             // Check if current day is in selected weekdays
             const currentDayOfWeek = currentDate.getDay() // 0 = Sunday, 6 = Saturday
 
@@ -636,49 +648,58 @@ export class AssignmentCreationService {
     }
 
     private static async createCrashCourseAssignment(formData: FormData, packages: Package[], studentCount?: number) {
-        const currentUserId = await getCurrentUserId()
         const selectedPackage = packages.find(p => p.id === formData.package_id)
         if (!selectedPackage) {
             throw new Error('Selected package not found')
         }
 
-        // Generate class dates (weekly by default for crash courses)
-        const classDates = this.generateCrashCourseDates(
-            formData.start_date,
-            selectedPackage.class_count,
-            'weekly'
-        )
-
+        const assignments = []
+        
         // Calculate per-class amount based on payment type
         const perClassAmount = this.calculatePaymentAmount(formData, 'crash_course', selectedPackage.class_count, studentCount)
 
-        // Create assignments for each date
-        const assignments = classDates.map(date => {
-            const assignment: any = {
-                package_id: formData.package_id,
-                date: date,
-                start_time: formData.start_time,
-                end_time: formData.end_time,
-                instructor_id: formData.instructor_id,
-                payment_amount: perClassAmount,
-                schedule_type: 'crash',
-                assigned_by: currentUserId,
-                booking_type: formData.booking_type || 'individual',
-                class_status: 'scheduled',
-                payment_status: 'pending',
-                instructor_status: 'pending'
-            }
+        if (formData.monthly_assignment_method === 'weekly_recurrence') {
+            // Use weekly recurrence method (same as monthly/package)
+            assignments.push(...await this.generateWeeklyRecurrenceAssignmentsForCrash(formData, perClassAmount, selectedPackage.class_count))
+        } else if (formData.monthly_assignment_method === 'manual_calendar') {
+            // Use manual calendar selection method (same as monthly/package)
+            assignments.push(...await this.generateManualCalendarAssignmentsForCrash(formData, perClassAmount))
+        } else {
+            // Fallback to the original weekly generation for backward compatibility
+            const classDates = this.generateCrashCourseDates(
+                formData.start_date,
+                selectedPackage.class_count,
+                'weekly'
+            )
+            
+            const currentUserId = await getCurrentUserId()
+            assignments.push(...classDates.map(date => {
+                const assignment: any = {
+                    package_id: formData.package_id,
+                    date: date,
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    instructor_id: formData.instructor_id,
+                    payment_amount: perClassAmount,
+                    schedule_type: 'crash',
+                    assigned_by: currentUserId,
+                    booking_type: formData.booking_type || 'individual',
+                    class_status: 'scheduled',
+                    payment_status: 'pending',
+                    instructor_status: 'pending'
+                }
 
-            // Add optional fields only if they have values
-            if (formData.notes) assignment.notes = formData.notes
-            if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
-                assignment.booking_id = formData.booking_id.trim()
-            }
-            if (formData.client_name) assignment.client_name = formData.client_name
-            if (formData.client_email) assignment.client_email = formData.client_email
+                // Add optional fields only if they have values
+                if (formData.notes) assignment.notes = formData.notes
+                if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                    assignment.booking_id = formData.booking_id.trim()
+                }
+                if (formData.client_name) assignment.client_name = formData.client_name
+                if (formData.client_email) assignment.client_email = formData.client_email
 
-            return assignment
-        })
+                return assignment
+            }))
+        }
 
         const cleanedAssignments = await cleanAssignmentsBatch(assignments)
         const { error } = await supabase
@@ -717,6 +738,107 @@ export class AssignmentCreationService {
         }
 
         return dates
+    }
+
+    private static async generateWeeklyRecurrenceAssignmentsForCrash(formData: FormData, perClassAmount: number, packageClassCount: number) {
+        const currentUserId = await getCurrentUserId()
+        const assignments = []
+
+        // Validate weekly days selection
+        if (!formData.weekly_days || formData.weekly_days.length === 0) {
+            throw new Error('Please select at least one day of the week')
+        }
+
+        // Continue creating assignments until we hit the package class count
+        const currentDate = new Date(formData.start_date)
+        const validityEndDate = formData.validity_end_date ? new Date(formData.validity_end_date) : null
+        let classesCreated = 0
+
+        while (classesCreated < packageClassCount) {
+            // Check if we've exceeded the validity period
+            if (validityEndDate && currentDate > validityEndDate) {
+                console.warn(`Reached validity end date (${formData.validity_end_date}). Created ${classesCreated} classes out of requested ${packageClassCount}.`)
+                break
+            }
+            
+            // Check if current day is in selected weekdays
+            const currentDayOfWeek = currentDate.getDay() // 0 = Sunday, 6 = Saturday
+
+            if (formData.weekly_days.includes(currentDayOfWeek)) {
+                const assignment: any = {
+                    package_id: formData.package_id,
+                    date: currentDate.toISOString().split('T')[0],
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    instructor_id: formData.instructor_id,
+                    payment_amount: perClassAmount,
+                    schedule_type: 'crash',
+                    assigned_by: currentUserId,
+                    booking_type: formData.booking_type || 'individual',
+                    class_status: 'scheduled',
+                    payment_status: 'pending',
+                    instructor_status: 'pending'
+                }
+
+                // Add optional fields only if they have values
+                if (formData.notes) assignment.notes = formData.notes
+                if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                    assignment.booking_id = formData.booking_id.trim()
+                }
+                if (formData.client_name) assignment.client_name = formData.client_name
+                if (formData.client_email) assignment.client_email = formData.client_email
+
+                assignments.push(assignment)
+                classesCreated++
+
+                // Break if we've reached the required class count
+                if (classesCreated >= packageClassCount) {
+                    break
+                }
+            }
+
+            // Move to next day
+            currentDate.setDate(currentDate.getDate() + 1)
+        }
+
+        return assignments
+    }
+
+    private static async generateManualCalendarAssignmentsForCrash(formData: FormData, perClassAmount: number) {
+        const currentUserId = await getCurrentUserId()
+
+        // Validate manual selections
+        if (!formData.manual_selections || formData.manual_selections.length === 0) {
+            throw new Error('Please select at least one class date and time')
+        }
+
+        // Create assignments from manual selections
+        return formData.manual_selections.map(selection => {
+            const assignment: any = {
+                package_id: formData.package_id,
+                date: selection.date,
+                start_time: selection.start_time,
+                end_time: selection.end_time,
+                instructor_id: formData.instructor_id,
+                payment_amount: perClassAmount,
+                schedule_type: 'crash',
+                assigned_by: currentUserId,
+                booking_type: formData.booking_type || 'individual',
+                class_status: 'scheduled',
+                payment_status: 'pending',
+                instructor_status: 'pending'
+            }
+
+            // Add optional fields only if they have values
+            if (formData.notes) assignment.notes = formData.notes
+            if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                assignment.booking_id = formData.booking_id.trim()
+            }
+            if (formData.client_name) assignment.client_name = formData.client_name
+            if (formData.client_email) assignment.client_email = formData.client_email
+
+            return assignment
+        })
     }
 
     private static async createPackageAssignment(formData: FormData, packages: Package[], studentCount?: number) {

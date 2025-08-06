@@ -279,16 +279,50 @@ export const BookingSelector = ({
                                                 <span className="font-medium">Class:</span> {booking.class_name || 'Unknown'}
                                             </div>
 
-                                            {/* Preferred date/time */}
-                                            {(booking.class_date || booking.class_time) && (
-                                                <div className="flex items-center text-sm text-gray-600">
-                                                    <Calendar className="w-3 h-3 mr-1" />
-                                                    <span className="mr-2">{formatDate(booking.class_date)}</span>
-                                                    {booking.class_time && (
-                                                        <>
-                                                            <Clock className="w-3 h-3 mr-1" />
-                                                            <span>{formatTime(booking.class_time)}</span>
-                                                        </>
+                                            {/* Preferred days and times */}
+                                            {(booking.preferred_days?.length || booking.preferred_times?.length || booking.class_date || booking.class_time) && (
+                                                <div className="text-sm text-gray-600">
+                                                    {/* Multiple preferred days and times */}
+                                                    {booking.preferred_days?.length && booking.preferred_times?.length ? (
+                                                        <div className="space-y-1">
+                                                            <div className="flex items-center">
+                                                                <Calendar className="w-3 h-3 mr-1" />
+                                                                <span className="font-medium">Preferred Days:</span>
+                                                            </div>
+                                                            <div className="ml-4 space-y-0.5">
+                                                                {booking.preferred_days.slice(0, 2).map((day, index) => (
+                                                                    <div key={index} className="flex items-center">
+                                                                        <span className="mr-2">{day}</span>
+                                                                        {booking.preferred_times?.[index] && (
+                                                                            <>
+                                                                                <Clock className="w-3 h-3 mr-1" />
+                                                                                <span>{formatTime(booking.preferred_times[index])}</span>
+                                                                            </>
+                                                                        )}
+                                                                        {booking.timezone && (
+                                                                            <span className="ml-1 text-xs text-gray-500">({booking.timezone})</span>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                                {booking.preferred_days.length > 2 && (
+                                                                    <div className="text-xs text-gray-500">
+                                                                        +{booking.preferred_days.length - 2} more...
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        /* Fallback to single date/time for backward compatibility */
+                                                        <div className="flex items-center">
+                                                            <Calendar className="w-3 h-3 mr-1" />
+                                                            <span className="mr-2">{formatDate(booking.class_date)}</span>
+                                                            {booking.class_time && (
+                                                                <>
+                                                                    <Clock className="w-3 h-3 mr-1" />
+                                                                    <span>{formatTime(booking.class_time)}</span>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
@@ -315,11 +349,39 @@ export const BookingSelector = ({
                                 <div><strong>Phone:</strong> {selectedBooking.phone}</div>
                             )}
                             <div><strong>Class:</strong> {selectedBooking.class_name || 'Unknown'}</div>
-                            {selectedBooking.class_date && (
-                                <div><strong>Date:</strong> {formatDate(selectedBooking.class_date)}</div>
-                            )}
-                            {selectedBooking.class_time && (
-                                <div><strong>Time:</strong> {formatTime(selectedBooking.class_time)}</div>
+                            
+                            {/* Preferred days and times */}
+                            {selectedBooking.preferred_days?.length && selectedBooking.preferred_times?.length ? (
+                                <div className="mt-2">
+                                    <div><strong>Preferred Days & Times:</strong></div>
+                                    <div className="ml-4 space-y-1 mt-1">
+                                        {selectedBooking.preferred_days.map((day, index) => (
+                                            <div key={index} className="flex items-center text-sm">
+                                                <Calendar className="w-3 h-3 mr-1" />
+                                                <span className="mr-2">{day}</span>
+                                                {selectedBooking.preferred_times?.[index] && (
+                                                    <>
+                                                        <Clock className="w-3 h-3 mr-1" />
+                                                        <span>{formatTime(selectedBooking.preferred_times[index])}</span>
+                                                    </>
+                                                )}
+                                                {selectedBooking.timezone && (
+                                                    <span className="ml-1 text-xs text-blue-500">({selectedBooking.timezone})</span>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Fallback to single date/time for backward compatibility */
+                                <>
+                                    {selectedBooking.class_date && (
+                                        <div><strong>Date:</strong> {formatDate(selectedBooking.class_date)}</div>
+                                    )}
+                                    {selectedBooking.class_time && (
+                                        <div><strong>Time:</strong> {formatTime(selectedBooking.class_time)}</div>
+                                    )}
+                                </>
                             )}
                             <div><strong>Status:</strong> 
                                 <span className={`ml-1 px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`}>

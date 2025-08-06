@@ -771,9 +771,13 @@ export const AssignmentForm = ({
                             </div>
 
                             {/* Package Assignment Method Selection */}
-                            {formData.assignment_type === 'package' && (
+                            {['package', 'monthly', 'crash_course'].includes(formData.assignment_type) && (
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-3">Package Assignment Method</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                                        {formData.assignment_type === 'monthly' ? 'Monthly Package Assignment Method' : 
+                                         formData.assignment_type === 'crash_course' ? 'Crash Course Assignment Method' : 
+                                         'Package Assignment Method'}
+                                    </label>
                                     <div className="space-y-4">
                                         <div className="border border-gray-200 rounded-lg p-4">
                                             <div className="flex items-center">
@@ -790,7 +794,12 @@ export const AssignmentForm = ({
                                                 </label>
                                             </div>
                                             <p className="ml-7 text-sm text-gray-500 mt-1">
-                                                Select days of the week and time, auto-generate until package classes are complete
+                                                {formData.assignment_type === 'monthly' 
+                                                    ? 'Select days of the week and time, auto-generate monthly package classes'
+                                                    : formData.assignment_type === 'crash_course'
+                                                    ? 'Select days of the week and time, auto-generate crash course classes'
+                                                    : 'Select days of the week and time, auto-generate until package classes are complete'
+                                                }
                                             </p>
 
                                             {/* Weekly Recurrence Configuration */}
@@ -845,7 +854,12 @@ export const AssignmentForm = ({
                                                 </label>
                                             </div>
                                             <p className="ml-7 text-sm text-gray-500 mt-1">
-                                                Manually pick each class date and time from calendar
+                                                {formData.assignment_type === 'monthly' 
+                                                    ? 'Manually pick each monthly package class date and time from calendar'
+                                                    : formData.assignment_type === 'crash_course'
+                                                    ? 'Manually pick each crash course class date and time from calendar'
+                                                    : 'Manually pick each class date and time from calendar'
+                                                }
                                             </p>
 
                                             {/* Manual Calendar Configuration */}

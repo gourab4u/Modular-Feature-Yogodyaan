@@ -60,10 +60,22 @@ const initialFormData: FormData = {
     booking_ids: [],
 
     // Weekly template assignment
-    selected_template_id: ''
+    selected_template_id: '',
+    
+    // Package validity constraint
+    validity_end_date: ''
 }
 
-export const useFormHandler = (conflictCheckCallback?: (formData: FormData) => void) => {
+export const useFormHandler = (
+    conflictCheckCallback?: (formData: FormData) => void,
+    packages?: Array<{
+        id: string
+        name: string
+        class_count?: number
+        validity_days?: number
+        [key: string]: any
+    }>
+) => {
     const [formData, setFormData] = useState<FormData>(initialFormData)
     const [errors, setErrors] = useState<ValidationErrors>({})
     const [conflictWarning, setConflictWarning] = useState<ConflictDetails | null>(null)
@@ -106,23 +118,105 @@ export const useFormHandler = (conflictCheckCallback?: (formData: FormData) => v
                 break
 
             case 'monthly':
-                if (formData.start_date && formData.course_duration_value && formData.course_duration_unit) {
-                    calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value, formData.course_duration_unit)
-                    totalClasses = Math.ceil(formData.course_duration_value * (formData.course_duration_unit === 'months' ? 1 : 0.25))
-                    description = `Monthly classes for ${formData.course_duration_value} ${formData.course_duration_unit} (${totalClasses} classes)`
+                if (formData.start_date) {
+                    // Try to get package data if package_id is selected
+                    const selectedPackage = packages?.find(p => p.id === formData.package_id)
+                    
+                    if (selectedPackage?.class_count && selectedPackage?.validity_days) {
+                        // Use package data for accurate calculation
+                        totalClasses = selectedPackage.class_count
+                        const validityEndDate = new Date(formData.start_date)
+                        validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
+                        calculatedEndDate = validityEndDate.toISOString().split('T')[0]
+                        description = `Monthly package: ${selectedPackage.name} (${totalClasses} classes within ${selectedPackage.validity_days} days)`
+                    } else if (formData.course_duration_value && formData.course_duration_unit) {
+                        // Fallback to duration-based calculation
+                        calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value, formData.course_duration_unit)
+                        
+                        if (formData.monthly_assignment_method === 'weekly_recurrence' && formData.weekly_days.length > 0) {
+                            // Calculate based on weekly recurrence: weeks × days per week
+                            const totalWeeks = formData.course_duration_unit === 'months' 
+                                ? formData.course_duration_value * 4 // Approximate 4 weeks per month
+                                : formData.course_duration_value // Already in weeks
+                            totalClasses = Math.ceil(totalWeeks * formData.weekly_days.length)
+                        } else {
+                            // Default calculation for manual calendar method
+                            totalClasses = Math.ceil(formData.course_duration_value * (formData.course_duration_unit === 'months' ? 4 : 1))
+                        }
+                        
+                        description = `Monthly classes for ${formData.course_duration_value} ${formData.course_duration_unit} (${totalClasses} classes)`
+                    }
                 }
                 break
 
             case 'crash_course':
-                if (formData.start_date && formData.course_duration_value && formData.course_duration_unit && formData.class_frequency) {
-                    calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value, formData.course_duration_unit)
-                    totalClasses = calculateCourseClasses(formData.course_duration_value, formData.course_duration_unit, formData.class_frequency)
-                    description = `${formData.class_frequency.charAt(0).toUpperCase() + formData.class_frequency.slice(1)} crash course for ${formData.course_duration_value} ${formData.course_duration_unit} (${totalClasses} classes)`
+                if (formData.start_date) {
+                    // Try to get package data if package_id is selected
+                    const selectedPackage = packages?.find(p => p.id === formData.package_id)
+                    
+                    if (selectedPackage?.class_count && selectedPackage?.validity_days) {
+                        // Use package data for accurate calculation
+                        totalClasses = selectedPackage.class_count
+                        const validityEndDate = new Date(formData.start_date)
+                        validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
+                        calculatedEndDate = validityEndDate.toISOString().split('T')[0]
+                        description = `Crash course package: ${selectedPackage.name} (${totalClasses} classes within ${selectedPackage.validity_days} days)`
+                    } else if (formData.course_duration_value && formData.course_duration_unit) {
+                        // Fallback to duration-based calculation
+                        calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value, formData.course_duration_unit)
+                        
+                        if (formData.monthly_assignment_method === 'weekly_recurrence' && formData.weekly_days.length > 0) {
+                            // Calculate based on weekly recurrence: weeks × days per week
+                            const totalWeeks = formData.course_duration_unit === 'months' 
+                                ? formData.course_duration_value * 4 // Approximate 4 weeks per month
+                                : formData.course_duration_value // Already in weeks
+                            totalClasses = Math.ceil(totalWeeks * formData.weekly_days.length)
+                            description = `Crash course with weekly recurrence for ${formData.course_duration_value} ${formData.course_duration_unit} (${totalClasses} classes)`
+                        } else if (formData.class_frequency) {
+                            // Legacy frequency-based calculation
+                            totalClasses = calculateCourseClasses(formData.course_duration_value, formData.course_duration_unit, formData.class_frequency)
+                            description = `${formData.class_frequency.charAt(0).toUpperCase() + formData.class_frequency.slice(1)} crash course for ${formData.course_duration_value} ${formData.course_duration_unit} (${totalClasses} classes)`
+                        } else {
+                            // Default calculation if no specific method
+                            totalClasses = Math.ceil(formData.course_duration_value * (formData.course_duration_unit === 'months' ? 4 : 1))
+                            description = `Crash course for ${formData.course_duration_value} ${formData.course_duration_unit} (${totalClasses} classes)`
+                        }
+                    }
                 }
                 break
 
             case 'package':
-                description = 'Package-based class assignment'
+                if (formData.start_date) {
+                    // Try to get package data if package_id is selected
+                    const selectedPackage = packages?.find(p => p.id === formData.package_id)
+                    
+                    if (selectedPackage?.class_count && selectedPackage?.validity_days) {
+                        // Use package data for accurate calculation
+                        totalClasses = selectedPackage.class_count
+                        const validityEndDate = new Date(formData.start_date)
+                        validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
+                        calculatedEndDate = validityEndDate.toISOString().split('T')[0]
+                        description = `Package assignment: ${selectedPackage.name} (${totalClasses} classes within ${selectedPackage.validity_days} days)`
+                    } else if (formData.course_duration_value && formData.course_duration_unit) {
+                        // Fallback to duration-based calculation
+                        calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value, formData.course_duration_unit)
+                        
+                        if (formData.monthly_assignment_method === 'weekly_recurrence' && formData.weekly_days.length > 0) {
+                            // Calculate based on weekly recurrence: weeks × days per week
+                            const totalWeeks = formData.course_duration_unit === 'months' 
+                                ? formData.course_duration_value * 4 // Approximate 4 weeks per month
+                                : formData.course_duration_value // Already in weeks
+                            totalClasses = Math.ceil(totalWeeks * formData.weekly_days.length)
+                        } else {
+                            // Default calculation for manual calendar method
+                            totalClasses = Math.ceil(formData.course_duration_value * (formData.course_duration_unit === 'months' ? 4 : 1))
+                        }
+                        
+                        description = `Package assignment for ${formData.course_duration_value} ${formData.course_duration_unit} (${totalClasses} classes)`
+                    } else {
+                        description = 'Package-based class assignment'
+                    }
+                }
                 break
 
             case 'adhoc':
@@ -138,7 +232,8 @@ export const useFormHandler = (conflictCheckCallback?: (formData: FormData) => v
             ...prev,
             end_date: calculatedEndDate,
             timeline_description: description,
-            total_classes: totalClasses
+            total_classes: totalClasses,
+            validity_end_date: calculatedEndDate
         }))
     }
 

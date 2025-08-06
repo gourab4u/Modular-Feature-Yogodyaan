@@ -43,7 +43,7 @@ export const AdaptiveBookingSelector: React.FC<AdaptiveBookingSelectorProps> = (
                 />
                 <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
                     <p className="text-sm text-blue-700">
-                        <strong>Multiple bookings allowed:</strong> You can select multiple bookings for this type of class.
+                        <strong>Multiple bookings allowed:</strong> You can select multiple bookings for {bookingType} classes.
                         Each booking represents one student.
                     </p>
                 </div>
@@ -62,7 +62,7 @@ export const AdaptiveBookingSelector: React.FC<AdaptiveBookingSelectorProps> = (
                 />
                 <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-md">
                     <p className="text-sm text-amber-700">
-                        <strong>Single booking only:</strong> Individual and private group classes can only be linked to one booking.
+                        <strong>Single booking only:</strong> {bookingType === 'individual' ? 'Individual booking type allows only one booking.' : 'Individual and private group classes can only be linked to one booking.'}
                     </p>
                 </div>
             </div>
@@ -72,15 +72,20 @@ export const AdaptiveBookingSelector: React.FC<AdaptiveBookingSelectorProps> = (
 
 // Helper function to determine if assignment type allows multiple bookings
 const shouldAllowMultipleBookings = (assignmentType: string, bookingType: string): boolean => {
-    // Individual classes and private groups: single booking only
-    if (assignmentType === 'adhoc' && (bookingType === 'individual' || bookingType === 'private_group')) {
+    // Individual booking type: single booking only regardless of assignment type
+    if (bookingType === 'individual') {
+        return false
+    }
+    
+    // Private group classes: single booking only (for adhoc assignments)
+    if (assignmentType === 'adhoc' && bookingType === 'private_group') {
         return false
     }
     
     // All other cases: multiple bookings allowed
     // - Weekly classes (public_group)
     // - Corporate bookings
-    // - Monthly packages
-    // - Crash courses
+    // - Monthly packages (corporate, private_group, public_group)
+    // - Crash courses (corporate, private_group, public_group)
     return true
 }

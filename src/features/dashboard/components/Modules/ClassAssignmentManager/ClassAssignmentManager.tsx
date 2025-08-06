@@ -53,7 +53,7 @@ export function ClassAssignmentManager() {
         handleDurationChange,
         validateForm,
         resetForm
-    } = useFormHandler(checkForConflicts)
+    } = useFormHandler(checkForConflicts, packages)
 
     // UI state
     const [showAssignForm, setShowAssignForm] = useState(false)
@@ -315,13 +315,23 @@ export function ClassAssignmentManager() {
             }
 
             if (!groups.has(groupKey)) {
+                // For package-based assignments, prefer package name over class type name
+                let displayName: string
+                if (assignment.package?.name) {
+                    displayName = assignment.package.name
+                } else if (assignment.class_type?.name) {
+                    displayName = assignment.class_type.name
+                } else {
+                    displayName = 'Unknown Class'
+                }
+
                 groups.set(groupKey, {
                     key: groupKey,
                     type: groupType,
                     assignments: [],
                     groupInfo: {
                         instructor_name: assignment.instructor_profile?.full_name || 'Unknown Instructor',
-                        class_type_name: assignment.class_type?.name || 'Unknown Class',
+                        class_type_name: displayName,
                         total_revenue: 0,
                         assignment_count: 0,
                         client_names: getClientNames(assignment),

@@ -14,6 +14,7 @@ export interface ClassAssignment {
     assigned_by: string
     schedule_type: string
     booking_type: 'individual' | 'corporate' | 'private_group' | 'public_group'
+    package_id?: string
     // Instructor status fields
     instructor_status?: 'pending' | 'accepted' | 'rejected'
     instructor_response_at?: string
@@ -24,6 +25,13 @@ export interface ClassAssignment {
         id: string
         name: string
         difficulty_level: string
+    }
+    package?: {
+        id: string
+        name: string
+        description?: string
+        class_count?: number
+        validity_days?: number
     }
     instructor_profile?: {
         user_id: string
@@ -112,6 +120,10 @@ export interface Booking {
     instructor: string
     class_date: string
     class_time: string
+    // Multiple preferred days and times from database
+    preferred_days?: string[] // Array of preferred days
+    preferred_times?: string[] // Array of preferred times
+    timezone?: string // Timezone for the preferred times
     first_name: string
     last_name: string
     email: string
@@ -186,6 +198,9 @@ export interface FormData {
 
     // Weekly template assignment
     selected_template_id: string
+    
+    // Package validity constraint
+    validity_end_date: string
 }
 
 export interface ValidationErrors {
