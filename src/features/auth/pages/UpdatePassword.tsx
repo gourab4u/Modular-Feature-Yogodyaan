@@ -10,13 +10,38 @@ export function UpdatePassword() {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        const checkSession = async () => {
-            const { data: { session }, error } = await supabase.auth.getSession();
-            if (!session || error) {
-                setError('Auth session missing! Please try resetting your password again.');
+        const init = async () => {
+            try {
+                // Establish session from URL (Supabase recovery flow)
+                const url = new URL(window.location.href);
+                const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+                const search = url.searchParams;
+
+                const access_token = hash.get('access_token') || search.get('access_token');
+                const refresh_token = hash.get('refresh_token') || search.get('refresh_token');
+                const code = search.get('code');
+
+                if (access_token && refresh_token) {
+                    const { error } = await supabase.auth.setSession({ access_token, refresh_token });
+                    if (error) throw error;
+                    // Clean URL after setting the session
+                    history.replaceState(null, '', url.pathname);
+                } else if (code) {
+                    // Some projects send a code param instead
+                    const { error } = await supabase.auth.exchangeCodeForSession(code);
+                    if (error) throw error;
+                    history.replaceState(null, '', url.pathname);
+                }
+
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) {
+                    setError('Auth session missing! Open the reset link from your email again.');
+                }
+            } catch (e: any) {
+                setError(e?.message || 'Unable to initialize password reset session.');
             }
         };
-        checkSession();
+        init();
     }, []);
 
     const handleUpdatePassword = async (e: React.FormEvent) => {

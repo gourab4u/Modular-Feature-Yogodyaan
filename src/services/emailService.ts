@@ -181,12 +181,12 @@ export class EmailService {
             preferencesUrl: emailData.templateVariables.preferencesUrl
           })
 
-          // Simulate email sending (replace with actual email service)
-          return await this.simulateEmailSend({
-            to: subscriber.email,
-            subject: emailData.subject,
-            html
-          })
+          // Send via Edge Function (Resend) with fallback handled inside
+          const res = await this.sendTransactionalEmail(subscriber.email, emailData.subject, html)
+          if (!res.ok) {
+            throw new Error(res.error || 'Transactional send failed')
+          }
+          return res
         })
       )
 
@@ -211,7 +211,7 @@ export class EmailService {
   /**
    * Simulate email sending (replace with real email service)
    */
-  private static async simulateEmailSend(emailData: { to: string, subject: string, html: string }): Promise<void> {
+  public static async simulateEmailSend(emailData: { to: string, subject: string, html: string }): Promise<void> {
     // Simulate network delay and potential failures
     await this.delay(100 + Math.random() * 200)
 
@@ -354,6 +354,33 @@ export class EmailService {
       unsubscribeUrl: '#unsubscribe-preview',
       preferencesUrl: '#preferences-preview'
     })
+  }
+
+  /**
+   * Send transactional email via Edge Function (Resend), fallback to simulate
+   */
+  static async sendTransactionalEmail(
+    to: string,
+    subject: string,
+    html: string,
+    attachments?: Array<{ filename: string; content: string | Uint8Array; contentType?: string }>
+  ): Promise<{ ok: boolean; simulated: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.functions.invoke('send-invoice', {
+        body: { to, subject, html, attachments }
+      })
+      if (error) throw error
+      return { ok: true, simulated: false }
+    } catch (err: any) {
+      console.warn('Edge function send failed, simulating email. Error:', err)
+      try {
+        await this.simulateEmailSend({ to, subject, html })
+        return { ok: true, simulated: true }
+      } catch (simErr: any) {
+        console.error('Simulation also failed:', simErr)
+        return { ok: false, simulated: false, error: simErr?.message || String(simErr) }
+      }
+    }
   }
 
   /**

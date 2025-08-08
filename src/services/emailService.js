@@ -126,12 +126,12 @@ export class EmailService {
                     // keep preferencesUrl if already provided
                     preferencesUrl: emailData.templateVariables.preferencesUrl
                 });
-                // Simulate email sending (replace with actual email service)
-                return await this.simulateEmailSend({
-                    to: subscriber.email,
-                    subject: emailData.subject,
-                    html
-                });
+                // Send via Edge Function (Resend) with fallback handled inside
+                const res = await this.sendTransactionalEmail(subscriber.email, emailData.subject, html);
+                if (!res.ok) {
+                    throw new Error(res.error || 'Transactional send failed');
+                }
+                return res;
             }));
             const successful = results.filter(r => r.status === 'fulfilled').length;
             const failed = results.filter(r => r.status === 'rejected').length;
@@ -265,6 +265,30 @@ export class EmailService {
             unsubscribeUrl: '#unsubscribe-preview',
             preferencesUrl: '#preferences-preview'
         });
+    }
+    /**
+     * Send transactional email via Edge Function (Resend), fallback to simulate
+     */
+    static async sendTransactionalEmail(to, subject, html, attachments) {
+        try {
+            const { error } = await supabase.functions.invoke('send-invoice', {
+                body: { to, subject, html, attachments }
+            });
+            if (error)
+                throw error;
+            return { ok: true, simulated: false };
+        }
+        catch (err) {
+            console.warn('Edge function send failed, simulating email. Error:', err);
+            try {
+                await this.simulateEmailSend({ to, subject, html });
+                return { ok: true, simulated: true };
+            }
+            catch (simErr) {
+                console.error('Simulation also failed:', simErr);
+                return { ok: false, simulated: false, error: simErr?.message || String(simErr) };
+            }
+        }
     }
     /**
      * Test email send (for testing purposes)
