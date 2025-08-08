@@ -14,6 +14,7 @@ import { ProtectedRoute } from './features/auth/components/ProtectedRoute';
 // Dashboard component - new import
 import UniversalDashboard from './features/dashboard/components/UniversalDashboard';
 // Page imports - updated paths
+import NewArticlePage from './features/articles/pages/NewArticlePage';
 import { AuthCallback } from './features/auth/components/AuthCallback';
 import { Login } from './features/auth/pages/Login';
 import { ResetPassword } from './features/auth/pages/ResetPassword';
@@ -112,6 +113,7 @@ function AppRoutes() {
               <Route path="/contact" element={<Contact />} />
               <Route path="/learning" element={<Learning />} />
               <Route path="/learning/:id" element={<ArticleView />} />
+              <Route path="/articles/new" element={<NewArticlePage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/update-password" element={<UpdatePassword />} />

@@ -85,12 +85,12 @@ const shouldAllowMultipleBookings = (assignmentType: string, bookingType: string
     if (bookingType === 'individual') {
         return false
     }
-    
+
     // Private group classes: single booking only (for adhoc assignments)
     if (assignmentType === 'adhoc' && bookingType === 'private_group') {
         return false
     }
-    
+
     // All other cases: multiple bookings allowed
     // - Weekly classes (public_group)
     // - Corporate bookings
@@ -205,6 +205,93 @@ const getCurrentUserId = async (): Promise<string> => {
     }
 }
 
+/**
+ * Rate helpers to read/write instructor_rates as per rules:
+ * - For all types except "package" (custom), try to pull rate from instructor_rates.
+ * - If not available and user enters an amount, insert a new row (do NOT update if one exists).
+ */
+const getScheduleTypeForRate = (assignmentType: string): string | undefined => {
+    switch (assignmentType) {
+        case 'adhoc':
+        case 'weekly':
+        case 'monthly':
+            return assignmentType
+        case 'crash_course':
+            return 'crash'
+        case 'package':
+            return undefined // custom: skip
+        default:
+            return assignmentType
+    }
+}
+
+type RateLookup = {
+    scheduleType: string
+    category: string
+    classTypeId?: string
+    packageId?: string
+}
+
+const findExistingRate = async ({ scheduleType, category, classTypeId, packageId }: RateLookup) => {
+    const today = new Date().toISOString().split('T')[0]
+    let q = supabase
+        .from('instructor_rates')
+        .select('*')
+        .eq('schedule_type', scheduleType)
+        .eq('category', category)
+        .eq('is_active', true)
+        .lte('effective_from', today)
+        .or(`effective_until.is.null,effective_until.gte.${today}`)
+
+    if (classTypeId) {
+        // @ts-ignore
+        q = q.eq('class_type_id', classTypeId).is('package_id', null)
+    } else if (packageId) {
+        // @ts-ignore
+        q = q.eq('package_id', packageId).is('class_type_id', null)
+    } else {
+        // @ts-ignore
+        q = q.is('class_type_id', null).is('package_id', null)
+    }
+
+    const { data, error } = await q.order('created_at', { ascending: false }).limit(1).single()
+    if (error && error.code !== 'PGRST116') throw error
+    return data
+}
+
+const ensureInstructorRateIfMissing = async (
+    assignmentType: string,
+    category: string,
+    amount: number,
+    classTypeId?: string,
+    packageId?: string
+) => {
+    const scheduleType = getScheduleTypeForRate(assignmentType)
+    if (!scheduleType) return // skip custom package type
+    if (!amount || amount <= 0) return
+
+    const existing = await findExistingRate({ scheduleType, category, classTypeId, packageId })
+    if (existing) return // do not update existing as per requirement
+
+    const created_by = await getCurrentUserId()
+
+    const payload: any = {
+        schedule_type: scheduleType,
+        category,
+        rate_amount: amount,
+        created_by,
+        is_active: true
+    }
+    if (classTypeId) payload.class_type_id = classTypeId
+    if (packageId) payload.package_id = packageId
+
+    const { error } = await supabase.from('instructor_rates').insert([payload])
+    // Ignore unique violation if concurrent insert happened
+    if (error && error.code !== '23505') {
+        console.warn('Failed to insert instructor rate:', error)
+    }
+}
+
 export class AssignmentCreationService {
     static async createAssignment(formData: FormData, packages: Package[], studentCount?: number) {
         switch (formData.assignment_type) {
@@ -274,6 +361,15 @@ export class AssignmentCreationService {
         if (isNaN(formData.payment_amount) || formData.payment_amount < 0) {
             throw new Error('Payment amount must be a valid positive number')
         }
+
+        // Ensure baseline instructor rate exists when missing (non-custom)
+        await ensureInstructorRateIfMissing(
+            'adhoc',
+            formData.booking_type || 'individual',
+            formData.payment_amount,
+            formData.class_type_id,
+            undefined
+        )
 
         // Calculate payment amount using centralized logic
         const paymentAmount = this.calculatePaymentAmount(formData, 'adhoc', 1, studentCount)
@@ -390,6 +486,15 @@ export class AssignmentCreationService {
 
         if (updateError) throw updateError
 
+        // Ensure baseline instructor rate exists for weekly (template)
+        await ensureInstructorRateIfMissing(
+            'weekly',
+            formData.booking_type || 'public_group',
+            formData.payment_amount,
+            template.class_type_id,
+            undefined
+        )
+
         // Create weekly assignments based on the template
         const assignments = await this.generateWeeklyAssignments(
             formData,
@@ -434,6 +539,15 @@ export class AssignmentCreationService {
             .insert([scheduleData])
 
         if (scheduleError) throw scheduleError
+
+        // Ensure baseline instructor rate exists for weekly (new schedule)
+        await ensureInstructorRateIfMissing(
+            'weekly',
+            formData.booking_type || 'public_group',
+            formData.payment_amount,
+            formData.class_type_id,
+            undefined
+        )
 
         // Generate weekly assignments
         const assignments = await this.generateWeeklyAssignments(
@@ -525,6 +639,15 @@ export class AssignmentCreationService {
         // Calculate per-class amount based on payment type
         perClassAmount = this.calculatePaymentAmount(formData, 'monthly', undefined, studentCount)
 
+        // Ensure baseline instructor rate exists for monthly (package-based)
+        await ensureInstructorRateIfMissing(
+            'monthly',
+            formData.booking_type || 'individual',
+            formData.payment_amount,
+            undefined,
+            formData.package_id
+        )
+
         if (formData.monthly_assignment_method === 'weekly_recurrence') {
             assignments.push(...await this.generateWeeklyRecurrenceAssignments(formData, perClassAmount))
         } else {
@@ -572,7 +695,7 @@ export class AssignmentCreationService {
 
         // Sort selected days to ensure proper chronological order
         const sortedWeeklyDays = [...formData.weekly_days].sort((a, b) => a - b)
-        
+
         // Continue creating assignments until we hit the class count or end date
         const startDate = new Date(formData.start_date)
         const validityEndDate = formData.validity_end_date ? new Date(formData.validity_end_date) : null
@@ -681,9 +804,18 @@ export class AssignmentCreationService {
         }
 
         const assignments = []
-        
+
         // Calculate per-class amount based on payment type
         const perClassAmount = this.calculatePaymentAmount(formData, 'crash_course', selectedPackage.class_count, studentCount)
+
+        // Ensure baseline instructor rate exists for crash course (package-based)
+        await ensureInstructorRateIfMissing(
+            'crash_course',
+            formData.booking_type || 'individual',
+            formData.payment_amount,
+            undefined,
+            formData.package_id
+        )
 
         if (formData.monthly_assignment_method === 'weekly_recurrence') {
             // Use crash course specific weekly recurrence method
@@ -698,7 +830,7 @@ export class AssignmentCreationService {
                 selectedPackage.class_count,
                 'weekly'
             )
-            
+
             const currentUserId = await getCurrentUserId()
             assignments.push(...classDates.map(date => {
                 const assignment: any = {
@@ -880,7 +1012,7 @@ export class AssignmentCreationService {
 
         // Use package class count, not formData.total_classes
         const targetClassCount = selectedPackage.class_count
-        
+
         // Calculate validity end date from start date + validity days
         let validityEndDate: Date | null = null
         if (selectedPackage.validity_days) {
@@ -890,7 +1022,7 @@ export class AssignmentCreationService {
 
         // Sort selected days to ensure proper chronological order
         const sortedWeeklyDays = [...formData.weekly_days].sort((a, b) => a - b)
-        
+
         console.log(`Package assignment: Target ${targetClassCount} classes for days: ${sortedWeeklyDays.map(d => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')}`)
 
         // Continue creating assignments until we hit the package class count or end date
@@ -971,7 +1103,7 @@ export class AssignmentCreationService {
 
         // Use package class count, not formData.total_classes
         const targetClassCount = selectedPackage.class_count
-        
+
         // Calculate validity end date from start date + validity days
         let validityEndDate: Date | null = null
         if (selectedPackage.validity_days) {

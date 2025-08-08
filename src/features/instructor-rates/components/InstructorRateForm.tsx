@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { InstructorRate, CATEGORY_TYPES } from '../types/rate';
 import { useClassTypesAndPackages } from '../hooks/useClassTypesAndPackages';
+import { CATEGORY_TYPES, InstructorRate } from '../types/rate';
 
 interface InstructorRateFormProps {
   onSubmit: (rate: Omit<InstructorRate, 'id' | 'created_by'>) => void;
@@ -9,7 +9,7 @@ interface InstructorRateFormProps {
 
 export const InstructorRateForm: React.FC<InstructorRateFormProps> = ({ onSubmit, existingRate }) => {
   const { classTypes, packages, loading: dataLoading } = useClassTypesAndPackages();
-  
+
   const [rateType, setRateType] = useState<'class_type' | 'package'>(
     existingRate?.class_type_id ? 'class_type' : 'package'
   );
@@ -26,7 +26,7 @@ export const InstructorRateForm: React.FC<InstructorRateFormProps> = ({ onSubmit
       // For class types, typically adhoc or weekly
       setScheduleType('adhoc');
       setCategory('individual'); // Default for class types
-      
+
       // Auto-fill rate amount from class type price
       if (selectedClassType) {
         setRateAmount(selectedClassType.price);
@@ -68,6 +68,10 @@ export const InstructorRateForm: React.FC<InstructorRateFormProps> = ({ onSubmit
   const [effectiveUntil, setEffectiveUntil] = useState(existingRate?.effective_until || '');
   const [isActive, setIsActive] = useState(existingRate?.is_active ?? true);
 
+  // Base package price for suggestions (when a package is selected)
+  const selectedPackageForSuggestions = packages.find((pkg) => pkg.id === packageId);
+  const basePackagePrice = selectedPackageForSuggestions?.price || 0;
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const rateData: Omit<InstructorRate, 'id' | 'created_by'> = {
@@ -78,7 +82,7 @@ export const InstructorRateForm: React.FC<InstructorRateFormProps> = ({ onSubmit
       rate_amount: rateAmount,
       rate_amount_usd: rateAmountUsd,
       effective_from: effectiveFrom,
-      effective_until: effectiveUntil,
+      ...(effectiveUntil ? { effective_until: effectiveUntil } : {}),
       is_active: isActive,
     };
     onSubmit(rateData);
@@ -170,9 +174,8 @@ export const InstructorRateForm: React.FC<InstructorRateFormProps> = ({ onSubmit
           id="scheduleType"
           value={scheduleType}
           onChange={(e) => setScheduleType(e.target.value)}
-          className={`mt-1 block w-full pl-3 pr-10 py-2 text-base focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md ${
-            (classTypeId || packageId) ? 'bg-blue-50 border-blue-300' : 'border-gray-300'
-          }`}
+          className={`mt-1 block w-full pl-3 pr-10 py-2 text-base focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md ${(classTypeId || packageId) ? 'bg-blue-50 border-blue-300' : 'border-gray-300'
+            }`}
           disabled={!!(classTypeId || packageId)}
         >
           <option value="adhoc">Ad-hoc / One-time</option>
@@ -191,17 +194,16 @@ export const InstructorRateForm: React.FC<InstructorRateFormProps> = ({ onSubmit
           id="category"
           value={category}
           onChange={(e) => setCategory(e.target.value as any)}
-          className={`mt-1 block w-full pl-3 pr-10 py-2 text-base focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md ${
-            packageId ? 'bg-blue-50 border-blue-300' : 'border-gray-300'
-          }`}
+          className={`mt-1 block w-full pl-3 pr-10 py-2 text-base focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md ${packageId ? 'bg-blue-50 border-blue-300' : 'border-gray-300'
+            }`}
           disabled={!!packageId}
         >
           {CATEGORY_TYPES.map((type) => (
             <option key={type} value={type}>
               {type === 'individual' ? 'Individual' :
-               type === 'corporate' ? 'Corporate' :
-               type === 'private_group' ? 'Private Group' :
-               type === 'public_group' ? 'Public Group' : type}
+                type === 'corporate' ? 'Corporate' :
+                  type === 'private_group' ? 'Private Group' :
+                    type === 'public_group' ? 'Public Group' : type}
             </option>
           ))}
         </select>
@@ -216,11 +218,29 @@ export const InstructorRateForm: React.FC<InstructorRateFormProps> = ({ onSubmit
           id="rateAmount"
           value={rateAmount}
           onChange={(e) => setRateAmount(parseFloat(e.target.value))}
-          className={`mt-1 block w-full shadow-sm sm:text-sm rounded-md ${
-            (classTypeId || packageId) ? 'bg-blue-50 border-blue-300' : 'border-gray-300'
-          }`}
+          className={`mt-1 block w-full shadow-sm sm:text-sm rounded-md ${(classTypeId || packageId) ? 'bg-blue-50 border-blue-300' : 'border-gray-300'
+            }`}
           required
         />
+        {packageId && basePackagePrice > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-gray-500">Suggested:</span>
+            {([25, 20, 15] as const).map((pct) => {
+              const suggested = Math.round(basePackagePrice * (1 - pct / 100));
+              return (
+                <button
+                  key={pct}
+                  type="button"
+                  onClick={() => setRateAmount(suggested)}
+                  className="px-2.5 py-1 text-xs rounded-full bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+                  title={`${pct}% below package price`}
+                >
+                  -{pct}% (₹{suggested})
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div>

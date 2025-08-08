@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../../shared/lib/supabase'
+import NewArticlePage from '../../../articles/pages/NewArticlePage'
 import { useAuth } from '../../../auth/contexts/AuthContext'
-import { ArticleEditor } from './ArticleEditor'
 
 interface Article {
   id: string
@@ -49,7 +49,6 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
   const [loading, setLoading] = useState(true)
   const [showEditor, setShowEditor] = useState(false)
   const [editingArticle, setEditingArticle] = useState<Article | null>(null)
-  const [saving, setSaving] = useState(false)
   const [selectedArticleForFeedback, setSelectedArticleForFeedback] = useState<Article | null>(null)
   const [moderationLogs, setModerationLogs] = useState<ModerationLog[]>([])
   const [showFeedbackModal, setShowFeedbackModal] = useState(false)
@@ -124,7 +123,6 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
 
   const handleSaveArticle = async (articleData: Partial<Article>) => {
     try {
-      setSaving(true)
 
       if (editingArticle) {
         // Update existing article
@@ -170,7 +168,6 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
       console.error('Error saving article:', error)
       alert('Failed to save article')
     } finally {
-      setSaving(false)
     }
   }
 
@@ -278,18 +275,24 @@ export function ArticleManagement({ authorId }: ArticleManagementProps) {
   }
 
   if (showEditor) {
+    const normalizedArticle = editingArticle ? {
+      ...editingArticle,
+      image_url: editingArticle.image_url || ''
+    } as any : undefined;
+
     return (
-      <ArticleEditor
-        article={editingArticle ? {
-          ...editingArticle,
-          image_url: editingArticle.image_url || ''
-        } as any : undefined}
+      <NewArticlePage
+        article={normalizedArticle}
         onSave={handleSaveArticle}
         onCancel={() => {
           setEditingArticle(null)
           setShowEditor(false)
         }}
-        loading={saving}
+        onBack={() => {
+          setEditingArticle(null)
+          setShowEditor(false)
+        }}
+        backToPath="/dashboard/article_management"
       />
     )
   }

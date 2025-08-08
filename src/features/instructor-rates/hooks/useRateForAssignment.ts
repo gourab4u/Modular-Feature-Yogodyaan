@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../../shared/lib/supabase';
-import { InstructorRate, CategoryType } from '../types/rate';
+import { CategoryType, InstructorRate } from '../types/rate';
 
 export interface RateForAssignment {
   rate: InstructorRate | null;
@@ -15,7 +15,8 @@ export interface RateForAssignment {
 export const useRateForAssignment = (
   scheduleType?: string,
   category?: CategoryType,
-  classTypeId?: string
+  classTypeId?: string,
+  packageId?: string
 ): RateForAssignment => {
   const [rate, setRate] = useState<InstructorRate | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,35 +33,47 @@ export const useRateForAssignment = (
         setLoading(true);
         setError(null);
 
-        // Build query to find matching rate
-        let query = supabase
-          .from('instructor_rates')
-          .select('*')
-          .eq('schedule_type', scheduleType)
-          .eq('category', category)
-          .eq('is_active', true);
-
-        // Add date filtering to get current rates
         const today = new Date().toISOString().split('T')[0];
-        query = query
-          .lte('effective_from', today)
-          .or(`effective_until.is.null,effective_until.gte.${today}`);
 
-        // If class type is specified, prefer rates for that class type
+        // Helper to run a concrete query
+        const runQuery = async (filters: Array<{ k: string; v: any; isNull?: boolean }>) => {
+          let q = supabase
+            .from('instructor_rates')
+            .select('*')
+            .eq('schedule_type', scheduleType)
+            .eq('category', category)
+            .lte('effective_from', today)
+            .or(`effective_until.is.null,effective_until.gte.${today}`)
+            .eq('is_active', true);
+
+          for (const f of filters) {
+            if (f.isNull) {
+              // @ts-ignore
+              q = q.is(f.k, null);
+            } else {
+              // @ts-ignore
+              q = q.eq(f.k, f.v);
+            }
+          }
+          const { data, error } = await q.order('created_at', { ascending: false }).limit(1).single();
+          if (error && error.code !== 'PGRST116') throw error; // ignore "no rows" error
+          return data as InstructorRate | null;
+        };
+
+        // Priority: exact class_type -> exact package -> generic (both null)
+        let found: InstructorRate | null = null;
+
         if (classTypeId) {
-          query = query.order('class_type_id', { ascending: false }); // NULL values last
+          found = await runQuery([{ k: 'class_type_id', v: classTypeId }, { k: 'package_id', v: null, isNull: true }]);
+        } else if (packageId) {
+          found = await runQuery([{ k: 'package_id', v: packageId }, { k: 'class_type_id', v: null, isNull: true }]);
         }
 
-        // Order by creation date to get the most recent rate
-        query = query.order('created_at', { ascending: false });
-
-        const { data, error } = await query.limit(1).single();
-
-        if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-          throw error;
+        if (!found) {
+          found = await runQuery([{ k: 'class_type_id', v: null, isNull: true }, { k: 'package_id', v: null, isNull: true }]);
         }
 
-        setRate(data || null);
+        setRate(found || null);
       } catch (err) {
         setError(err);
         setRate(null);
@@ -70,7 +83,7 @@ export const useRateForAssignment = (
     };
 
     fetchRate();
-  }, [scheduleType, category, classTypeId]);
+  }, [scheduleType, category, classTypeId, packageId]);
 
   return { rate, loading, error };
 };

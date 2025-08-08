@@ -1,9 +1,11 @@
 import { AlertTriangle, Calendar, IndianRupee, Save, X } from 'lucide-react'
-import { FormData, ValidationErrors, ConflictDetails, ClassType, Package, UserProfile, Booking } from '../types'
+import { useEffect } from 'react'
+import { useRateForAssignment } from '../../../../../instructor-rates/hooks/useRateForAssignment'
+import { Booking, ClassType, ConflictDetails, FormData, Package, UserProfile, ValidationErrors } from '../types'
 import { getDurationOptions } from '../utils'
+import { AdaptiveBookingSelector } from './AdaptiveBookingSelector'
 import { Button } from './Button'
 import { LoadingSpinner } from './LoadingSpinner'
-import { AdaptiveBookingSelector } from './AdaptiveBookingSelector'
 import { ManualCalendarSelector } from './ManualCalendarSelector'
 
 interface AssignmentFormProps {
@@ -41,30 +43,61 @@ export const AssignmentForm = ({
     onTimeChange,
     onDurationChange
 }: AssignmentFormProps) => {
-    
+
     // Calculate student count based on selected booking(s)
     const calculateStudentCount = () => {
         // If no booking is selected, default to 1 student
         if (!formData.booking_id || formData.booking_id.trim() === '') {
             return 1;
         }
-        
+
         // Find the selected booking
         const selectedBooking = bookings.find(booking => booking.id === formData.booking_id);
         if (!selectedBooking) {
             return 1; // Fallback if booking not found
         }
-        
+
         // For group bookings, check if there's any participant-related field
         // Note: Currently each booking represents 1 student
         // In the future, if group bookings need multiple participants,
         // a participants_count field can be added to the Booking interface
-        
+
         // For now, each booking = 1 student
         return 1;
     };
-    
+
     const studentCount = calculateStudentCount();
+
+    // Derive instructor rate lookup parameters (exclude custom "package" type)
+    const scheduleTypeForRate =
+        formData.assignment_type === 'crash_course'
+            ? 'crash'
+            : (formData.assignment_type === 'package' ? undefined : formData.assignment_type)
+
+    const categoryForRate = formData.booking_type as any
+    const classTypeIdForRate =
+        (formData.assignment_type === 'adhoc' || formData.assignment_type === 'weekly')
+            ? formData.class_type_id
+            : undefined
+    const packageIdForRate =
+        (formData.assignment_type === 'monthly' || formData.assignment_type === 'crash_course')
+            ? formData.package_id
+            : undefined
+
+    const { rate, loading: rateLoading } = useRateForAssignment(
+        scheduleTypeForRate as any,
+        categoryForRate,
+        classTypeIdForRate,
+        packageIdForRate
+    )
+
+    // Auto-fill from instructor_rates when available and user hasn't entered any amount yet
+    useEffect(() => {
+        if (rate && (!formData.payment_amount || formData.payment_amount <= 0)) {
+            onInputChange('payment_amount', rate.rate_amount)
+        }
+    }, [rate])
+
     if (!isVisible) return null
 
     const getFilteredPackages = () => {
@@ -124,11 +157,10 @@ export const AssignmentForm = ({
                                             />
                                             <label
                                                 htmlFor={type.value}
-                                                className={`block p-3 border rounded-lg cursor-pointer transition-colors ${
-                                                    formData.assignment_type === type.value
+                                                className={`block p-3 border rounded-lg cursor-pointer transition-colors ${formData.assignment_type === type.value
                                                         ? 'border-blue-500 bg-blue-50 text-blue-900'
                                                         : 'border-gray-200 hover:border-gray-300'
-                                                }`}
+                                                    }`}
                                             >
                                                 <div className="font-medium text-sm">{type.label}</div>
                                                 <div className="text-xs text-gray-500 mt-1">{type.desc}</div>
@@ -218,9 +250,9 @@ export const AssignmentForm = ({
                             {!usingTemplate && (showPackageSelector || showClassTypeSelector) && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700">
-                                        {showPackageSelector ? 
+                                        {showPackageSelector ?
                                             (formData.assignment_type === 'crash_course' ? 'Crash Course Package' :
-                                             formData.assignment_type === 'monthly' ? 'Regular Package' : 'Package') :
+                                                formData.assignment_type === 'monthly' ? 'Regular Package' : 'Package') :
                                             'Class Type'
                                         }
                                         <span className="text-red-500"> *</span>
@@ -403,7 +435,7 @@ export const AssignmentForm = ({
                                                     Use Existing Weekly Template
                                                 </label>
                                             </div>
-                                            
+
                                             {formData.monthly_assignment_method === 'weekly_recurrence' && (
                                                 <div className="mt-3">
                                                     <select
@@ -562,30 +594,25 @@ export const AssignmentForm = ({
 
                             {/* Conflict Warning */}
                             {conflictWarning && (
-                                <div className={`p-4 rounded-md border ${
-                                    conflictWarning.severity === 'error' 
-                                        ? 'bg-red-50 border-red-200' 
+                                <div className={`p-4 rounded-md border ${conflictWarning.severity === 'error'
+                                        ? 'bg-red-50 border-red-200'
                                         : 'bg-yellow-50 border-yellow-200'
-                                }`}>
+                                    }`}>
                                     <div className="flex items-start">
-                                        <AlertTriangle className={`w-5 h-5 mt-0.5 mr-3 ${
-                                            conflictWarning.severity === 'error' ? 'text-red-500' : 'text-yellow-500'
-                                        }`} />
+                                        <AlertTriangle className={`w-5 h-5 mt-0.5 mr-3 ${conflictWarning.severity === 'error' ? 'text-red-500' : 'text-yellow-500'
+                                            }`} />
                                         <div className="flex-1">
-                                            <h4 className={`font-medium ${
-                                                conflictWarning.severity === 'error' ? 'text-red-800' : 'text-yellow-800'
-                                            }`}>
+                                            <h4 className={`font-medium ${conflictWarning.severity === 'error' ? 'text-red-800' : 'text-yellow-800'
+                                                }`}>
                                                 {conflictWarning.severity === 'error' ? 'Scheduling Conflict' : 'Warning'}
                                             </h4>
-                                            <p className={`mt-1 text-sm ${
-                                                conflictWarning.severity === 'error' ? 'text-red-700' : 'text-yellow-700'
-                                            }`}>
+                                            <p className={`mt-1 text-sm ${conflictWarning.severity === 'error' ? 'text-red-700' : 'text-yellow-700'
+                                                }`}>
                                                 {conflictWarning.message}
                                             </p>
                                             {conflictWarning.suggestions && conflictWarning.suggestions.length > 0 && (
-                                                <ul className={`mt-2 text-sm list-disc list-inside ${
-                                                    conflictWarning.severity === 'error' ? 'text-red-700' : 'text-yellow-700'
-                                                }`}>
+                                                <ul className={`mt-2 text-sm list-disc list-inside ${conflictWarning.severity === 'error' ? 'text-red-700' : 'text-yellow-700'
+                                                    }`}>
                                                     {conflictWarning.suggestions.map((suggestion, index) => (
                                                         <li key={index}>{suggestion}</li>
                                                     ))}
@@ -637,6 +664,17 @@ export const AssignmentForm = ({
                                         placeholder="0.00"
                                     />
                                     {errors.payment_amount && <p className="text-red-500 text-sm mt-1">{errors.payment_amount}</p>}
+                                    {formData.assignment_type !== 'package' && (
+                                        <p className="text-xs mt-1">
+                                            {rateLoading
+                                                ? 'Checking instructor rate...'
+                                                : (rate
+                                                    ? <span className="text-green-600">Auto-filled from instructor rates. You may override for this assignment; the rate table will not be updated.</span>
+                                                    : <span className="text-amber-600">No instructor rate found; the entered amount will be saved as a new rate for this combination.</span>
+                                                )
+                                            }
+                                        </p>
+                                    )}
                                 </div>
                             </div>
 
@@ -726,7 +764,7 @@ export const AssignmentForm = ({
                                         <div>
                                             <span className="text-green-700">Duration:</span>
                                             <span className="font-medium ml-2">
-                                                {formData.assignment_type === 'weekly' 
+                                                {formData.assignment_type === 'weekly'
                                                     ? `Until ${formData.end_date ? new Date(formData.end_date).toLocaleDateString() : 'end of year'}`
                                                     : `${formData.course_duration_value} ${formData.course_duration_unit}`
                                                 }
@@ -774,9 +812,9 @@ export const AssignmentForm = ({
                             {['package', 'monthly', 'crash_course'].includes(formData.assignment_type) && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                                        {formData.assignment_type === 'monthly' ? 'Monthly Package Assignment Method' : 
-                                         formData.assignment_type === 'crash_course' ? 'Crash Course Assignment Method' : 
-                                         'Package Assignment Method'}
+                                        {formData.assignment_type === 'monthly' ? 'Monthly Package Assignment Method' :
+                                            formData.assignment_type === 'crash_course' ? 'Crash Course Assignment Method' :
+                                                'Package Assignment Method'}
                                     </label>
                                     <div className="space-y-4">
                                         <div className="border border-gray-200 rounded-lg p-4">
@@ -794,11 +832,11 @@ export const AssignmentForm = ({
                                                 </label>
                                             </div>
                                             <p className="ml-7 text-sm text-gray-500 mt-1">
-                                                {formData.assignment_type === 'monthly' 
+                                                {formData.assignment_type === 'monthly'
                                                     ? 'Select days of the week and time, auto-generate monthly package classes'
                                                     : formData.assignment_type === 'crash_course'
-                                                    ? 'Select days of the week and time, auto-generate crash course classes'
-                                                    : 'Select days of the week and time, auto-generate until package classes are complete'
+                                                        ? 'Select days of the week and time, auto-generate crash course classes'
+                                                        : 'Select days of the week and time, auto-generate until package classes are complete'
                                                 }
                                             </p>
 
@@ -823,11 +861,10 @@ export const AssignmentForm = ({
                                                                         }}
                                                                         className="sr-only"
                                                                     />
-                                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border ${
-                                                                        formData.weekly_days.includes(index)
+                                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium border ${formData.weekly_days.includes(index)
                                                                             ? 'bg-blue-500 text-white border-blue-500'
                                                                             : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                                                                    }`}>
+                                                                        }`}>
                                                                         {day}
                                                                     </div>
                                                                 </label>
@@ -854,11 +891,11 @@ export const AssignmentForm = ({
                                                 </label>
                                             </div>
                                             <p className="ml-7 text-sm text-gray-500 mt-1">
-                                                {formData.assignment_type === 'monthly' 
+                                                {formData.assignment_type === 'monthly'
                                                     ? 'Manually pick each monthly package class date and time from calendar'
                                                     : formData.assignment_type === 'crash_course'
-                                                    ? 'Manually pick each crash course class date and time from calendar'
-                                                    : 'Manually pick each class date and time from calendar'
+                                                        ? 'Manually pick each crash course class date and time from calendar'
+                                                        : 'Manually pick each class date and time from calendar'
                                                 }
                                             </p>
 
