@@ -222,14 +222,13 @@ export function ClassAssignmentManager() {
                     groupType = 'weekly';
                     break;
                 case 'monthly':
-                    // Group by instructor + class type + client (monthly sessions for same client)
-                    groupKey = `monthly_${assignment.instructor_id}_${assignment.class_type_id}_${getClientNames(assignment) || 'unknown'}`;
+                    // Group by instructor + package (monthly sessions for same package should stay together)
+                    groupKey = `monthly_${assignment.instructor_id}_${assignment.package_id || assignment.class_type_id || 'unknown'}`;
                     groupType = 'monthly';
                     break;
                 case 'crash':
-                    // Group by instructor + class type + client + assigned date range (crash courses typically span days/weeks)
-                    const datePrefix = assignment.date.substring(0, 7); // Group by year-month
-                    groupKey = `crash_${assignment.instructor_id}_${assignment.class_type_id}_${getClientNames(assignment) || 'unknown'}_${datePrefix}`;
+                    // Group by instructor + package (crash courses should stay together regardless of dates or bookings)
+                    groupKey = `crash_${assignment.instructor_id}_${assignment.package_id || assignment.class_type_id || 'unknown'}`;
                     groupType = 'crash_course';
                     break;
                 case 'adhoc':

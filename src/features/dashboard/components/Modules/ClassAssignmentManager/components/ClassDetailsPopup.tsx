@@ -1,6 +1,7 @@
 import { X, Calendar, Clock, User, IndianRupee, CheckSquare } from 'lucide-react'
-import { ClassAssignment, getClientNames, getClientEmails, getBookingIds } from '../types'
+import { ClassAssignment, getBookingIds, getPrimaryClientDisplay } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
+import { ClientDisplay } from './ClientDisplay'
 
 interface ClassDetailsPopupProps {
     assignment: ClassAssignment | null
@@ -69,13 +70,12 @@ export const ClassDetailsPopup = ({ assignment, isVisible, onClose, onEdit }: Cl
                                     )}
                                 </div>
 
-                                {getClientNames(assignment) && (
+                                {getPrimaryClientDisplay(assignment) && (
                                     <div>
                                         <h3 className="text-sm font-medium text-gray-500 mb-2">Client Information</h3>
-                                        <p className="text-gray-900">{getClientNames(assignment)}</p>
-                                        {getClientEmails(assignment) && (
-                                            <p className="text-sm text-gray-600">{getClientEmails(assignment)}</p>
-                                        )}
+                                        <ClientDisplay 
+                                            assignment={assignment}
+                                        />
                                     </div>
                                 )}
                             </div>

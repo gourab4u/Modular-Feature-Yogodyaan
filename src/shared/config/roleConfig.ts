@@ -51,10 +51,9 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
     { id: 'business_settings', title: 'Business Settings', component: 'BusinessSettings', icon: 'settings', order: 8 },
     { id: 'booking_management', title: 'Class Bookings', component: 'BookingManagement', icon: 'calendar', order: 9 },
     { id: 'weekly_schedule', title: 'Weekly Schedule', component: 'WeeklySchedule', icon: 'schedule', order: 10 },
-    { id: 'financial_data', title: 'Financial Data', component: 'FinancialData', icon: 'bar-chart', order: 11 },
-    { id: 'form_submission', title: 'Form Submissions & Messages', component: 'FormSubmissions', icon: 'file-text', order: 12 },
-    { id: 'class_type_manager', title: 'Class & Package Manager', component: 'ClassTypeManager', icon: 'layers', order: 13 },
-    { id: 'newsletterManagement', title: 'NewsLetter Management', component: 'NewsletterManagement', icon: 'mail', order: 14 },
+    { id: 'form_submission', title: 'Form Submissions & Messages', component: 'FormSubmissions', icon: 'file-text', order: 11 },
+    { id: 'class_type_manager', title: 'Class & Package Manager', component: 'ClassTypeManager', icon: 'layers', order: 12 },
+    { id: 'newsletterManagement', title: 'NewsLetter Management', component: 'NewsletterManagement', icon: 'mail', order: 13 },
   ],
 
   admin: [
@@ -84,8 +83,7 @@ export const ROLE_MODULES: Record<UserRole, ModuleConfig[]> = {
   ],
 
   energy_exchange_lead: [
-    { id: 'financial_data', title: 'Financial Data', component: 'FinancialData', icon: 'bar-chart', order: 1 },
-    { id: 'transaction_management', title: 'Transactions', component: 'TransactionManagement', icon: 'credit-card', order: 2 }
+    { id: 'transaction_management', title: 'Transactions', component: 'TransactionManagement', icon: 'credit-card', order: 1 }
   ],
 
   sangha_guide: [

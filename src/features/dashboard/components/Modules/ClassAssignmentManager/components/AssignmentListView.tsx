@@ -1,8 +1,9 @@
 import { Calendar, Clock, IndianRupee, MapPin, User, Trash2, ChevronDown, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
-import { ClassAssignment, getClientNames } from '../types'
+import { ClassAssignment, getPrimaryClientDisplay } from '../types'
 import { formatDate, formatTime, getStatusStyle } from '../utils'
 import { LoadingSpinner } from './LoadingSpinner'
+import { ClientDisplay } from './ClientDisplay'
 
 interface AssignmentGroup {
     key: string
@@ -190,11 +191,11 @@ export const AssignmentListView = ({
                                                             {formatTime(assignment.start_time)} - {formatTime(assignment.end_time)}
                                                         </div>
                                                         {/* Client info - only show if different from group */}
-                                                        {getClientNames(assignment) && getClientNames(assignment) !== group.groupInfo.client_names && (
-                                                            <div className="flex items-center text-sm text-gray-600">
-                                                                <MapPin className="w-4 h-4 mr-1" />
-                                                                {getClientNames(assignment)}
-                                                            </div>
+                                                        {getPrimaryClientDisplay(assignment) && getPrimaryClientDisplay(assignment) !== group.groupInfo.client_names && (
+                                                            <ClientDisplay 
+                                                                assignment={assignment}
+                                                                className="mt-1"
+                                                            />
                                                         )}
                                                     </div>
                                                 </div>

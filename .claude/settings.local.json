@@ -16,7 +16,8 @@
       "Bash(psql:*)",
       "Bash(\"/c/Program Files/PostgreSQL/17/bin/psql\" --version)",
       "Bash(\"C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe\" \"postgresql://postgres:yogodyaan@db.iddvvefpwgwmgpyelzcv.supabase.co:5432/postgres\" -f migration_generic_rates.sql)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(mv:*)"
     ],
     "deny": []
   }

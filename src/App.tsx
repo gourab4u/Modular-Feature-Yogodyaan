@@ -16,6 +16,8 @@ import UniversalDashboard from './features/dashboard/components/UniversalDashboa
 // Page imports - updated paths
 import { AuthCallback } from './features/auth/components/AuthCallback';
 import { Login } from './features/auth/pages/Login';
+import { ResetPassword } from './features/auth/pages/ResetPassword';
+import { UpdatePassword } from './features/auth/pages/UpdatePassword';
 import { ArticleView } from './features/learning/pages/ArticleView';
 import { Learning } from './features/learning/pages/Learning';
 import { About } from './features/marketing/pages/About';
@@ -24,6 +26,7 @@ import { Contact } from './features/marketing/pages/Contact';
 import { Home } from './features/marketing/pages/Home';
 import { Services } from './features/marketing/pages/Services';
 import { Testimonials } from './features/marketing/pages/Testimonials';
+import Unsubscribe from './features/marketing/pages/Unsubscribe';
 import { BookClass } from './features/scheduling/pages/BookClass';
 import { BookCorporate } from './features/scheduling/pages/BookCorporate';
 import { BookOneOnOne } from './features/scheduling/pages/BookOneOnOne';
@@ -110,6 +113,8 @@ function AppRoutes() {
               <Route path="/learning" element={<Learning />} />
               <Route path="/learning/:id" element={<ArticleView />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/update-password" element={<UpdatePassword />} />
               <Route
                 path="/profile"
                 element={
@@ -124,6 +129,7 @@ function AppRoutes() {
               <Route path="/book/corporate" element={<BookCorporate />} />
               <Route path="/achievements" element={<Achievements />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/unsubscribe" element={<Unsubscribe />} />
             </Routes>
           </main>
           <Footer />

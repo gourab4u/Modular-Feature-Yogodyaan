@@ -46,7 +46,7 @@ const initialFormData: FormData = {
     monthly_assignment_method: 'weekly_recurrence',
 
     // Weekly recurrence fields
-    weekly_days: [1, 3, 5],
+    weekly_days: [],
 
     // Manual calendar selections
     manual_selections: [],
@@ -154,13 +154,20 @@ export const useFormHandler = (
                     // Try to get package data if package_id is selected
                     const selectedPackage = packages?.find(p => p.id === formData.package_id)
                     
-                    if (selectedPackage?.class_count && selectedPackage?.validity_days) {
-                        // Use package data for accurate calculation
+                    if (selectedPackage?.class_count) {
+                        // Always use package class count for crash courses when package is selected
                         totalClasses = selectedPackage.class_count
-                        const validityEndDate = new Date(formData.start_date)
-                        validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
-                        calculatedEndDate = validityEndDate.toISOString().split('T')[0]
-                        description = `Crash course package: ${selectedPackage.name} (${totalClasses} classes within ${selectedPackage.validity_days} days)`
+                        
+                        if (selectedPackage.validity_days) {
+                            const validityEndDate = new Date(formData.start_date)
+                            validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
+                            calculatedEndDate = validityEndDate.toISOString().split('T')[0]
+                            description = `Crash course package: ${selectedPackage.name} (${totalClasses} classes within ${selectedPackage.validity_days} days)`
+                        } else {
+                            // Use package class count even without validity_days
+                            calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value || 2, formData.course_duration_unit || 'weeks')
+                            description = `Crash course package: ${selectedPackage.name} (${totalClasses} classes)`
+                        }
                     } else if (formData.course_duration_value && formData.course_duration_unit) {
                         // Fallback to duration-based calculation
                         calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value, formData.course_duration_unit)
@@ -190,13 +197,19 @@ export const useFormHandler = (
                     // Try to get package data if package_id is selected
                     const selectedPackage = packages?.find(p => p.id === formData.package_id)
                     
-                    if (selectedPackage?.class_count && selectedPackage?.validity_days) {
-                        // Use package data for accurate calculation
+                    if (selectedPackage?.class_count) {
+                        // Always use package class count when available
                         totalClasses = selectedPackage.class_count
-                        const validityEndDate = new Date(formData.start_date)
-                        validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
-                        calculatedEndDate = validityEndDate.toISOString().split('T')[0]
-                        description = `Package assignment: ${selectedPackage.name} (${totalClasses} classes within ${selectedPackage.validity_days} days)`
+                        if (selectedPackage.validity_days) {
+                            const validityEndDate = new Date(formData.start_date)
+                            validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
+                            calculatedEndDate = validityEndDate.toISOString().split('T')[0]
+                            description = `Package assignment: ${selectedPackage.name} (${totalClasses} classes within ${selectedPackage.validity_days} days)`
+                        } else {
+                            // Use package class count even without validity_days
+                            calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value || 4, formData.course_duration_unit || 'weeks')
+                            description = `Package assignment: ${selectedPackage.name} (${totalClasses} classes)`
+                        }
                     } else if (formData.course_duration_value && formData.course_duration_unit) {
                         // Fallback to duration-based calculation
                         calculatedEndDate = calculateCourseEndDate(formData.start_date, formData.course_duration_value, formData.course_duration_unit)

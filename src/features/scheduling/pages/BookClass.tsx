@@ -162,7 +162,7 @@ export function BookClass() {
     try {
       const bookingData = {
         user_id: user?.id || null,
-        class_name: 'Private Group Class',
+        class_name: selectedPackage?.name || 'Private Group Class',
         instructor: 'Yogodaan Instructor',
         class_date: selectedDate,
         class_time: selectedTime,
@@ -389,7 +389,7 @@ export function BookClass() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-white">Service:</span>
-                    <span className="font-medium">Private Group Class</span>
+                    <span className="font-medium">{selectedPackage?.name || 'Private Group Class'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-white">Date:</span>

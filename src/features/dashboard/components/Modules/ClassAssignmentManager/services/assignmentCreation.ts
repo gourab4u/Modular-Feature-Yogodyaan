@@ -531,16 +531,31 @@ export class AssignmentCreationService {
             assignments.push(...await this.generateManualCalendarAssignments(formData, perClassAmount))
         }
 
-        const cleanedAssignments = await cleanAssignmentsBatch(assignments)
-        const { error } = await supabase
+        // Get booking IDs (support both new and old format)
+        const bookingIds = formData.booking_ids && formData.booking_ids.length > 0
+            ? formData.booking_ids
+            : (formData.booking_id ? [formData.booking_id] : [])
+
+        const cleanedAssignments = await cleanAssignmentsBatch(assignments, bookingIds, 'monthly', formData.booking_type || 'individual')
+        const { data: insertedAssignments, error } = await supabase
             .from('class_assignments')
             .insert(cleanedAssignments)
+            .select('id')
 
         if (error) throw error
 
-        // Update booking status if linked
-        if (formData.booking_id) {
-            await this.updateBookingStatus(formData.booking_id, 'completed')
+        // Create booking associations for all assignments using the new junction table system
+        if (bookingIds.length > 0 && insertedAssignments) {
+            for (const assignment of insertedAssignments) {
+                await createAssignmentBookings(assignment.id, bookingIds)
+            }
+
+            // Update booking status for all linked bookings
+            for (const bookingId of bookingIds) {
+                if (bookingId && bookingId.trim() !== '') {
+                    await this.updateBookingStatus(bookingId, 'completed')
+                }
+            }
         }
 
         return { success: true, count: assignments.length }
@@ -555,25 +570,42 @@ export class AssignmentCreationService {
             throw new Error('Please select at least one day of the week')
         }
 
+        // Sort selected days to ensure proper chronological order
+        const sortedWeeklyDays = [...formData.weekly_days].sort((a, b) => a - b)
+        
         // Continue creating assignments until we hit the class count or end date
-        const currentDate = new Date(formData.start_date)
+        const startDate = new Date(formData.start_date)
         const validityEndDate = formData.validity_end_date ? new Date(formData.validity_end_date) : null
         let classesCreated = 0
+        let currentWeekStart = new Date(startDate)
+
+        // Find the start of the week (Sunday)
+        currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay())
 
         while (classesCreated < formData.total_classes) {
-            // Check if we've exceeded the validity period
-            if (validityEndDate && currentDate > validityEndDate) {
-                console.warn(`Reached validity end date (${formData.validity_end_date}). Created ${classesCreated} classes out of requested ${formData.total_classes}.`)
-                break
-            }
-            
-            // Check if current day is in selected weekdays
-            const currentDayOfWeek = currentDate.getDay() // 0 = Sunday, 6 = Saturday
+            // For each week, create classes for all selected days
+            for (const dayOfWeek of sortedWeeklyDays) {
+                if (classesCreated >= formData.total_classes) {
+                    break
+                }
 
-            if (formData.weekly_days.includes(currentDayOfWeek)) {
+                const classDate = new Date(currentWeekStart)
+                classDate.setDate(currentWeekStart.getDate() + dayOfWeek)
+
+                // Skip if the class date is before the start date
+                if (classDate < startDate) {
+                    continue
+                }
+
+                // Check if we've exceeded the validity period
+                if (validityEndDate && classDate > validityEndDate) {
+                    console.warn(`Reached validity end date (${formData.validity_end_date}). Created ${classesCreated} classes out of requested ${formData.total_classes}.`)
+                    return assignments
+                }
+
                 const assignment: any = {
                     package_id: formData.package_id,
-                    date: currentDate.toISOString().split('T')[0],
+                    date: classDate.toISOString().split('T')[0],
                     start_time: formData.start_time,
                     end_time: formData.end_time,
                     instructor_id: formData.instructor_id,
@@ -596,15 +628,10 @@ export class AssignmentCreationService {
 
                 assignments.push(assignment)
                 classesCreated++
-
-                // Break if we've reached the required class count
-                if (classesCreated >= formData.total_classes) {
-                    break
-                }
             }
 
-            // Move to next day
-            currentDate.setDate(currentDate.getDate() + 1)
+            // Move to next week
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7)
         }
 
         return assignments
@@ -659,8 +686,8 @@ export class AssignmentCreationService {
         const perClassAmount = this.calculatePaymentAmount(formData, 'crash_course', selectedPackage.class_count, studentCount)
 
         if (formData.monthly_assignment_method === 'weekly_recurrence') {
-            // Use weekly recurrence method (same as monthly/package)
-            assignments.push(...await this.generateWeeklyRecurrenceAssignmentsForCrash(formData, perClassAmount, selectedPackage.class_count))
+            // Use crash course specific weekly recurrence method
+            assignments.push(...await this.generateCrashCourseWeeklyRecurrenceAssignments(formData, selectedPackage, perClassAmount))
         } else if (formData.monthly_assignment_method === 'manual_calendar') {
             // Use manual calendar selection method (same as monthly/package)
             assignments.push(...await this.generateManualCalendarAssignmentsForCrash(formData, perClassAmount))
@@ -681,7 +708,7 @@ export class AssignmentCreationService {
                     end_time: formData.end_time,
                     instructor_id: formData.instructor_id,
                     payment_amount: perClassAmount,
-                    schedule_type: 'crash',
+                    schedule_type: 'crash', // Use 'crash' for crash course assignments
                     assigned_by: currentUserId,
                     booking_type: formData.booking_type || 'individual',
                     class_status: 'scheduled',
@@ -701,16 +728,31 @@ export class AssignmentCreationService {
             }))
         }
 
-        const cleanedAssignments = await cleanAssignmentsBatch(assignments)
-        const { error } = await supabase
+        // Get booking IDs (support both new and old format)
+        const bookingIds = formData.booking_ids && formData.booking_ids.length > 0
+            ? formData.booking_ids
+            : (formData.booking_id ? [formData.booking_id] : [])
+
+        const cleanedAssignments = await cleanAssignmentsBatch(assignments, bookingIds, 'crash_course', formData.booking_type || 'individual')
+        const { data: insertedAssignments, error } = await supabase
             .from('class_assignments')
             .insert(cleanedAssignments)
+            .select('id')
 
         if (error) throw error
 
-        // Update booking status if linked
-        if (formData.booking_id) {
-            await this.updateBookingStatus(formData.booking_id, 'completed')
+        // Create booking associations for all assignments using the new junction table system
+        if (bookingIds.length > 0 && insertedAssignments) {
+            for (const assignment of insertedAssignments) {
+                await createAssignmentBookings(assignment.id, bookingIds)
+            }
+
+            // Update booking status for all linked bookings
+            for (const bookingId of bookingIds) {
+                if (bookingId && bookingId.trim() !== '') {
+                    await this.updateBookingStatus(bookingId, 'completed')
+                }
+            }
         }
 
         return { success: true, count: assignments.length }
@@ -740,69 +782,6 @@ export class AssignmentCreationService {
         return dates
     }
 
-    private static async generateWeeklyRecurrenceAssignmentsForCrash(formData: FormData, perClassAmount: number, packageClassCount: number) {
-        const currentUserId = await getCurrentUserId()
-        const assignments = []
-
-        // Validate weekly days selection
-        if (!formData.weekly_days || formData.weekly_days.length === 0) {
-            throw new Error('Please select at least one day of the week')
-        }
-
-        // Continue creating assignments until we hit the package class count
-        const currentDate = new Date(formData.start_date)
-        const validityEndDate = formData.validity_end_date ? new Date(formData.validity_end_date) : null
-        let classesCreated = 0
-
-        while (classesCreated < packageClassCount) {
-            // Check if we've exceeded the validity period
-            if (validityEndDate && currentDate > validityEndDate) {
-                console.warn(`Reached validity end date (${formData.validity_end_date}). Created ${classesCreated} classes out of requested ${packageClassCount}.`)
-                break
-            }
-            
-            // Check if current day is in selected weekdays
-            const currentDayOfWeek = currentDate.getDay() // 0 = Sunday, 6 = Saturday
-
-            if (formData.weekly_days.includes(currentDayOfWeek)) {
-                const assignment: any = {
-                    package_id: formData.package_id,
-                    date: currentDate.toISOString().split('T')[0],
-                    start_time: formData.start_time,
-                    end_time: formData.end_time,
-                    instructor_id: formData.instructor_id,
-                    payment_amount: perClassAmount,
-                    schedule_type: 'crash',
-                    assigned_by: currentUserId,
-                    booking_type: formData.booking_type || 'individual',
-                    class_status: 'scheduled',
-                    payment_status: 'pending',
-                    instructor_status: 'pending'
-                }
-
-                // Add optional fields only if they have values
-                if (formData.notes) assignment.notes = formData.notes
-                if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
-                    assignment.booking_id = formData.booking_id.trim()
-                }
-                if (formData.client_name) assignment.client_name = formData.client_name
-                if (formData.client_email) assignment.client_email = formData.client_email
-
-                assignments.push(assignment)
-                classesCreated++
-
-                // Break if we've reached the required class count
-                if (classesCreated >= packageClassCount) {
-                    break
-                }
-            }
-
-            // Move to next day
-            currentDate.setDate(currentDate.getDate() + 1)
-        }
-
-        return assignments
-    }
 
     private static async generateManualCalendarAssignmentsForCrash(formData: FormData, perClassAmount: number) {
         const currentUserId = await getCurrentUserId()
@@ -853,26 +832,218 @@ export class AssignmentCreationService {
         const perClassAmount = this.calculatePaymentAmount(formData, 'package', selectedPackage.class_count, studentCount)
 
         if (formData.monthly_assignment_method === 'weekly_recurrence') {
-            // Weekly recurrence method
-            assignments.push(...await this.generateWeeklyRecurrenceAssignments(formData, perClassAmount))
+            // Weekly recurrence method - use package-specific logic
+            assignments.push(...await this.generatePackageWeeklyRecurrenceAssignments(formData, selectedPackage, perClassAmount))
         } else {
             // Manual calendar selection method
             assignments.push(...await this.generateManualCalendarAssignments(formData, perClassAmount))
         }
 
-        const cleanedAssignments = await cleanAssignmentsBatch(assignments)
-        const { error } = await supabase
+        // Get booking IDs (support both new and old format)
+        const bookingIds = formData.booking_ids && formData.booking_ids.length > 0
+            ? formData.booking_ids
+            : (formData.booking_id ? [formData.booking_id] : [])
+
+        const cleanedAssignments = await cleanAssignmentsBatch(assignments, bookingIds, 'package', formData.booking_type || 'individual')
+        const { data: insertedAssignments, error } = await supabase
             .from('class_assignments')
             .insert(cleanedAssignments)
+            .select('id')
 
         if (error) throw error
 
-        // Update booking status if linked
-        if (formData.booking_id) {
-            await this.updateBookingStatus(formData.booking_id, 'completed')
+        // Create booking associations for all assignments using the new junction table system
+        if (bookingIds.length > 0 && insertedAssignments) {
+            for (const assignment of insertedAssignments) {
+                await createAssignmentBookings(assignment.id, bookingIds)
+            }
+
+            // Update booking status for all linked bookings
+            for (const bookingId of bookingIds) {
+                if (bookingId && bookingId.trim() !== '') {
+                    await this.updateBookingStatus(bookingId, 'completed')
+                }
+            }
         }
 
         return { success: true, count: assignments.length }
+    }
+
+    private static async generatePackageWeeklyRecurrenceAssignments(formData: FormData, selectedPackage: Package, perClassAmount: number) {
+        const currentUserId = await getCurrentUserId()
+        const assignments = []
+
+        // Validate weekly days selection
+        if (!formData.weekly_days || formData.weekly_days.length === 0) {
+            throw new Error('Please select at least one day of the week')
+        }
+
+        // Use package class count, not formData.total_classes
+        const targetClassCount = selectedPackage.class_count
+        
+        // Calculate validity end date from start date + validity days
+        let validityEndDate: Date | null = null
+        if (selectedPackage.validity_days) {
+            validityEndDate = new Date(formData.start_date)
+            validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
+        }
+
+        // Sort selected days to ensure proper chronological order
+        const sortedWeeklyDays = [...formData.weekly_days].sort((a, b) => a - b)
+        
+        console.log(`Package assignment: Target ${targetClassCount} classes for days: ${sortedWeeklyDays.map(d => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ')}`)
+
+        // Continue creating assignments until we hit the package class count or end date
+        const startDate = new Date(formData.start_date)
+        let classesCreated = 0
+        let currentWeekStart = new Date(startDate)
+
+        // Find the start of the week (Sunday)
+        currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay())
+
+        while (classesCreated < targetClassCount) {
+            // For each week, create classes for all selected days
+            for (const dayOfWeek of sortedWeeklyDays) {
+                if (classesCreated >= targetClassCount) {
+                    break
+                }
+
+                const classDate = new Date(currentWeekStart)
+                classDate.setDate(currentWeekStart.getDate() + dayOfWeek)
+
+                // Skip if the class date is before the start date
+                if (classDate < startDate) {
+                    continue
+                }
+
+                // Check if we've exceeded the validity period
+                if (validityEndDate && classDate > validityEndDate) {
+                    console.warn(`Reached validity end date (${validityEndDate.toISOString().split('T')[0]}). Created ${classesCreated} classes out of package requirement ${targetClassCount}.`)
+                    return assignments
+                }
+
+                const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayOfWeek]
+                console.log(`Creating class on ${classDate.toISOString().split('T')[0]} (${dayName}) - Class ${classesCreated + 1}/${targetClassCount}`)
+
+                const assignment: any = {
+                    package_id: formData.package_id,
+                    date: classDate.toISOString().split('T')[0],
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    instructor_id: formData.instructor_id,
+                    payment_amount: perClassAmount,
+                    schedule_type: 'monthly', // Use 'monthly' for package assignments
+                    assigned_by: currentUserId,
+                    booking_type: formData.booking_type || 'individual',
+                    class_status: 'scheduled',
+                    payment_status: 'pending',
+                    instructor_status: 'pending'
+                }
+
+                // Add optional fields only if they have values
+                if (formData.notes) assignment.notes = formData.notes
+                if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                    assignment.booking_id = formData.booking_id.trim()
+                }
+                if (formData.client_name) assignment.client_name = formData.client_name
+                if (formData.client_email) assignment.client_email = formData.client_email
+
+                assignments.push(assignment)
+                classesCreated++
+            }
+
+            // Move to next week
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7)
+        }
+
+        console.log(`Package assignment: Created ${assignments.length} classes for package "${selectedPackage.name}" (target: ${targetClassCount})`)
+        return assignments
+    }
+
+    private static async generateCrashCourseWeeklyRecurrenceAssignments(formData: FormData, selectedPackage: Package, perClassAmount: number) {
+        const currentUserId = await getCurrentUserId()
+        const assignments = []
+
+        // Validate weekly days selection
+        if (!formData.weekly_days || formData.weekly_days.length === 0) {
+            throw new Error('Please select at least one day of the week')
+        }
+
+        // Use package class count, not formData.total_classes
+        const targetClassCount = selectedPackage.class_count
+        
+        // Calculate validity end date from start date + validity days
+        let validityEndDate: Date | null = null
+        if (selectedPackage.validity_days) {
+            validityEndDate = new Date(formData.start_date)
+            validityEndDate.setDate(validityEndDate.getDate() + selectedPackage.validity_days)
+        }
+
+        // Sort selected days to ensure proper chronological order
+        const sortedWeeklyDays = [...formData.weekly_days].sort((a, b) => a - b)
+
+        // Continue creating assignments until we hit the package class count or end date
+        const startDate = new Date(formData.start_date)
+        let classesCreated = 0
+        let currentWeekStart = new Date(startDate)
+
+        // Find the start of the week (Sunday)
+        currentWeekStart.setDate(currentWeekStart.getDate() - currentWeekStart.getDay())
+
+        while (classesCreated < targetClassCount) {
+            // For each week, create classes for all selected days
+            for (const dayOfWeek of sortedWeeklyDays) {
+                if (classesCreated >= targetClassCount) {
+                    break
+                }
+
+                const classDate = new Date(currentWeekStart)
+                classDate.setDate(currentWeekStart.getDate() + dayOfWeek)
+
+                // Skip if the class date is before the start date
+                if (classDate < startDate) {
+                    continue
+                }
+
+                // Check if we've exceeded the validity period
+                if (validityEndDate && classDate > validityEndDate) {
+                    console.warn(`Reached validity end date (${validityEndDate.toISOString().split('T')[0]}). Created ${classesCreated} classes out of package requirement ${targetClassCount}.`)
+                    return assignments
+                }
+
+                const assignment: any = {
+                    package_id: formData.package_id,
+                    date: classDate.toISOString().split('T')[0],
+                    start_time: formData.start_time,
+                    end_time: formData.end_time,
+                    instructor_id: formData.instructor_id,
+                    payment_amount: perClassAmount,
+                    schedule_type: 'crash', // Use 'crash' for crash course assignments
+                    assigned_by: currentUserId,
+                    booking_type: formData.booking_type || 'individual',
+                    class_status: 'scheduled',
+                    payment_status: 'pending',
+                    instructor_status: 'pending'
+                }
+
+                // Add optional fields only if they have values
+                if (formData.notes) assignment.notes = formData.notes
+                if (formData.booking_id && formData.booking_id.trim() !== '' && formData.booking_id.trim() !== 'null' && formData.booking_id.trim() !== 'undefined') {
+                    assignment.booking_id = formData.booking_id.trim()
+                }
+                if (formData.client_name) assignment.client_name = formData.client_name
+                if (formData.client_email) assignment.client_email = formData.client_email
+
+                assignments.push(assignment)
+                classesCreated++
+            }
+
+            // Move to next week
+            currentWeekStart.setDate(currentWeekStart.getDate() + 7)
+        }
+
+        console.log(`Crash course assignment: Created ${assignments.length} classes for package "${selectedPackage.name}" (target: ${targetClassCount})`)
+        return assignments
     }
 
     private static calculatePaymentAmount(formData: FormData, _assignmentType: string, classCount?: number, studentCount?: number): number {

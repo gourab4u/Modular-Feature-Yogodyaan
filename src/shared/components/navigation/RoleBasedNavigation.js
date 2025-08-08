@@ -23,7 +23,13 @@ const RoleBasedNavigation = ({ user, className = '' }) => {
             schedule: '🗓️',
             'bar-chart': '📈',
             'file-text': '📄',
-            'message-square': '💬'
+            'message-square': '💬',
+            mail: '📧',
+            'dollar-sign': '💰',
+            book: '📚',
+            layers: '📋',
+            'graduation-cap': '🎓',
+            'check-circle': '✅'
         };
         return iconMap[iconName || 'dashboard'] || '📋';
     };

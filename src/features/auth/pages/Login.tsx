@@ -323,6 +323,15 @@ export function Login() {
             </Button>
           </form>
 
+          <div className="mt-4 text-center">
+            <Link
+              to="/reset-password"
+              className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-medium"
+            >
+              Forgot Password?
+            </Link>
+          </div>
+
           <div className="mt-6 text-center">
             <p className="text-gray-600 dark:text-gray-400">
               {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
