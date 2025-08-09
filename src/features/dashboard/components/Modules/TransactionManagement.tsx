@@ -17,10 +17,21 @@ import EmailService from '../../../../services/emailService';
 import { supabase } from '../../../../shared/lib/supabase';
 import { renderEmailTemplate } from '../../../../shared/utils/emailTemplates';
 
+
+type BillingPlanType = 'one_time' | 'monthly' | 'crash_course';
+
+const humanPlanType = (p?: BillingPlanType) => {
+  switch (p) {
+    case 'monthly': return 'Monthly Subscription';
+    case 'crash_course': return 'Crash Course';
+    default: return 'One Time';
+  }
+};
+
 const TransactionManagement = () => {
-  const [currentUser] = useState({ role: 'super_admin' }); // Change to 'energy_exchange_lead' or 'user' to test
-  const [transactions, setTransactions] = useState([]);
-  const [filteredTransactions, setFilteredTransactions] = useState([]);
+  const [currentUser] = useState({ role: 'super_admin' });
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
@@ -33,17 +44,43 @@ const TransactionManagement = () => {
     currency: 'INR',
     description: '',
     payment_method: 'manual',
-    category: 'class_booking'
+    category: 'class_booking',
+    billing_plan_type: 'one_time' as BillingPlanType, // one_time | monthly | crash_course
+    billing_period_month: '' // YYYY-MM when monthly
   });
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [businessConfig, setBusinessConfig] = useState<any>(null);
 
-  // Check permissions
+  useEffect(() => {
+    const loadBusinessSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('business_settings')
+          .select('key,value')
+          .in('key', ['business_profile', 'business_contact', 'invoice_preferences']);
+        if (!error && data) {
+          const map = data.reduce((acc, row) => {
+            acc[row.key] = row.value;
+            return acc;
+          }, {} as any);
+          setBusinessConfig({
+            profile: map.business_profile || {},
+            contact: map.business_contact || {},
+            invoice: map.invoice_preferences || {}
+          });
+        }
+      } catch (e) {
+        console.warn('Failed to load business settings', e);
+      }
+    };
+    loadBusinessSettings();
+  }, []);
+
   const hasAccess = ['super_admin', 'super_user', 'energy_exchange_lead'].includes(currentUser.role);
   const canEdit = ['super_admin', 'super_user', 'energy_exchange_lead'].includes(currentUser.role);
 
-  // Sample transaction data
   const sampleTransactions = [
     {
       id: '1',
@@ -57,7 +94,9 @@ const TransactionManagement = () => {
       payment_method: 'upi',
       description: 'Monthly Yoga Package',
       created_at: '2024-07-08T10:30:00Z',
-      updated_at: '2024-07-08T10:30:00Z'
+      updated_at: '2024-07-08T10:30:00Z',
+      billing_plan_type: 'monthly',
+      billing_period_month: '2024-07'
     },
     {
       id: '2',
@@ -71,7 +110,8 @@ const TransactionManagement = () => {
       payment_method: 'bank_transfer',
       description: 'Instructor payment for July classes',
       created_at: '2024-07-07T15:45:00Z',
-      updated_at: '2024-07-07T15:45:00Z'
+      updated_at: '2024-07-07T15:45:00Z',
+      billing_plan_type: 'one_time'
     },
     {
       id: '3',
@@ -85,7 +125,9 @@ const TransactionManagement = () => {
       payment_method: 'credit_card',
       description: 'Premium Subscription',
       created_at: '2024-07-06T09:20:00Z',
-      updated_at: '2024-07-06T09:20:00Z'
+      updated_at: '2024-07-06T09:20:00Z',
+      billing_plan_type: 'monthly',
+      billing_period_month: '2024-07'
     },
     {
       id: '4',
@@ -99,7 +141,8 @@ const TransactionManagement = () => {
       payment_method: 'cash',
       description: 'Studio cleaning and maintenance',
       created_at: '2024-07-05T14:15:00Z',
-      updated_at: '2024-07-05T14:15:00Z'
+      updated_at: '2024-07-05T14:15:00Z',
+      billing_plan_type: 'one_time'
     },
     {
       id: '5',
@@ -113,7 +156,8 @@ const TransactionManagement = () => {
       payment_method: 'upi',
       description: 'Weekend Workshop',
       created_at: '2024-07-04T11:30:00Z',
-      updated_at: '2024-07-04T11:30:00Z'
+      updated_at: '2024-07-04T11:30:00Z',
+      billing_plan_type: 'crash_course'
     }
   ];
 
@@ -122,36 +166,27 @@ const TransactionManagement = () => {
     setFilteredTransactions(sampleTransactions);
   }, []);
 
-  // Filter transactions
   useEffect(() => {
     let filtered = transactions;
 
     if (searchTerm) {
       filtered = filtered.filter(t =>
-        t.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        t.description.toLowerCase().includes(searchTerm.toLowerCase())
+        t.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.description?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(t => t.status === filterStatus);
-    }
-
-    if (filterType !== 'all') {
-      filtered = filtered.filter(t => t.type === filterType);
-    }
+    if (filterStatus !== 'all') filtered = filtered.filter(t => t.status === filterStatus);
+    if (filterType !== 'all') filtered = filtered.filter(t => t.type === filterType);
 
     setFilteredTransactions(filtered);
     setCurrentPage(1);
   }, [searchTerm, filterStatus, filterType, transactions]);
 
-  // Calculate summary statistics
   const totalIncome = transactions.filter(t => t.type === 'income' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = Math.abs(transactions.filter(t => t.type === 'expense' && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0));
   const netProfit = totalIncome - totalExpense;
   const pendingTransactions = transactions.filter(t => t.status === 'pending').length;
 
-  // Pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
@@ -183,7 +218,7 @@ const TransactionManagement = () => {
     return new Intl.NumberFormat('en-IN', opts).format(Math.abs(amount));
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
@@ -193,41 +228,70 @@ const TransactionManagement = () => {
     });
   };
 
-  // Save manual transaction (DB) and send invoice with PDF attachment
+
+  const formatBillingMonth = (val?: string | null) => {
+    if (!val) return '';
+    // Accept 'YYYY-MM' or a full date
+    let year: string, month: string;
+    if (/^\d{4}-\d{2}$/.test(val)) {
+      [year, month] = val.split('-');
+    } else {
+      const d = new Date(val);
+      if (isNaN(d.getTime())) return val;
+      year = String(d.getUTCFullYear());
+      month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    }
+    const dateForName = new Date(`${year}-${month}-01T00:00:00Z`);
+    const monthName = dateForName.toLocaleDateString('en-IN', { month: 'short' });
+    return `${monthName} ${year}`;
+  };
+
+  const generateProfessionalInvoiceNumber = (rawId: string) => {
+    const prefix = (businessConfig?.invoice?.invoice_number_prefix || 'YG').toUpperCase();
+    const now = new Date();
+    const yyyymm = `${now.getUTCFullYear()}${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const numeric = (rawId.match(/\d+/g) || ['0000']).join('');
+    const last4 = numeric.slice(-4).padStart(4, '0');
+    return `${prefix}-${yyyymm}-${last4}`;
+  };
+
   const handleSaveTransaction = async () => {
-    // Build UI transaction object (includes UI-only fields)
-    const tx = {
+    const tx: any = {
       id: Date.now().toString(),
       user_id: null,
       user_name: newTx.user_name || newTx.userEmail,
       amount: Number(newTx.amount),
       currency: newTx.currency || 'INR',
       status: 'completed',
-      type: 'income', // UI-only
-      category: newTx.category || 'class_booking', // UI-only
+      type: 'income',
+      category: newTx.category || 'class_booking',
       payment_method: newTx.payment_method || 'manual',
       description: newTx.description || 'Manual payment',
+      billing_plan_type: newTx.billing_plan_type,
+      billing_period_month: newTx.billing_plan_type === 'monthly' && newTx.billing_period_month
+        ? newTx.billing_period_month
+        : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
     try {
-      // 1) Persist to DB (transactions table)
-      // Only insert columns that exist in the provided schema
-      // Ensure Authorization header is present to satisfy CORS/preflight and RLS checks
       const { data: sessionData } = await supabase.auth.getSession();
       const jwt = sessionData?.session?.access_token;
 
       const { data: inserted, error: dbErr } = await supabase.functions.invoke('record-transaction', {
         body: {
-          user_id: null, // could be looked up by email if needed
+          user_id: null,
           subscription_id: null,
           amount: tx.amount,
           currency: tx.currency,
           status: 'completed',
           payment_method: tx.payment_method,
           stripe_payment_intent_id: null,
-          description: tx.description
+          description: tx.description,
+          // After DB & function updated you may pass:
+          // billing_plan_type: tx.billing_plan_type,
+          // billing_period_month: tx.billing_period_month
         },
         headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined
       });
@@ -240,27 +304,54 @@ const TransactionManagement = () => {
         tx.updated_at = inserted.updated_at || tx.updated_at;
       }
 
-      // Optimistically update UI list
       setTransactions(prev => [tx, ...prev]);
 
-      // 2) Generate a professional branded PDF invoice
       const generateInvoicePdfBase64 = async () => {
         const pdfDoc = await PDFDocument.create();
-        const page = pdfDoc.addPage([595.28, 841.89]); // A4 size in points
+        const page = pdfDoc.addPage([595.28, 841.89]); // A4
         const { width, height } = page.getSize();
         const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
         const boldFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-        // Colors
-        const primaryColor = rgb(0.063, 0.722, 0.380); // #10B981 emerald
+        // Palette derived strictly from DB (business_settings.invoice_preferences). No forced fallback colors.
+        // If a value is absent, sections will render with neutral defaults below.
+        const primaryHex = businessConfig?.invoice?.color_primary;
+        const accentHex = businessConfig?.invoice?.color_accent;
+
+        const hexToRgbNorm = (hex: string) => {
+          const h = hex.replace('#', '');
+          const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+          const intVal = parseInt(full, 16);
+          const r = (intVal >> 16) & 255;
+          const g = (intVal >> 8) & 255;
+          const b = intVal & 255;
+          return rgb(r / 255, g / 255, b / 255);
+        };
+
+        const primaryColor = primaryHex ? hexToRgbNorm(primaryHex) : rgb(0.97, 0.97, 0.97); // light neutral fallback (avoid pure white so logo/text visible)
+        const accentColor = accentHex ? hexToRgbNorm(accentHex) : primaryColor;   // reuse primary if accent absent
         const darkGray = rgb(0.2, 0.2, 0.2);
-        const lightGray = rgb(0.9, 0.9, 0.9);
+        const lightGray = rgb(0.985, 0.972, 0.952);
         const white = rgb(1, 1, 1);
         const black = rgb(0, 0, 0);
 
+        // Determine readable header text color (contrast-based) so header never becomes "all white".
+        const getHexRgb = (hex: string): [number, number, number] => {
+          const h = hex.replace('#', '');
+          const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+          return [
+            parseInt(full.slice(0, 2), 16),
+            parseInt(full.slice(2, 4), 16),
+            parseInt(full.slice(4, 6), 16)
+          ];
+        };
+        const [pr, pg, pb] = primaryHex ? getHexRgb(primaryHex) : [247, 247, 247];
+        const luminance = (0.299 * pr + 0.587 * pg + 0.114 * pb) / 255;
+        const headerTextColor = luminance > 0.6 ? darkGray : white;
+
         let currentY = height - 40;
 
-        // Company Header Section
+        // Header band
         page.drawRectangle({
           x: 0,
           y: height - 140,
@@ -269,67 +360,139 @@ const TransactionManagement = () => {
           color: primaryColor
         });
 
-        // Company Logo (embedded image if available)
+        // Logo
         try {
-          const logoUrl = (import.meta as any)?.env?.VITE_INVOICE_LOGO_URL || '/images/newcartoon-modified.png';
-          const resp = await fetch(logoUrl);
-          if (resp.ok) {
-            const bytes = await resp.arrayBuffer();
+          // Robust multi-fallback logo resolution. Tries each path until one succeeds.
+          const baseUrl = (import.meta as any)?.env?.BASE_URL || '/';
+          const logoCandidates = [
+            businessConfig?.profile?.logo_url,                             // DB configured
+            (import.meta as any)?.env?.VITE_INVOICE_LOGO_URL,              // Env override
+            `${baseUrl}images/Brand.png`,                                  // Public Brand.png (if exists)
+            `${baseUrl}images/newcartoon-modified.png`,                    // Public original logo
+            '/images/newcartoon-modified.png',                             // Absolute fallback
+            '/images/Brand.png',                                           // Absolute alt
+            '/dist/images/newcartoon-modified.png',                        // Dist build fallback
+            '/dist/images/Brand.png'                                       // Dist alt
+          ].filter(Boolean) as string[];
+
+          let imgBytes: ArrayBuffer | null = null;
+          const logoFetchAttempts: { url: string; ok: boolean; status?: number }[] = [];
+          for (const candidate of logoCandidates) {
+            try {
+              const r = await fetch(candidate);
+              logoFetchAttempts.push({ url: candidate, ok: r.ok, status: r.status });
+              if (r.ok) {
+                imgBytes = await r.arrayBuffer();
+                break;
+              }
+            } catch {
+              logoFetchAttempts.push({ url: candidate, ok: false });
+            }
+          }
+          console.log('Invoice PDF logo fetch attempts:', logoFetchAttempts);
+
+          if (imgBytes) {
             let img;
             try {
-              img = await pdfDoc.embedPng(bytes);
+              img = await pdfDoc.embedPng(imgBytes);
             } catch {
-              img = await pdfDoc.embedJpg(bytes);
+              img = await pdfDoc.embedJpg(imgBytes);
             }
-            const imgDims = img.scale(0.15);
+            // Enhanced logo sizing & centering logic.
+            const headerBandHeight = 140;
+            const headerBandBottomY = height - headerBandHeight;
+
+            const maxW = 260;
+            const maxH = 120;
+            const minH = 70; // larger minimum so it is clearly visible
+            const minW = 70;
+
+            const { width: rawW, height: rawH } = img;
+
+            let scale = Math.min(maxW / rawW, maxH / rawH, 1);
+            let drawW = rawW * scale;
+            let drawH = rawH * scale;
+
+            // Enforce minimum dimensions for visibility
+            if (drawH < minH || drawW < minW) {
+              const boost = Math.max(minH / drawH, minW / drawW);
+              scale *= boost;
+              drawW = rawW * scale;
+              drawH = rawH * scale;
+              // Cap again at max
+              if (drawW > maxW) {
+                const adjust = maxW / drawW;
+                drawW *= adjust;
+                drawH *= adjust;
+              }
+              if (drawH > maxH) {
+                const adjust = maxH / drawH;
+                drawW *= adjust;
+                drawH *= adjust;
+              }
+            }
+
+            const centeredY = headerBandBottomY + (headerBandHeight - drawH) / 2;
             page.drawImage(img, {
               x: 40,
+              y: centeredY,
+              width: drawW,
+              height: drawH
+            });
+          } else {
+            console.warn('Invoice PDF: no logo loaded from candidates', logoCandidates);
+            // Visible placeholder so issue is obvious in PDF
+            page.drawText('LOGO', {
+              x: 50,
               y: height - 110,
-              width: imgDims.width,
-              height: imgDims.height
+              size: 28,
+              font: boldFont,
+              color: darkGray
             });
           }
-        } catch { /* ignore logo errors */ }
+        } catch {/* ignore */ }
 
-        // Company Name
-        page.drawText('Yogodyaan', {
-          x: 100,
+        // Name
+        page.drawText(businessConfig?.profile?.name || 'Yogodyaan', {
+          x: 120,
           y: height - 70,
-          size: 32,
+          size: 30,
           font: boldFont,
-          color: white
+          color: headerTextColor
         });
 
-        // Company Tagline
-        page.drawText('Wellness Through Movement', {
-          x: 100,
+        // Tagline (updated wording already in DB or fallback)
+        page.drawText(businessConfig?.profile?.tagline || 'Experience the Rhythm.', {
+          x: 120,
           y: height - 95,
           size: 12,
           font,
-          color: white
+          color: headerTextColor
         });
 
-        // Company Address
-        const address = [
+        // Address
+        const addressLines: string[] = businessConfig?.contact?.address_lines || [
           'Yoga Studio & Wellness Center',
-          'Mumbai, Maharashtra, India',
-          'Phone: +91 98765 43210',
-          'Email: info@yogodyaan.com'
+          'Mumbai, Maharashtra, India'
         ];
-
-        address.forEach((line, index) => {
+        const address = [
+          ...addressLines,
+          `Phone: ${businessConfig?.contact?.phone || '+91 98765 43210'}`,
+          `Email: ${businessConfig?.contact?.email || 'info@yogodyaan.com'}`
+        ];
+        address.forEach((line, i) => {
           page.drawText(line, {
             x: width - 250,
-            y: height - 60 - (index * 15),
+            y: height - 60 - (i * 15),
             size: 10,
             font,
-            color: white
+            color: headerTextColor
           });
         });
 
-        currentY = height - 160;
+        currentY = height - 200;
 
-        // Invoice Title
+        // Title
         page.drawText('INVOICE', {
           x: 40,
           y: currentY,
@@ -340,25 +503,30 @@ const TransactionManagement = () => {
 
         currentY -= 40;
 
-        // Invoice Details Table
-        const invoiceDetails = [
-          ['Invoice Number:', `#${String(tx.id).padStart(6, '0')}`],
+        // Professional Invoice Number
+        const displayNumber = generateProfessionalInvoiceNumber(String(tx.id));
+        const invoiceDetails: string[][] = [
+          ['Invoice No:', displayNumber],
           ['Issue Date:', formatDate(tx.created_at)],
-          ['Payment Method:', (tx.payment_method || 'manual').replace('_', ' ').toUpperCase()],
-          ['Status:', 'PAID']
+          ['Plan Type:', humanPlanType(tx.billing_plan_type)]
         ];
+        if (tx.billing_plan_type === 'monthly' && tx.billing_period_month) {
+          invoiceDetails.push(['Billing Month:', formatBillingMonth(tx.billing_period_month)]);
+        }
+        invoiceDetails.push(['Payment Method:', (tx.payment_method || 'manual').replace('_', ' ').toUpperCase()]);
+        invoiceDetails.push(['Status:', 'PAID']);
 
-        // Draw invoice info box
+        const infoBoxHeight = invoiceDetails.length * 18 + 30;
         page.drawRectangle({
           x: 40,
-          y: currentY - 80,
-          width: 200,
-          height: 80,
+          y: currentY - infoBoxHeight,
+          width: 290,
+          height: infoBoxHeight,
           color: lightGray
         });
 
-        invoiceDetails.forEach(([label, value], index) => {
-          const yPos = currentY - 20 - (index * 18);
+        invoiceDetails.forEach(([label, value], idx) => {
+          const yPos = currentY - 20 - (idx * 18);
           page.drawText(label, {
             x: 50,
             y: yPos,
@@ -367,7 +535,7 @@ const TransactionManagement = () => {
             color: darkGray
           });
           page.drawText(value, {
-            x: 160,
+            x: 190,
             y: yPos,
             size: 10,
             font,
@@ -375,7 +543,7 @@ const TransactionManagement = () => {
           });
         });
 
-        // Bill To Section
+        // Bill To
         page.drawText('BILL TO:', {
           x: width - 250,
           y: currentY,
@@ -383,26 +551,23 @@ const TransactionManagement = () => {
           font: boldFont,
           color: darkGray
         });
-
         const billToInfo = [
           tx.user_name || newTx.userEmail || 'Customer',
-          newTx.userEmail || '-',
-          '',  // Additional address line if needed
+          newTx.userEmail || '-'
         ].filter(Boolean);
-
-        billToInfo.forEach((line, index) => {
+        billToInfo.forEach((line, i) => {
           page.drawText(line, {
             x: width - 250,
-            y: currentY - 25 - (index * 15),
+            y: currentY - 25 - (i * 15),
             size: 11,
             font,
             color: black
           });
         });
 
-        currentY -= 120;
+        currentY -= 160;
 
-        // Services Table Header
+        // Services Section
         page.drawText('DESCRIPTION OF SERVICES', {
           x: 40,
           y: currentY,
@@ -413,13 +578,11 @@ const TransactionManagement = () => {
 
         currentY -= 30;
 
-        // Table Header
         const tableStartY = currentY;
         const rowHeight = 35;
-        const colStartX = [40, 290, 370, 450];
         const headers = ['Description', 'Qty', 'Rate', 'Amount'];
+        const colStartX = [40, 290, 370, 450];
 
-        // Draw table header background
         page.drawRectangle({
           x: 40,
           y: tableStartY - rowHeight,
@@ -428,10 +591,9 @@ const TransactionManagement = () => {
           color: primaryColor
         });
 
-        // Draw header text
-        headers.forEach((header, index) => {
-          page.drawText(header, {
-            x: colStartX[index] + 10,
+        headers.forEach((h, i) => {
+          page.drawText(h, {
+            x: colStartX[i] + 10,
             y: tableStartY - 22,
             size: 11,
             font: boldFont,
@@ -439,10 +601,8 @@ const TransactionManagement = () => {
           });
         });
 
-        // Draw table borders
-        const tableHeight = rowHeight * 2; // Header + one data row
+        const tableHeight = rowHeight * 2;
 
-        // Vertical lines
         [40, 290, 370, 450, width - 40].forEach(x => {
           page.drawLine({
             start: { x, y: tableStartY },
@@ -452,7 +612,6 @@ const TransactionManagement = () => {
           });
         });
 
-        // Horizontal lines
         [tableStartY, tableStartY - rowHeight, tableStartY - tableHeight].forEach(y => {
           page.drawLine({
             start: { x: 40, y },
@@ -462,19 +621,17 @@ const TransactionManagement = () => {
           });
         });
 
-        // Service row data
-        const serviceRow = tableStartY - rowHeight;
-        const description = tx.description || 'Yoga Session Payment';
+        const serviceRowY = tableStartY - rowHeight;
+        const descRaw = tx.description || 'Yoga Session Payment';
+        const description = descRaw.length > 50 ? descRaw.slice(0, 49) + '…' : descRaw;
         const quantity = '1';
         const rate = formatCurrency(tx.amount, tx.currency, true);
         const amount = formatCurrency(tx.amount, tx.currency, true);
-
         const serviceData = [description, quantity, rate, amount];
-
-        serviceData.forEach((data, index) => {
-          page.drawText(data, {
-            x: colStartX[index] + 10,
-            y: serviceRow - 22,
+        serviceData.forEach((d, i) => {
+          page.drawText(d, {
+            x: colStartX[i] + 10,
+            y: serviceRowY - 22,
             size: 10,
             font,
             color: black
@@ -483,47 +640,99 @@ const TransactionManagement = () => {
 
         currentY = tableStartY - tableHeight - 30;
 
-        // Total Section
-        const totalBoxHeight = 60;
+        const invoiceTaxRate = Number(businessConfig?.invoice?.tax_rate || 0);
+        const taxAmount = tx.amount * (invoiceTaxRate / 100);
+        const grandTotal = tx.amount + taxAmount;
+
+        const totalBoxHeight = 110;
+        const totalBoxWidth = 240;
+        const totalBoxX = width - (totalBoxWidth + 40);
         page.drawRectangle({
-          x: width - 200,
+          x: totalBoxX,
           y: currentY - totalBoxHeight,
-          width: 160,
+          width: totalBoxWidth,
           height: totalBoxHeight,
           color: lightGray
         });
 
-        // Total labels and values
-        const totals = [
+        const totals: [string, string][] = [
           ['Subtotal:', formatCurrency(tx.amount, tx.currency, true)],
-          ['Tax (0%):', formatCurrency(0, tx.currency, true)],
-          ['TOTAL:', formatCurrency(tx.amount, tx.currency, true)]
+          [`Tax (${invoiceTaxRate.toFixed(2)}%):`, formatCurrency(taxAmount, tx.currency, true)],
+          ['Plan Type:', humanPlanType(tx.billing_plan_type)],
         ];
+        if (tx.billing_plan_type === 'monthly' && tx.billing_period_month) {
+          totals.push(['Billing Month:', formatBillingMonth(tx.billing_period_month)]);
+        }
+        totals.push(['TOTAL:', formatCurrency(grandTotal, tx.currency, true)]);
 
-        totals.forEach(([label, value], index) => {
-          const isTotal = index === totals.length - 1;
-          const yPos = currentY - 20 - (index * 18);
-
+        totals.forEach(([label, value], idx) => {
+          const isTotal = label === 'TOTAL:';
+          const yPos = currentY - 20 - (idx * 18);
           page.drawText(label, {
-            x: width - 190,
+            x: totalBoxX + 10,
             y: yPos,
             size: isTotal ? 12 : 10,
             font: isTotal ? boldFont : font,
             color: darkGray
           });
-
           page.drawText(value, {
-            x: width - 100,
+            x: totalBoxX + totalBoxWidth - 110,
             y: yPos,
             size: isTotal ? 12 : 10,
             font: isTotal ? boldFont : font,
-            color: isTotal ? primaryColor : black
+            color: isTotal ? accentColor : black
           });
         });
 
-        currentY -= 100;
+        currentY -= (totalBoxHeight + 40);
 
-        // Payment Information
+        // Payment Information (reordered & dynamically positioned to avoid footer overlap)
+        // Split long date into two lines to avoid horizontal overlap with totals box.
+        const dateLocalUTC = (() => {
+          const d = new Date(tx.created_at);
+          const tz = businessConfig?.invoice?.time_zone || 'Asia/Kolkata';
+          let localPart: string;
+          try {
+            localPart = new Intl.DateTimeFormat('en-IN', {
+              timeZone: tz,
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            }).format(d) + ` (${tz})`;
+          } catch {
+            localPart = formatDate(tx.created_at) + ` (${tz})`;
+          }
+          const utcPart = new Intl.DateTimeFormat('en-IN', {
+            timeZone: 'UTC',
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          }).format(d) + ' UTC';
+          return { localPart, utcPart };
+        })();
+
+        const paymentInfo: string[] = [
+          `Payment Status: COMPLETED`,
+          `Payment Date (Local): ${dateLocalUTC.localPart}`,
+          `Payment Date (UTC): ${dateLocalUTC.utcPart}`,
+          `Payment Method: ${(tx.payment_method || 'manual').replace('_', ' ').toUpperCase()}`,
+          `Plan Type: ${humanPlanType(tx.billing_plan_type)}`
+        ];
+        if (tx.billing_plan_type === 'monthly' && tx.billing_period_month) {
+          paymentInfo.push(`Billing Month: ${formatBillingMonth(tx.billing_period_month)}`);
+        }
+        paymentInfo.push(`Transaction ID: ${tx.id}`);
+
+        const paymentInfoBlockHeight = 25 + paymentInfo.length * 15 + 40; // heading gap + lines + bottom spacer
+        // Ensure at least 110pt remains above footer (80 footer + 30 breathing room)
+        if (currentY - paymentInfoBlockHeight < 110) {
+          currentY = 110 + paymentInfoBlockHeight;
+        }
+
         page.drawText('PAYMENT INFORMATION', {
           x: 40,
           y: currentY,
@@ -532,26 +741,19 @@ const TransactionManagement = () => {
           color: darkGray
         });
 
-        const paymentInfo = [
-          `Payment Status: COMPLETED`,
-          `Payment Date: ${formatDate(tx.created_at)}`,
-          `Payment Method: ${(tx.payment_method || 'manual').replace('_', ' ').toUpperCase()}`,
-          `Transaction ID: ${tx.id}`
-        ];
-
-        paymentInfo.forEach((info, index) => {
+        paymentInfo.forEach((info, idx) => {
           page.drawText(info, {
             x: 40,
-            y: currentY - 25 - (index * 15),
+            y: currentY - 25 - (idx * 15),
             size: 10,
             font,
             color: black
           });
         });
 
-        currentY -= 120;
+        currentY -= (25 + paymentInfo.length * 15 + 40);
 
-        // Footer Section
+        // Footer
         page.drawRectangle({
           x: 0,
           y: 0,
@@ -560,39 +762,48 @@ const TransactionManagement = () => {
           color: primaryColor
         });
 
-        // Footer text
-        page.drawText('Thank you for choosing Yogodyaan!', {
+        const footerName = businessConfig?.profile?.name || 'Yogodyaan';
+        const footerEmail = businessConfig?.contact?.email || 'info@yogodyaan.com';
+        const footerPhone = businessConfig?.contact?.phone || '+91 98765 43210';
+        const footerWebsite = businessConfig?.profile?.website_url || 'www.yogodyaan.com';
+        const footerTerms = businessConfig?.invoice?.terms || 'Thank you for your business.';
+
+        page.drawText(footerTerms, {
           x: 40,
           y: 50,
-          size: 14,
+          size: 12,
           font: boldFont,
           color: white
         });
 
-        page.drawText('Questions? Contact us at info@yogodyaan.com or +91 98765 43210', {
+        page.drawText(`Questions? Contact ${footerName} at ${footerEmail} or ${footerPhone}`, {
           x: 40,
           y: 30,
-          size: 10,
+          size: 9,
           font,
           color: white
         });
 
-        page.drawText('www.yogodyaan.com', {
-          x: width - 150,
+        page.drawText(footerWebsite, {
+          x: width - 160,
           y: 40,
-          size: 11,
+          size: 10,
           font: boldFont,
           color: white
         });
 
-        // Generate base64
         const base64 = await pdfDoc.saveAsBase64({ dataUri: false });
         return base64;
       };
 
       const pdfBase64 = await generateInvoicePdfBase64();
 
-      // 3) Compose HTML email using a professional template
+      // Email template colors strictly from DB (no forced fallback). If undefined, template defaults apply.
+      const primaryHex = businessConfig?.invoice?.color_primary;
+      const accentHex = businessConfig?.invoice?.color_accent;
+      const companyName = businessConfig?.profile?.name || 'Yogodyaan';
+      const companyAddress = (businessConfig?.contact?.address_lines || []).join(', ');
+
       const html = renderEmailTemplate('corporate-professional', {
         title: 'Payment Invoice',
         content: `
@@ -600,20 +811,20 @@ const TransactionManagement = () => {
           <p>Thanks for your payment. Your invoice is attached as a PDF.</p>
           <p>
             <strong>Amount:</strong> ${formatCurrency(tx.amount, tx.currency)}<br/>
-            <strong>Invoice ID:</strong> ${tx.id}<br/>
-            <strong>Date:</strong> ${formatDate(tx.created_at)}
+            <strong>Invoice ID:</strong> ${generateProfessionalInvoiceNumber(String(tx.id))}<br/>
+            <strong>Date:</strong> ${formatDate(tx.created_at)}<br/>
+            <strong>Plan Type:</strong> ${humanPlanType(tx.billing_plan_type)}${tx.billing_plan_type === 'monthly' && tx.billing_period_month ? `<br/><strong>Billing Month:</strong> ${formatBillingMonth(tx.billing_period_month)}` : ''}
           </p>
         `,
-        primaryColor: '#10B981',
-        secondaryColor: '#059669',
+        primaryColor: primaryHex,
+        secondaryColor: accentHex,
         backgroundColor: '#ffffff',
         fontFamily: 'Arial, sans-serif',
-        companyName: 'Yogodyaan',
-        companyAddress: '',
+        companyName,
+        companyAddress,
         unsubscribeUrl: `${window.location.origin}/unsubscribe`
       });
 
-      // 4) Send via Edge Function with PDF attachment
       const res = await EmailService.sendTransactionalEmail(
         newTx.userEmail,
         'Your Yogodyaan Invoice',
@@ -631,7 +842,7 @@ const TransactionManagement = () => {
         throw new Error('Transactional email failed');
       }
 
-      alert(res.simulated ? 'Invoice sent (simulated - no email provider configured)' : 'Invoice sent via provider');
+      alert(res.simulated ? 'Invoice sent (simulated - no provider configured)' : 'Invoice sent');
     } catch (e) {
       console.error(e);
       alert('Failed to save or send invoice');
@@ -644,7 +855,9 @@ const TransactionManagement = () => {
         currency: 'INR',
         description: '',
         payment_method: 'manual',
-        category: 'class_booking'
+        category: 'class_booking',
+        billing_plan_type: 'one_time',
+        billing_period_month: ''
       });
     }
   };
@@ -663,7 +876,6 @@ const TransactionManagement = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
@@ -690,7 +902,6 @@ const TransactionManagement = () => {
         </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-6">
@@ -702,7 +913,6 @@ const TransactionManagement = () => {
               <TrendingUp className="h-8 w-8 text-green-500" />
             </div>
           </div>
-
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -712,7 +922,6 @@ const TransactionManagement = () => {
               <TrendingDown className="h-8 w-8 text-red-500" />
             </div>
           </div>
-
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -724,7 +933,6 @@ const TransactionManagement = () => {
               <DollarSign className="h-8 w-8 text-blue-500" />
             </div>
           </div>
-
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -736,7 +944,6 @@ const TransactionManagement = () => {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
@@ -752,7 +959,6 @@ const TransactionManagement = () => {
                 />
               </div>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
@@ -766,7 +972,6 @@ const TransactionManagement = () => {
                 <option value="failed">Failed</option>
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
               <select
@@ -779,7 +984,6 @@ const TransactionManagement = () => {
                 <option value="expense">Expense</option>
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
               <select
@@ -797,33 +1001,18 @@ const TransactionManagement = () => {
           </div>
         </div>
 
-        {/* Transactions Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User/Vendor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Payment Method
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User/Vendor</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Method</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -832,6 +1021,9 @@ const TransactionManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{transaction.user_name}</div>
+                        <div className="text-xs text-gray-500">
+                          {humanPlanType(transaction.billing_plan_type)}{transaction.billing_plan_type === 'monthly' && transaction.billing_period_month ? ` • ${formatBillingMonth(transaction.billing_period_month)}` : ''}
+                        </div>
                         <div className="text-sm text-gray-500">{transaction.description}</div>
                       </div>
                     </td>
@@ -877,7 +1069,6 @@ const TransactionManagement = () => {
             </table>
           </div>
 
-          {/* Pagination */}
           <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
@@ -924,17 +1115,13 @@ const TransactionManagement = () => {
         </div>
       </div>
 
-      {/* Add Transaction Modal */}
       {showAddTransaction && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg w-full max-w-lg">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-gray-900">Add Manual Transaction</h2>
-                <button
-                  onClick={() => setShowAddTransaction(false)}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={() => setShowAddTransaction(false)} className="text-gray-400 hover:text-gray-600">
                   <X className="h-6 w-6" />
                 </button>
               </div>
@@ -949,7 +1136,6 @@ const TransactionManagement = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">User Name</label>
                   <input
@@ -959,7 +1145,6 @@ const TransactionManagement = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
@@ -982,7 +1167,6 @@ const TransactionManagement = () => {
                     </select>
                   </div>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <input
@@ -992,19 +1176,43 @@ const TransactionManagement = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Billing Type</label>
+                  <select
+                    value={newTx.billing_plan_type}
+                    onChange={(e) => {
+                      const val = e.target.value as BillingPlanType;
+                      setNewTx({
+                        ...newTx,
+                        billing_plan_type: val,
+                        billing_period_month: val === 'monthly' ? newTx.billing_period_month : ''
+                      });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="one_time">One Time</option>
+                    <option value="monthly">Monthly Subscription</option>
+                    <option value="crash_course">Crash Course</option>
+                  </select>
+                </div>
+                {newTx.billing_plan_type === 'monthly' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Billing Month</label>
+                    <input
+                      type="month"
+                      value={newTx.billing_period_month}
+                      onChange={(e) => setNewTx({ ...newTx, billing_period_month: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 flex justify-end space-x-2">
-                <button
-                  onClick={() => setShowAddTransaction(false)}
-                  className="px-4 py-2 rounded-lg border"
-                >
+                <button onClick={() => setShowAddTransaction(false)} className="px-4 py-2 rounded-lg border">
                   Cancel
                 </button>
-                <button
-                  onClick={handleSaveTransaction}
-                  className="px-4 py-2 rounded-lg bg-blue-600 text-white"
-                >
+                <button onClick={handleSaveTransaction} className="px-4 py-2 rounded-lg bg-blue-600 text-white">
                   Save & Send Invoice
                 </button>
               </div>
@@ -1013,7 +1221,6 @@ const TransactionManagement = () => {
         </div>
       )}
 
-      {/* Transaction Details Modal */}
       {selectedTransaction && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -1033,47 +1240,50 @@ const TransactionManagement = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Transaction ID</label>
                   <p className="text-sm text-gray-900">{selectedTransaction.id}</p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">User/Vendor</label>
                   <p className="text-sm text-gray-900">{selectedTransaction.user_name}</p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
                   <p className={`text-sm font-medium ${selectedTransaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
                     {selectedTransaction.type === 'income' ? '+' : '-'}{formatCurrency(selectedTransaction.amount, selectedTransaction.currency)}
                   </p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTransaction.status)}`}>
                     {selectedTransaction.status}
                   </span>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(selectedTransaction.category)}`}>
                     {selectedTransaction.category.replace('_', ' ')}
                   </span>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                   <p className="text-sm text-gray-900">{selectedTransaction.payment_method.replace('_', ' ')}</p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Created Date</label>
                   <p className="text-sm text-gray-900">{formatDate(selectedTransaction.created_at)}</p>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Updated Date</label>
                   <p className="text-sm text-gray-900">{formatDate(selectedTransaction.updated_at)}</p>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Plan Type</label>
+                  <p className="text-sm text-gray-900">{humanPlanType(selectedTransaction.billing_plan_type)}</p>
+                </div>
+                {selectedTransaction.billing_plan_type === 'monthly' && selectedTransaction.billing_period_month && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Billing Month</label>
+                    <p className="text-sm text-gray-900">{formatBillingMonth(selectedTransaction.billing_period_month)}</p>
+                  </div>
+                )}
               </div>
 
               <div className="mt-4">
