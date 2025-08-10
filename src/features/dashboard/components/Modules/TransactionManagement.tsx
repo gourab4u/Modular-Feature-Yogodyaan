@@ -52,6 +52,10 @@ const TransactionManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [businessConfig, setBusinessConfig] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const loadBusinessSettings = async () => {
@@ -81,89 +85,44 @@ const TransactionManagement = () => {
   const hasAccess = ['super_admin', 'super_user', 'energy_exchange_lead'].includes(currentUser.role);
   const canEdit = ['super_admin', 'super_user', 'energy_exchange_lead'].includes(currentUser.role);
 
-  const sampleTransactions = [
-    {
-      id: '1',
-      user_id: 'user-1',
-      user_name: 'Priya Sharma',
-      amount: 1500,
-      currency: 'INR',
-      status: 'completed',
-      type: 'income',
-      category: 'class_booking',
-      payment_method: 'upi',
-      description: 'Monthly Yoga Package',
-      created_at: '2024-07-08T10:30:00Z',
-      updated_at: '2024-07-08T10:30:00Z',
-      billing_plan_type: 'monthly',
-      billing_period_month: '2024-07'
-    },
-    {
-      id: '2',
-      user_id: 'instructor-1',
-      user_name: 'Ravi Kumar',
-      amount: -800,
-      currency: 'INR',
-      status: 'completed',
-      type: 'expense',
-      category: 'instructor_payment',
-      payment_method: 'bank_transfer',
-      description: 'Instructor payment for July classes',
-      created_at: '2024-07-07T15:45:00Z',
-      updated_at: '2024-07-07T15:45:00Z',
-      billing_plan_type: 'one_time'
-    },
-    {
-      id: '3',
-      user_id: 'user-2',
-      user_name: 'Anita Patel',
-      amount: 2000,
-      currency: 'INR',
-      status: 'pending',
-      type: 'income',
-      category: 'subscription',
-      payment_method: 'credit_card',
-      description: 'Premium Subscription',
-      created_at: '2024-07-06T09:20:00Z',
-      updated_at: '2024-07-06T09:20:00Z',
-      billing_plan_type: 'monthly',
-      billing_period_month: '2024-07'
-    },
-    {
-      id: '4',
-      user_id: 'vendor-1',
-      user_name: 'Studio Maintenance Co.',
-      amount: -500,
-      currency: 'INR',
-      status: 'completed',
-      type: 'expense',
-      category: 'maintenance',
-      payment_method: 'cash',
-      description: 'Studio cleaning and maintenance',
-      created_at: '2024-07-05T14:15:00Z',
-      updated_at: '2024-07-05T14:15:00Z',
-      billing_plan_type: 'one_time'
-    },
-    {
-      id: '5',
-      user_id: 'user-3',
-      user_name: 'Vikram Singh',
-      amount: 1200,
-      currency: 'INR',
-      status: 'failed',
-      type: 'income',
-      category: 'class_booking',
-      payment_method: 'upi',
-      description: 'Weekend Workshop',
-      created_at: '2024-07-04T11:30:00Z',
-      updated_at: '2024-07-04T11:30:00Z',
-      billing_plan_type: 'crash_course'
+  // Fetch transactions from DB (requires a view or RPC exposing user email/full name)
+  const fetchTransactions = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const { data, error } = await supabase
+        .from('transactions_with_user')
+        .select('id,user_id,subscription_id,amount,currency,status,payment_method,description,created_at,updated_at,billing_plan_type,billing_period_month,user_email,user_full_name')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      const rows = (data || []).map((r: any) => ({
+        ...r,
+        user_name: r.user_full_name || r.user_email || 'Unknown',
+        type: r.amount >= 0 ? 'income' : 'expense',
+        category: r.category || 'class_booking'
+      }));
+      setTransactions(rows);
+    } catch (e: any) {
+      console.error('Failed to load transactions', e);
+      setLoadError(e.message || 'Failed to load');
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   useEffect(() => {
-    setTransactions(sampleTransactions);
-    setFilteredTransactions(sampleTransactions);
+    fetchTransactions();
+    // Real-time updates
+    const channel = supabase
+      .channel('public:transactions')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
+        fetchTransactions();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -255,8 +214,21 @@ const TransactionManagement = () => {
     return `${prefix}-${yyyymm}-${last4}`;
   };
 
-  const handleSaveTransaction = async () => {
-    const tx: any = {
+  const paymentMethodOptions: { value: string; label: string }[] = [
+    { value: 'upi', label: 'UPI' },
+    { value: 'neft', label: 'NEFT' },
+    { value: 'net_banking', label: 'Net Banking' },
+    { value: 'credit_card', label: 'Credit Card' },
+    { value: 'debit_card', label: 'Debit Card' },
+    { value: 'cheque', label: 'Cheque' },
+    { value: 'demand_draft', label: 'Demand Draft' },
+    { value: 'cash', label: 'Cash' },
+    { value: 'bank_transfer', label: 'Bank Transfer' },
+    { value: 'manual', label: 'Manual' }
+  ];
+
+  const buildPendingTx = () => {
+    return {
       id: Date.now().toString(),
       user_id: null,
       user_name: newTx.user_name || newTx.userEmail,
@@ -274,7 +246,15 @@ const TransactionManagement = () => {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+  };
 
+  const handleInitiateSave = () => {
+    setShowConfirm(true);
+  };
+
+  const handleConfirmSaveTransaction = async () => {
+    const tx: any = buildPendingTx();
+    setSaving(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const jwt = sessionData?.session?.access_token;
@@ -847,6 +827,8 @@ const TransactionManagement = () => {
       console.error(e);
       alert('Failed to save or send invoice');
     } finally {
+      setSaving(false);
+      setShowConfirm(false);
       setShowAddTransaction(false);
       setNewTx({
         userEmail: '',
@@ -1001,6 +983,8 @@ const TransactionManagement = () => {
           </div>
         </div>
 
+        {loadError && <div className="mb-4 text-sm text-red-600">Error loading transactions: {loadError}</div>}
+        {loading && <div className="mb-4 text-sm text-gray-600">Loading transactions...</div>}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -1177,6 +1161,18 @@ const TransactionManagement = () => {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                  <select
+                    value={newTx.payment_method}
+                    onChange={(e) => setNewTx({ ...newTx, payment_method: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {paymentMethodOptions.map(pm => (
+                      <option key={pm.value} value={pm.value}>{pm.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Billing Type</label>
                   <select
                     value={newTx.billing_plan_type}
@@ -1212,8 +1208,52 @@ const TransactionManagement = () => {
                 <button onClick={() => setShowAddTransaction(false)} className="px-4 py-2 rounded-lg border">
                   Cancel
                 </button>
-                <button onClick={handleSaveTransaction} className="px-4 py-2 rounded-lg bg-blue-600 text-white">
-                  Save & Send Invoice
+                <button onClick={handleInitiateSave} className="px-4 py-2 rounded-lg bg-blue-600 text-white">
+                  Review & Send Invoice
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg w-full max-w-lg">
+            <div className="p-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold text-gray-900">Confirm Transaction</h2>
+                <button onClick={() => setShowConfirm(false)} className="text-gray-400 hover:text-gray-600">
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600">Please review the details before saving & sending the invoice.</p>
+              <div className="divide-y text-sm">
+                <div className="py-2 flex justify-between"><span className="text-gray-500">User Email</span><span>{newTx.userEmail || '-'}</span></div>
+                <div className="py-2 flex justify-between"><span className="text-gray-500">User Name</span><span>{newTx.user_name || newTx.userEmail || '-'}</span></div>
+                <div className="py-2 flex justify-between"><span className="text-gray-500">Amount</span><span>{newTx.amount} {newTx.currency}</span></div>
+                <div className="py-2 flex justify-between"><span className="text-gray-500">Currency</span><span>{newTx.currency}</span></div>
+                <div className="py-2 flex justify-between"><span className="text-gray-500">Payment Method</span><span>{newTx.payment_method.replace('_', ' ')}</span></div>
+                <div className="py-2 flex justify-between"><span className="text-gray-500">Billing Type</span><span>{humanPlanType(newTx.billing_plan_type)}</span></div>
+                {newTx.billing_plan_type === 'monthly' && (
+                  <div className="py-2 flex justify-between"><span className="text-gray-500">Billing Month</span><span>{newTx.billing_period_month || '-'}</span></div>
+                )}
+                <div className="py-2 flex justify-between"><span className="text-gray-500">Description</span><span className="max-w-[60%] text-right">{newTx.description || '-'}</span></div>
+              </div>
+              <div className="flex justify-end space-x-2 pt-2">
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="px-4 py-2 rounded-lg border"
+                  disabled={saving}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={handleConfirmSaveTransaction}
+                  disabled={saving}
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60"
+                >
+                  {saving ? 'Saving...' : 'Confirm & Send'}
                 </button>
               </div>
             </div>
