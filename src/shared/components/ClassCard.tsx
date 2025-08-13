@@ -6,7 +6,7 @@ interface ClassCardProps {
     class: {
         id: string;
         name: string;
-        instructor: Instructor;
+        instructor: any;
         // ...other class properties...
     };
 }

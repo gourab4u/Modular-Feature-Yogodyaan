@@ -4,7 +4,7 @@ import { NewsletterSignup } from '../../../features/marketing/components/Newslet
 
 export function Footer() {
   return (
-    <footer className="bg-gray-900 text-white">
+    <footer className="bg-slate-900 dark:bg-slate-950 text-white border-t border-slate-800 dark:border-slate-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
@@ -39,6 +39,7 @@ export function Footer() {
               <li><Link to="/book-class" className="text-gray-300 hover:text-emerald-400 transition-colors">Book Class</Link></li>
               <li><Link to="/learning" className="text-gray-300 hover:text-emerald-400 transition-colors">Learning Center</Link></li>
               <li><Link to="/contact" className="text-gray-300 hover:text-emerald-400 transition-colors">Contact</Link></li>
+              <li><Link to="/testimonials" className="text-gray-300 hover:text-emerald-400 transition-colors">Testimonials</Link></li>
             </ul>
           </div>
 
@@ -65,8 +66,8 @@ export function Footer() {
         {/* Newsletter Signup */}
         <div className="mt-12 pt-8 border-t border-gray-800">
           <div className="max-w-md mx-auto">
-            <NewsletterSignup 
-              className="bg-gray-800 border border-gray-700" 
+            <NewsletterSignup
+              className="bg-gray-800 border border-gray-700"
               showTitle={false}
             />
           </div>
@@ -78,6 +79,6 @@ export function Footer() {
           </p>
         </div>
       </div>
-    </footer>
+    </footer >
   )
 }

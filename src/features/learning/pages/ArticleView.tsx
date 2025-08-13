@@ -19,7 +19,7 @@ export function ArticleView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center">
         <LoadingSpinner size="lg" />
       </div>
     )
@@ -27,10 +27,10 @@ export function ArticleView() {
 
   if (error || !article) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-white dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Article Not Found</h1>
-          <p className="text-gray-600 mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Article Not Found</h1>
+          <p className="text-gray-600 dark:text-gray-300 mb-6">
             {error || 'The article you\'re looking for doesn\'t exist or has been removed.'}
           </p>
           <Link to="/learning" className="btn-primary">
@@ -52,13 +52,13 @@ export function ArticleView() {
   const estimatedReadTime = Math.ceil(article.content.replace(/<[^>]*>/g, '').split(' ').length / 200)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <Link
             to="/learning"
-            className="inline-flex items-center text-blue-600 hover:text-blue-700 transition-colors"
+            className="inline-flex items-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Learning Center
@@ -70,7 +70,7 @@ export function ArticleView() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <article className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <article className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 overflow-hidden">
               {/* Featured Image */}
               {article.image_url && (
                 <div className="relative h-96 overflow-hidden">
@@ -90,11 +90,11 @@ export function ArticleView() {
 
               {/* Article Header */}
               <div className="p-8">
-                <h1 className="text-4xl font-bold text-gray-900 mb-4 leading-tight">
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4 leading-tight">
                   {article.title}
                 </h1>
 
-                <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600 mb-6 pb-6 border-b border-gray-200">
+                <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600 dark:text-slate-300 mb-6 pb-6 border-b border-gray-200 dark:border-slate-600">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4" />
                     <span>{article.author?.full_name || 'Yogodyaan Team'}</span>
@@ -115,14 +115,14 @@ export function ArticleView() {
 
                 {/* Article Content */}
                 <div 
-                  className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-p:text-gray-700 prose-a:text-blue-600 prose-strong:text-gray-900 prose-ul:text-gray-700 prose-ol:text-gray-700"
+                  className="prose prose-lg max-w-none prose-headings:text-gray-900 dark:prose-headings:text-white prose-p:text-gray-700 dark:prose-p:text-slate-300 prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-strong:text-gray-900 dark:prose-strong:text-white prose-ul:text-gray-700 dark:prose-ul:text-slate-300 prose-ol:text-gray-700 dark:prose-ol:text-slate-300"
                   dangerouslySetInnerHTML={{ __html: article.content }}
                 />
 
                 {/* Video Embed */}
                 {article.video_url && (
                   <div className="mt-8">
-                    <h3 className="text-xl font-semibold text-gray-900 mb-4">Related Video</h3>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Related Video</h3>
                     <div className="aspect-video rounded-lg overflow-hidden">
                       <iframe
                         src={article.video_url}
@@ -136,13 +136,13 @@ export function ArticleView() {
 
                 {/* Tags */}
                 {article.tags.length > 0 && (
-                  <div className="mt-8 pt-8 border-t border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Tags</h3>
+                  <div className="mt-8 pt-8 border-t border-gray-200 dark:border-slate-600">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Tags</h3>
                     <div className="flex flex-wrap gap-2">
                       {article.tags.map((tag, index) => (
                         <span
                           key={index}
-                          className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
+                          className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium"
                         >
                           #{tag}
                         </span>
@@ -172,24 +172,24 @@ export function ArticleView() {
               />
 
               {/* Quick Navigation */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Navigation</h3>
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Navigation</h3>
                 <div className="space-y-3">
                   <Link
                     to="/learning"
-                    className="block text-blue-600 hover:text-blue-700 transition-colors"
+                    className="block text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                   >
                     ← All Articles
                   </Link>
                   <Link
                     to={`/learning?category=${article.category}`}
-                    className="block text-blue-600 hover:text-blue-700 transition-colors"
+                    className="block text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                   >
                     More in {article.category}
                   </Link>
                   <Link
                     to="/book-class"
-                    className="block text-blue-600 hover:text-blue-700 transition-colors"
+                    className="block text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
                   >
                     Book a Class →
                   </Link>

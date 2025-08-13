@@ -1,8 +1,13 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useInstructorModal } from '../hooks/useInstructorModal';
-import type { Instructor } from '../types';
-import InstructorProfileModal from './InstructorProfileModal';
+
+interface Instructor {
+  id: string;
+  full_name: string;
+  email: string;
+  bio?: string;
+  avatar_url?: string;
+}
 
 interface InstructorContextType {
   openInstructorModal: (instructor: Instructor) => void;
@@ -24,7 +29,18 @@ interface InstructorProviderProps {
 
 export const InstructorProvider: React.FC<InstructorProviderProps> = ({ children }) => {
   const navigate = useNavigate();
-  const { selectedInstructor, isModalOpen, openModal, closeModal } = useInstructorModal();
+  const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = (instructor: Instructor) => {
+    setSelectedInstructor(instructor);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setSelectedInstructor(null);
+    setIsModalOpen(false);
+  };
 
   const handleViewFullProfile = (instructorId: string) => {
     closeModal();
@@ -34,12 +50,19 @@ export const InstructorProvider: React.FC<InstructorProviderProps> = ({ children
   return (
     <InstructorContext.Provider value={{ openInstructorModal: openModal }}>
       {children}
-      <InstructorProfileModal
-        instructor={selectedInstructor}
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        onViewFullProfile={handleViewFullProfile}
-      />
+      {/* Modal component would be imported properly in the future */}
+      {isModalOpen && selectedInstructor && (
+        <div className="modal-backdrop" onClick={closeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <h3>{selectedInstructor.full_name}</h3>
+            <p>{selectedInstructor.bio}</p>
+            <button onClick={() => handleViewFullProfile(selectedInstructor.id)}>
+              View Full Profile
+            </button>
+            <button onClick={closeModal}>Close</button>
+          </div>
+        </div>
+      )}
     </InstructorContext.Provider>
   );
 };

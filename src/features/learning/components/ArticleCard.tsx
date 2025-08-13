@@ -44,7 +44,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
   }
 
   return (
-    <article className="card overflow-hidden group">
+    <article className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-xl shadow-lg overflow-hidden group">
       <Link to={`/learning/${article.id}`}>
         <div className="relative">
           {article.image_url && (
@@ -66,37 +66,37 @@ export function ArticleCard({ article }: ArticleCardProps) {
         </div>
         
         <div className="p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors line-clamp-2">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">
             {article.title}
           </h3>
           
-          <p className="text-gray-600 mb-4 line-clamp-3">
+          <p className="text-gray-600 dark:text-slate-300 mb-4 line-clamp-3">
             {article.preview_text}
           </p>
           
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-1">
               {renderStars(article.average_rating)}
-              <span className="text-sm text-gray-600 ml-2">
+              <span className="text-sm text-gray-600 dark:text-slate-400 ml-2">
                 {article.average_rating > 0 ? article.average_rating.toFixed(1) : 'No ratings'}
               </span>
               {article.total_ratings > 0 && (
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-500 dark:text-slate-500">
                   ({article.total_ratings})
                 </span>
               )}
             </div>
             
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
+            <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-slate-400">
               <div className="flex items-center space-x-1">
-                <Eye className="w-4 h-4" />
+                <Eye className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                 <span>{article.view_count}</span>
               </div>
             </div>
           </div>
           
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-1 text-sm text-gray-500">
+            <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-slate-400">
               <Calendar className="w-4 h-4" />
               <span>{formatDate(article.published_at || article.created_at)}</span>
             </div>
@@ -107,18 +107,18 @@ export function ArticleCard({ article }: ArticleCardProps) {
           </div>
           
           {article.tags && article.tags.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-600">
               <div className="flex flex-wrap gap-2">
                 {article.tags.slice(0, 3).map((tag, index) => (
                   <span
                     key={index}
-                    className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs"
+                    className="bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-300 px-2 py-1 rounded text-xs"
                   >
                     #{tag}
                   </span>
                 ))}
                 {article.tags.length > 3 && (
-                  <span className="text-gray-500 text-xs">
+                  <span className="text-gray-500 dark:text-slate-400 text-xs">
                     +{article.tags.length - 3} more
                   </span>
                 )}

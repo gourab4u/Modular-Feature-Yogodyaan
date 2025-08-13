@@ -90,7 +90,7 @@ export function WeeklyClassScheduler() {
 
       // Try to add is_archived filter, but handle gracefully if column doesn't exist
       try {
-        const { data: testData, error: testError } = await supabase
+        const { error: testError } = await supabase
           .from('class_types')
           .select('is_archived')
           .limit(1)
@@ -318,7 +318,6 @@ export function WeeklyClassScheduler() {
     const newErrors: any = {}
 
     if (!formData.class_type_id) newErrors.class_type_id = 'Class type is required'
-    if (!formData.instructor_id) newErrors.instructor_id = 'Instructor is required'
     if (formData.day_of_week === undefined) newErrors.day_of_week = 'Day of week is required'
     if (!formData.start_time) newErrors.start_time = 'Start time is required'
     if (!formData.duration_minutes || formData.duration_minutes < 15) {
@@ -329,13 +328,11 @@ export function WeeklyClassScheduler() {
     }
     if (!formData.effective_from) newErrors.effective_from = 'Effective from date is required'
 
-    // Check for scheduling conflicts
+    // Check for time slot conflicts (same day and time)
     const conflictingSchedule = schedules.find(schedule => {
       if (editingSchedule && schedule.id === editingSchedule.id) return false
 
-      if (schedule.day_of_week === formData.day_of_week &&
-        schedule.instructor_id === formData.instructor_id) {
-
+      if (schedule.day_of_week === formData.day_of_week) {
         const existingStart = new Date(`2000-01-01T${schedule.start_time}`)
         const existingEnd = new Date(existingStart.getTime() + schedule.duration_minutes * 60000)
         const newStart = new Date(`2000-01-01T${formData.start_time}`)
@@ -347,7 +344,7 @@ export function WeeklyClassScheduler() {
     })
 
     if (conflictingSchedule) {
-      newErrors.general = 'This instructor already has a class scheduled at this time'
+      newErrors.general = 'A class is already scheduled at this time slot'
     }
 
     setErrors(newErrors)
@@ -362,11 +359,17 @@ export function WeeklyClassScheduler() {
     try {
       setSaving(true)
 
+      // Prepare data with proper null handling for instructor_id
+      const scheduleData = {
+        ...formData,
+        instructor_id: formData.instructor_id || null
+      }
+
       if (editingSchedule) {
         // Update existing schedule
         const { error } = await supabase
           .from('class_schedules')
-          .update(formData)
+          .update(scheduleData)
           .eq('id', editingSchedule.id)
 
         if (error) throw error
@@ -374,7 +377,7 @@ export function WeeklyClassScheduler() {
         // Create new schedule
         const { error } = await supabase
           .from('class_schedules')
-          .insert([formData])
+          .insert([scheduleData])
 
         if (error) throw error
       }
@@ -575,22 +578,21 @@ export function WeeklyClassScheduler() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Instructor *
+                    Instructor (Optional)
                   </label>
                   <select
                     value={formData.instructor_id}
                     onChange={(e) => handleInputChange('instructor_id', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.instructor_id ? 'border-red-500' : 'border-gray-300'
-                      }`}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="">Select instructor</option>
+                    <option value="">Assign later via Class Assignment Manager</option>
                     {instructors.map(instructor => (
                       <option key={instructor.user_id} value={instructor.user_id}>
                         {instructor.full_name}
                       </option>
                     ))}
                   </select>
-                  {errors.instructor_id && <p className="text-red-500 text-sm mt-1">{errors.instructor_id}</p>}
+                  <p className="text-sm text-gray-500 mt-1">Leave empty to assign instructor later</p>
                 </div>
               </div>
 
@@ -799,7 +801,7 @@ export function WeeklyClassScheduler() {
                       </div>
 
                       <div className="text-gray-700 font-medium">
-                        {schedule.instructor?.full_name}
+                        {schedule.instructor?.full_name || 'No instructor assigned'}
                       </div>
 
                       {schedule.class_type && (

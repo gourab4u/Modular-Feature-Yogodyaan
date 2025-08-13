@@ -1,4 +1,4 @@
-import { CheckCircle, Clock, Eye, FileText, Filter } from 'lucide-react'
+import { CheckCircle, Clock, Eye, FileText, Filter, User } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../../shared/components/ui/LoadingSpinner'
@@ -27,6 +27,7 @@ interface ContactMessage {
   message: string;
   status: string;
   created_at: string;
+  user_id: string | null; // Added user_id field
 }
 
 export function FormSubmissions() {
@@ -48,15 +49,17 @@ export function FormSubmissions() {
       setLoading(true)
 
       // Fetch both form submissions and contact messages in parallel
+      // Admins can see ALL contact messages (no user filtering)
       const [submissionsResponse, contactsResponse] = await Promise.all([
         supabase
           .from('form_submissions')
           .select('*')
           .order('created_at', { ascending: false }),
 
+        // For contact messages, admins see ALL messages including user_id
         supabase
           .from('contact_messages')
-          .select('*')
+          .select('*') // Select all fields including user_id
           .order('created_at', { ascending: false })
       ]);
 
@@ -172,8 +175,8 @@ export function FormSubmissions() {
         <div className="flex space-x-3">
           <button
             className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'submissions'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             onClick={() => setActiveTab('submissions')}
           >
@@ -181,8 +184,8 @@ export function FormSubmissions() {
           </button>
           <button
             className={`px-4 py-2 rounded-lg transition-colors ${activeTab === 'contacts'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
               }`}
             onClick={() => setActiveTab('contacts')}
           >
@@ -298,6 +301,7 @@ export function FormSubmissions() {
                           <button
                             onClick={() => setSelectedSubmission(submission)}
                             className="text-blue-600 hover:text-blue-900"
+                            title="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -305,6 +309,7 @@ export function FormSubmissions() {
                             <button
                               onClick={() => handleStatusUpdate(submission.id, 'in_progress')}
                               className="text-yellow-600 hover:text-yellow-900"
+                              title="Mark In Progress"
                             >
                               <Clock className="w-4 h-4" />
                             </button>
@@ -313,6 +318,7 @@ export function FormSubmissions() {
                             <button
                               onClick={() => handleStatusUpdate(submission.id, 'completed')}
                               className="text-green-600 hover:text-green-900"
+                              title="Mark Completed"
                             >
                               <CheckCircle className="w-4 h-4" />
                             </button>
@@ -327,7 +333,7 @@ export function FormSubmissions() {
           )}
         </div>
       ) : (
-        /* Contact Messages List */
+        /* Enhanced Contact Messages List with User ID Support */
         <div className="bg-white rounded-xl shadow-lg overflow-hidden">
           {filteredContacts.length === 0 ? (
             <div className="text-center py-12">
@@ -345,6 +351,9 @@ export function FormSubmissions() {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      User Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -378,6 +387,26 @@ export function FormSubmissions() {
                         )}
                       </td>
                       <td className="px-6 py-4">
+                        {message.user_id ? (
+                          <div className="flex items-center">
+                            <User className="w-4 h-4 text-green-600 mr-1" />
+                            <div>
+                              <div className="text-xs text-green-700 font-medium">Registered User</div>
+                              <div className="text-xs text-gray-500 font-mono">
+                                {message.user_id.slice(0, 8)}...
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center">
+                            <div className="w-4 h-4 rounded-full bg-orange-200 mr-1 flex items-center justify-center">
+                              <span className="text-xs text-orange-600">?</span>
+                            </div>
+                            <span className="text-xs text-orange-600">Anonymous</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
                         <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(message.status)}`}>
                           {message.status.replace('_', ' ')}
                         </span>
@@ -390,6 +419,7 @@ export function FormSubmissions() {
                           <button
                             onClick={() => setSelectedContactMessage(message)}
                             className="text-blue-600 hover:text-blue-900"
+                            title="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
@@ -397,6 +427,7 @@ export function FormSubmissions() {
                             <button
                               onClick={() => handleStatusUpdate(message.id, 'in_progress')}
                               className="text-yellow-600 hover:text-yellow-900"
+                              title="Mark In Progress"
                             >
                               <Clock className="w-4 h-4" />
                             </button>
@@ -405,6 +436,7 @@ export function FormSubmissions() {
                             <button
                               onClick={() => handleStatusUpdate(message.id, 'completed')}
                               className="text-green-600 hover:text-green-900"
+                              title="Mark Completed"
                             >
                               <CheckCircle className="w-4 h-4" />
                             </button>
@@ -488,7 +520,7 @@ export function FormSubmissions() {
         </div>
       )}
 
-      {/* Contact Message Detail Modal */}
+      {/* Enhanced Contact Message Detail Modal with User ID Info */}
       {selectedContactMessage && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
@@ -514,6 +546,30 @@ export function FormSubmissions() {
                   <p><strong>Email:</strong> {selectedContactMessage.email}</p>
                   {selectedContactMessage.phone && (
                     <p><strong>Phone:</strong> {selectedContactMessage.phone}</p>
+                  )}
+                  {selectedContactMessage.user_id ? (
+                    <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center">
+                        <User className="w-4 h-4 text-green-600 mr-2" />
+                        <div>
+                          <p className="text-sm font-medium text-green-800">Registered User</p>
+                          <p className="text-xs text-green-600 font-mono">
+                            User ID: {selectedContactMessage.user_id}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="w-4 h-4 rounded-full bg-orange-200 mr-2 flex items-center justify-center">
+                          <span className="text-xs text-orange-600">?</span>
+                        </div>
+                        <p className="text-sm text-orange-700">
+                          Anonymous submission (no user account linked)
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </div>
               </div>

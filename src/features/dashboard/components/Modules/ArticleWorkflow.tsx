@@ -6,7 +6,6 @@ import { supabase } from '../../../../shared/lib/supabase'
 import { useAuth } from '../../../auth/contexts/AuthContext'
 import { createNotification, notificationTemplates } from '../../../notifications/utils/notificationHelpers'
 
-
 interface Article {
     id: string
     title: string
@@ -53,7 +52,7 @@ export function ArticleWorkflow() {
     useEffect(() => {
         const getCurrentUserProfile = async () => {
             if (user?.id) {
-                const { data, error } = await supabase
+                const { data } = await supabase
                     .from('profiles')
                     .select('*')
                     .eq('user_id', user.id)
@@ -70,6 +69,7 @@ export function ArticleWorkflow() {
 
     useEffect(() => {
         fetchArticles()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab])
 
     const fetchArticles = async () => {
@@ -158,13 +158,20 @@ export function ArticleWorkflow() {
 
             if (updateError) throw updateError
 
+            // Add this debugging code before the insert
+            console.log('Debug - Current user:', user?.id);
+            console.log('Debug - Current user profile:', currentUserProfile);
+            console.log('Debug - Profile role:', currentUserProfile?.role);
+            console.log('Debug - Profile is_active:', currentUserProfile?.is_active);
+            console.log('Debug - Profile user_id:', currentUserProfile?.user_id);
+
             // Log the moderation action using profile ID
             const { error: logError } = await supabase
                 .from('article_moderation_logs')
                 .insert([{
                     article_id: articleId,
                     action: 'approved',
-                    moderated_by: currentUserProfile.id,
+                    moderated_by: currentUserProfile.user_id, // Changed from currentUserProfile.id
                     comment: 'Article approved and published'
                 }])
 
@@ -199,6 +206,22 @@ export function ArticleWorkflow() {
                 throw new Error('User profile not found')
             }
 
+            // Add this debugging code before the insert
+            console.log('Debug - Current user:', user?.id);
+            console.log('Debug - Current user profile:', currentUserProfile);
+            console.log('Debug - Profile role:', currentUserProfile?.role);
+            console.log('Debug - Profile is_active:', currentUserProfile?.is_active);
+            console.log('Debug - Profile user_id:', currentUserProfile?.user_id);
+
+            // Log the exact data being inserted
+            const logData = {
+                article_id: articleId,
+                action: 'rejected',
+                moderated_by: currentUserProfile.user_id, // Changed from currentUserProfile.id
+                comment: comment
+            };
+            console.log('Debug - Data to insert:', logData);
+
             // Update article status back to draft
             const { error: updateError } = await supabase
                 .from('articles')
@@ -212,16 +235,10 @@ export function ArticleWorkflow() {
 
             if (updateError) throw updateError
 
-
             // Log the moderation action using profile ID
             const { error: logError } = await supabase
                 .from('article_moderation_logs')
-                .insert([{
-                    article_id: articleId,
-                    action: 'rejected',
-                    moderated_by: currentUserProfile.id,
-                    comment: comment
-                }])
+                .insert([logData])
 
             if (logError) throw logError
 

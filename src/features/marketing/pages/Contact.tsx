@@ -71,25 +71,25 @@ export function Contact() {
 
   const contactInfo = [
     {
-      icon: <Globe className="w-6 h-6 text-blue-600" />,
+      icon: <Globe className="w-6 h-6 text-blue-600 dark:text-blue-400" />,
       title: "Global Reach",
       details: ["Available worldwide", "Online sessions only"],
       action: null
     },
     {
-      icon: <Mail className="w-6 h-6 text-green-600" />,
+      icon: <Mail className="w-6 h-6 text-green-600 dark:text-green-400" />,
       title: "Email Us",
       details: ["hello@yogodaan.com"],
       action: "Send Email"
     },
     {
-      icon: <MessageCircle className="w-6 h-6 text-purple-600" />,
+      icon: <MessageCircle className="w-6 h-6 text-purple-600 dark:text-purple-400" />,
       title: "Quick Response",
       details: ["24-48 hour response time"],
       action: null
     },
     {
-      icon: <Clock className="w-6 h-6 text-orange-600" />,
+      icon: <Clock className="w-6 h-6 text-orange-600 dark:text-orange-400" />,
       title: "Flexible Hours",
       details: ["Sessions available 24/7", "Across all time zones"],
       action: null
@@ -107,14 +107,14 @@ export function Contact() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="max-w-md mx-auto px-4">
-          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Send className="w-8 h-8 text-green-600" />
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Send className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Message Sent!</h2>
-            <p className="text-gray-600 mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Message Sent!</h2>
+            <p className="text-gray-600 dark:text-slate-300 mb-6">
               Thank you for contacting us. We'll get back to you within 24-48 hours.
             </p>
             <Button onClick={() => {
@@ -136,12 +136,12 @@ export function Contact() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white dark:bg-slate-900">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-blue-50 via-white to-green-50 py-20">
+      <section className="bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 py-20">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h1 className="text-5xl font-bold text-gray-900 mb-6">Begin Your Wellness Journey</h1>
-          <p className="text-xl text-gray-600 leading-relaxed">
+          <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">Begin Your Wellness Journey</h1>
+          <p className="text-xl text-gray-600 dark:text-slate-300 leading-relaxed">
             Schedule a class or learn more about our programs. We're here to support your 
             wellness goals and answer any questions you may have.
           </p>
@@ -149,22 +149,22 @@ export function Contact() {
       </section>
 
       {/* Contact Info */}
-      <section className="py-20">
+      <section className="py-20 bg-white dark:bg-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
             {contactInfo.map((info, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-lg p-6 text-center hover:shadow-xl transition-all duration-300">
+              <div key={index} className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-6 text-center hover:shadow-xl transition-all duration-300">
                 <div className="flex justify-center mb-4">
                   {info.icon}
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">{info.title}</h3>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{info.title}</h3>
                 <div className="space-y-1 mb-4">
                   {info.details.map((detail, idx) => (
-                    <p key={idx} className="text-gray-600 text-sm">{detail}</p>
+                    <p key={idx} className="text-gray-600 dark:text-slate-300 text-sm">{detail}</p>
                   ))}
                 </div>
                 {info.action && (
-                  <button className="text-blue-600 hover:text-blue-700 font-medium transition-colors text-sm">
+                  <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors text-sm">
                     {info.action}
                   </button>
                 )}
@@ -175,18 +175,18 @@ export function Contact() {
           {/* Contact Form and Time Zones */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             {/* Contact Form */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Send Us a Message</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-8">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Send Us a Message</h2>
               <form onSubmit={handleSubmit} className="space-y-6">
                 {errors.general && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-red-600 text-sm">{errors.general}</p>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
+                    <p className="text-red-600 dark:text-red-400 text-sm">{errors.general}</p>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                       Name *
                     </label>
                     <input
@@ -195,15 +195,15 @@ export function Contact() {
                       name="name"
                       value={formData.name}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.name ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+                        errors.name ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-slate-600'
                       }`}
                       placeholder="Your full name"
                     />
-                    {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                    {errors.name && <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.name}</p>}
                   </div>
                   <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                       Email *
                     </label>
                     <input
@@ -212,18 +212,18 @@ export function Contact() {
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.email ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+                        errors.email ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-slate-600'
                       }`}
                       placeholder="your@email.com"
                     />
-                    {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                    {errors.email && <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.email}</p>}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                       Phone (Optional)
                     </label>
                     <input
@@ -232,12 +232,12 @@ export function Contact() {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                       placeholder="+1 (555) 123-4567"
                     />
                   </div>
                   <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 mb-1">
+                    <label htmlFor="subject" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                       Subject *
                     </label>
                     <input
@@ -246,17 +246,17 @@ export function Contact() {
                       name="subject"
                       value={formData.subject}
                       onChange={handleInputChange}
-                      className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                        errors.subject ? 'border-red-500' : 'border-gray-300'
+                      className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+                        errors.subject ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-slate-600'
                       }`}
                       placeholder="How can we help?"
                     />
-                    {errors.subject && <p className="text-red-500 text-sm mt-1">{errors.subject}</p>}
+                    {errors.subject && <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.subject}</p>}
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="message" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                     Message *
                   </label>
                   <textarea
@@ -266,11 +266,11 @@ export function Contact() {
                     value={formData.message}
                     onChange={handleInputChange}
                     placeholder="Tell us about your wellness goals, questions about our services, or how we can help you..."
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.message ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
+                      errors.message ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-slate-600'
                     }`}
                   />
-                  {errors.message && <p className="text-red-500 text-sm mt-1">{errors.message}</p>}
+                  {errors.message && <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.message}</p>}
                 </div>
 
                 <Button
@@ -291,24 +291,24 @@ export function Contact() {
             </div>
 
             {/* Global Time Zone Reference */}
-            <div className="bg-white rounded-xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Global Time Zone Reference</h2>
-              <p className="text-gray-600 mb-6">
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-8">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Global Time Zone Reference</h2>
+              <p className="text-gray-600 dark:text-slate-300 mb-6">
                 We offer sessions across all time zones. Here are our typical availability windows:
               </p>
               
               <div className="space-y-4">
                 {timeZones.map((tz, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-gray-900">{tz.zone}</span>
-                    <span className="text-sm text-gray-600">{tz.time}</span>
+                  <div key={index} className="flex justify-between items-center p-3 bg-gray-50 dark:bg-slate-700 rounded-lg">
+                    <span className="font-medium text-gray-900 dark:text-white">{tz.zone}</span>
+                    <span className="text-sm text-gray-600 dark:text-slate-300">{tz.time}</span>
                   </div>
                 ))}
               </div>
               
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-semibold text-blue-900 mb-2">Flexible Scheduling</h3>
-                <p className="text-sm text-blue-800">
+              <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Flexible Scheduling</h3>
+                <p className="text-sm text-blue-800 dark:text-blue-200">
                   Can't find a suitable time? Contact us for custom scheduling options. 
                   We're committed to finding a time that works for your busy lifestyle.
                 </p>
@@ -316,30 +316,30 @@ export function Contact() {
 
               <div className="mt-6 space-y-4">
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Social Media</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Social Media</h3>
                   <div className="flex space-x-4">
-                    <a href="#" className="text-blue-600 hover:text-blue-700 transition-colors">
+                    <a href="#" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
                       LinkedIn
                     </a>
-                    <a href="#" className="text-blue-600 hover:text-blue-700 transition-colors">
+                    <a href="#" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
                       Instagram
                     </a>
-                    <a href="#" className="text-blue-600 hover:text-blue-700 transition-colors">
+                    <a href="#" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors">
                       YouTube
                     </a>
                   </div>
                 </div>
                 
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Quick Links</h3>
+                  <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Quick Links</h3>
                   <div className="space-y-2">
-                    <a href="/book-class" className="block text-blue-600 hover:text-blue-700 transition-colors text-sm">
+                    <a href="/book-class" className="block text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm">
                       Book a Session
                     </a>
-                    <a href="/services" className="block text-blue-600 hover:text-blue-700 transition-colors text-sm">
+                    <a href="/services" className="block text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm">
                       View Services
                     </a>
-                    <a href="/testimonials" className="block text-blue-600 hover:text-blue-700 transition-colors text-sm">
+                    <a href="/testimonials" className="block text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors text-sm">
                       Read Testimonials
                     </a>
                   </div>
