@@ -27,9 +27,14 @@ export const useRateForAssignment = (scheduleType, category, classTypeId, packag
                         .eq('category', category)
                         .lte('effective_from', today)
                         .or(`effective_until.is.null,effective_until.gte.${today}`)
+                        .limit(1)
                         .eq('is_active', true);
+                    if (!scheduleType || !category) {
+                        console.error("Missing required filters: scheduleType or category");
+                        return null;
+                    }
                     for (const f of filters) {
-                        if (f.isNull) {
+                        if (f.isNull || f.v === '') {
                             // @ts-ignore
                             q = q.is(f.k, null);
                         }
@@ -38,17 +43,17 @@ export const useRateForAssignment = (scheduleType, category, classTypeId, packag
                             q = q.eq(f.k, f.v);
                         }
                     }
-                    const { data, error } = await q.order('created_at', { ascending: false }).limit(1).single();
+                    const { data, error } = await q.order('created_at', { ascending: false }).limit(1).maybeSingle();
                     if (error && error.code !== 'PGRST116')
                         throw error; // ignore "no rows" error
                     return data;
                 };
                 // Priority: exact class_type -> exact package -> generic (both null)
                 let found = null;
-                if (classTypeId) {
+                if (classTypeId != null) {
                     found = await runQuery([{ k: 'class_type_id', v: classTypeId }, { k: 'package_id', v: null, isNull: true }]);
                 }
-                else if (packageId) {
+                else if (packageId != null) {
                     found = await runQuery([{ k: 'package_id', v: packageId }, { k: 'class_type_id', v: null, isNull: true }]);
                 }
                 if (!found) {

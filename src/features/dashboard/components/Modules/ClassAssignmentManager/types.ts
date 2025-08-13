@@ -15,6 +15,7 @@ export interface ClassAssignment {
     schedule_type: string
     booking_type: 'individual' | 'corporate' | 'private_group' | 'public_group'
     package_id?: string
+    class_package_id?: string
     // Instructor status fields
     instructor_status?: 'pending' | 'accepted' | 'rejected'
     instructor_response_at?: string
@@ -192,13 +193,13 @@ export interface FormData {
     booking_id: string
     client_name: string
     client_email: string
-    
+
     // Multiple booking support
     booking_ids: string[]
 
     // Weekly template assignment
     selected_template_id: string
-    
+
     // Package validity constraint
     validity_end_date: string
 }
@@ -238,11 +239,11 @@ export const getClientNames = (assignment: ClassAssignment): string => {
     if (!assignment.assignment_bookings?.length) {
         return ''
     }
-    
+
     const names = assignment.assignment_bookings
         .map(ab => ab.booking ? `${ab.booking.first_name} ${ab.booking.last_name}`.trim() : '')
         .filter(name => name !== '')
-    
+
     return names.join(', ')
 }
 
@@ -251,23 +252,23 @@ export const getPrimaryClientDisplay = (assignment: ClassAssignment): string => 
     if (!assignment.assignment_bookings?.length) {
         return ''
     }
-    
+
     const names = assignment.assignment_bookings
         .map(ab => ab.booking ? `${ab.booking.first_name} ${ab.booking.last_name}`.trim() : '')
         .filter(name => name !== '')
-    
+
     if (names.length === 0) return ''
     if (names.length === 1) return names[0]
-    
+
     return `${names[0]} + ${names.length - 1} others`
 }
 
 // Helper function to get detailed booking information
-export const getBookingDetails = (assignment: ClassAssignment): Array<{name: string, email: string, bookingId: string}> => {
+export const getBookingDetails = (assignment: ClassAssignment): Array<{ name: string, email: string, bookingId: string }> => {
     if (!assignment.assignment_bookings?.length) {
         return []
     }
-    
+
     return assignment.assignment_bookings
         .map(ab => ({
             name: ab.booking ? `${ab.booking.first_name} ${ab.booking.last_name}`.trim() : '',
@@ -281,11 +282,11 @@ export const getClientEmails = (assignment: ClassAssignment): string => {
     if (!assignment.assignment_bookings?.length) {
         return ''
     }
-    
+
     const emails = assignment.assignment_bookings
         .map(ab => ab.booking?.email || '')
         .filter(email => email !== '')
-    
+
     return emails.join(', ')
 }
 
@@ -293,6 +294,6 @@ export const getBookingIds = (assignment: ClassAssignment): string[] => {
     if (!assignment.assignment_bookings?.length) {
         return []
     }
-    
+
     return assignment.assignment_bookings.map(ab => ab.booking_id)
 }

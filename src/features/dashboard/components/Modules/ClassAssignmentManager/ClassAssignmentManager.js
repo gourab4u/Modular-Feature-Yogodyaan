@@ -1,17 +1,17 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
 import { BarChart3, Calendar, CheckSquare, Filter, List, Plus, RefreshCw, Search, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { useClassAssignmentData, useFormHandler } from './hooks';
-import { AssignmentForm, AssignmentListView, CalendarView, AnalyticsView, AdvancedFilters, ClassDetailsPopup, EditAssignmentModal, Button } from './components';
-import { getClientNames } from './types';
-import { timeToMinutes, getAssignmentType, formatTime } from './utils';
 import { supabase } from '../../../../../shared/lib/supabase';
+import { AdvancedFilters, AnalyticsView, AssignmentForm, AssignmentListView, Button, CalendarView, ClassDetailsPopup, EditAssignmentModal } from './components';
+import { useClassAssignmentData, useFormHandler } from './hooks';
 import { AssignmentCreationService } from './services/assignmentCreation';
+import { getClientNames } from './types';
+import { formatTime, getAssignmentType, timeToMinutes } from './utils';
 export function ClassAssignmentManager() {
     // Data fetching hook
     const { assignments, weeklySchedules, scheduleTemplates, classTypes, packages, userProfiles, bookings, loading, loadingStates, setLoadingStates, fetchData } = useClassAssignmentData();
     // Form handling hook with conflict checking
-    const { formData, errors, conflictWarning, setConflictWarning, handleInputChange, handleTimeChange, handleDurationChange, validateForm, resetForm } = useFormHandler(checkForConflicts, packages);
+    const { formData, errors, conflictWarning, setConflictWarning, handleInputChange, handleTimeChange, handleDurationChange, validateForm, resetForm } = useFormHandler({ conflictCheckCallback: checkForConflicts, packages });
     // UI state
     const [showAssignForm, setShowAssignForm] = useState(false);
     const [saving, setSaving] = useState(false);

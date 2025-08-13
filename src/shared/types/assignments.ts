@@ -30,6 +30,10 @@ export interface InstructorUpcomingAssignment {
     start_time: string;             // HH:MM
     end_time: string;               // HH:MM
     schedule_type: string;          // 'weekly' | 'adhoc' etc.
+    booking_type?: string | null;   // Added for dashboard display
+    participant_count?: number | null; // Added for dashboard display
+    class_package_id?: string | null; // Added for package class linkage
+    scheduled_class_id?: string | null; // For weekly class linkage
     class_status: ClassStatus;
     payment_status: PaymentStatus | null;
     payment_amount: number | null;
@@ -54,6 +58,12 @@ export interface AdminClassOverview {
     class_status: ClassStatus;
     payment_status: PaymentStatus | null;
     final_payment_amount: number | null;
+    class_type_name?: string | null;
+    class_type_description?: string | null;
+    class_type_difficulty?: string | null;
+    class_type_duration?: number | null;
+    schedule_type?: string | null;
+    timezone?: string | null;
     attended_count: number;
     absent_count: number;
     no_show_count: number;

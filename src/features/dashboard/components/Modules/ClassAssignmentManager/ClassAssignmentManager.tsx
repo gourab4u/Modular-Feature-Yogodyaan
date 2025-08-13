@@ -1,30 +1,30 @@
 import { BarChart3, Calendar, CheckSquare, Filter, List, Plus, RefreshCw, Search, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 
-import { useClassAssignmentData, useFormHandler } from './hooks'
-import { 
-    AssignmentForm, 
-    AssignmentListView, 
-    CalendarView, 
-    AnalyticsView, 
+import { supabase } from '../../../../../shared/lib/supabase'
+import {
     AdvancedFilters,
-    ClassDetailsPopup, 
-    EditAssignmentModal,
-    Button 
+    AnalyticsView,
+    AssignmentForm,
+    AssignmentListView,
+    Button,
+    CalendarView,
+    ClassDetailsPopup,
+    EditAssignmentModal
 } from './components'
-import { 
-    ClassAssignment, 
-    ConflictDetails, 
+import { useClassAssignmentData, useFormHandler } from './hooks'
+import { AssignmentCreationService } from './services/assignmentCreation'
+import {
+    ClassAssignment,
+    ConflictDetails,
     Filters,
     getClientNames
 } from './types'
-import { 
-    timeToMinutes, 
+import {
+    formatTime,
     getAssignmentType,
-    formatTime
+    timeToMinutes
 } from './utils'
-import { supabase } from '../../../../../shared/lib/supabase'
-import { AssignmentCreationService } from './services/assignmentCreation'
 
 export function ClassAssignmentManager() {
     // Data fetching hook
@@ -53,7 +53,7 @@ export function ClassAssignmentManager() {
         handleDurationChange,
         validateForm,
         resetForm
-    } = useFormHandler(checkForConflicts, packages)
+    } = useFormHandler({ conflictCheckCallback: checkForConflicts, packages })
 
     // UI state
     const [showAssignForm, setShowAssignForm] = useState(false)
@@ -80,7 +80,7 @@ export function ClassAssignmentManager() {
     // Class details popup state
     const [selectedClassDetails, setSelectedClassDetails] = useState<ClassAssignment | null>(null)
     const [showClassDetailsPopup, setShowClassDetailsPopup] = useState(false)
-    
+
     // Edit assignment modal state
     const [selectedEditAssignment, setSelectedEditAssignment] = useState<ClassAssignment | null>(null)
     const [showEditAssignmentModal, setShowEditAssignmentModal] = useState(false)
@@ -227,12 +227,12 @@ export function ClassAssignmentManager() {
             // Search term filter
             if (searchTerm) {
                 const searchLower = searchTerm.toLowerCase()
-                const matchesSearch = 
+                const matchesSearch =
                     assignment.class_type?.name?.toLowerCase().includes(searchLower) ||
                     assignment.instructor_profile?.full_name?.toLowerCase().includes(searchLower) ||
                     getClientNames(assignment)?.toLowerCase().includes(searchLower) ||
                     assignment.notes?.toLowerCase().includes(searchLower)
-                
+
                 if (!matchesSearch) return false
             }
 
@@ -334,9 +334,9 @@ export function ClassAssignmentManager() {
                         total_revenue: 0,
                         assignment_count: 0,
                         client_names: getClientNames(assignment),
-                        pattern_description: groupType === 'weekly' ? 'Weekly Recurring' : 
-                                           groupType === 'monthly' ? 'Monthly Package' :
-                                           groupType === 'crash_course' ? 'Crash Course' : undefined
+                        pattern_description: groupType === 'weekly' ? 'Weekly Recurring' :
+                            groupType === 'monthly' ? 'Monthly Package' :
+                                groupType === 'crash_course' ? 'Crash Course' : undefined
                     }
                 })
             }
@@ -433,7 +433,7 @@ export function ClassAssignmentManager() {
                 return assignment ? `${assignment.class_type?.name || 'Class'} on ${assignment.date}` : 'Assignment'
             })
 
-        const displayText = selectedAssignments.size > 3 
+        const displayText = selectedAssignments.size > 3
             ? `${assignmentTitles.join(', ')} and ${selectedAssignments.size - 3} more`
             : assignmentTitles.join(', ')
 
@@ -507,7 +507,7 @@ export function ClassAssignmentManager() {
                 // in the assignment creation service
                 return 1;
             };
-            
+
             const studentCount = calculateStudentCount();
 
             const result = await AssignmentCreationService.createAssignment(formData, packages, studentCount)
@@ -533,13 +533,13 @@ export function ClassAssignmentManager() {
 
             // Clean the updates object to only include valid database fields
             const cleanUpdates: any = {}
-            
+
             // Only include fields that exist in the database
             if (updates.class_status !== undefined) cleanUpdates.class_status = updates.class_status
             if (updates.payment_amount !== undefined) cleanUpdates.payment_amount = updates.payment_amount
             if (updates.payment_status !== undefined) cleanUpdates.payment_status = updates.payment_status
             if (updates.notes !== undefined) cleanUpdates.notes = updates.notes
-            
+
             // Note: booking_id is no longer handled here since we use the junction table
             // assignment_bookings for multiple booking support
 
@@ -619,15 +619,15 @@ export function ClassAssignmentManager() {
                     <Button variant="outline" onClick={() => setShowFilters(true)}>
                         <Filter className="w-4 h-4 mr-2" />
                         Filters
-                        {Object.values(filters).some(filter => 
-                            Array.isArray(filter) ? filter.length > 0 : 
-                            typeof filter === 'object' ? Object.values(filter).some(v => v) :
-                            filter
+                        {Object.values(filters).some(filter =>
+                            Array.isArray(filter) ? filter.length > 0 :
+                                typeof filter === 'object' ? Object.values(filter).some(v => v) :
+                                    filter
                         ) && (
-                            <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
-                                Active
-                            </span>
-                        )}
+                                <span className="ml-2 bg-blue-100 text-blue-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                                    Active
+                                </span>
+                            )}
                     </Button>
                 </div>
             </div>
@@ -640,33 +640,30 @@ export function ClassAssignmentManager() {
                         <div className="flex space-x-1">
                             <button
                                 onClick={() => setActiveView('list')}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${
-                                    activeView === 'list' 
-                                        ? 'bg-blue-100 text-blue-700' 
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${activeView === 'list'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
                             >
                                 <List className="w-4 h-4 mr-1" />
                                 List
                             </button>
                             <button
                                 onClick={() => setActiveView('calendar')}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${
-                                    activeView === 'calendar' 
-                                        ? 'bg-blue-100 text-blue-700' 
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${activeView === 'calendar'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
                             >
                                 <Calendar className="w-4 h-4 mr-1" />
                                 Calendar
                             </button>
                             <button
                                 onClick={() => setActiveView('analytics')}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${
-                                    activeView === 'analytics' 
-                                        ? 'bg-blue-100 text-blue-700' 
-                                        : 'text-gray-500 hover:text-gray-700'
-                                }`}
+                                className={`px-3 py-1.5 text-sm font-medium rounded-md flex items-center ${activeView === 'analytics'
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'text-gray-500 hover:text-gray-700'
+                                    }`}
                             >
                                 <BarChart3 className="w-4 h-4 mr-1" />
                                 Analytics
@@ -711,9 +708,9 @@ export function ClassAssignmentManager() {
                                     <Button variant="outline" size="sm" onClick={selectAllFilteredAssignments}>
                                         Select All
                                     </Button>
-                                    <Button 
-                                        variant="outline" 
-                                        size="sm" 
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
                                         onClick={deleteBulkAssignments}
                                         className="text-red-600 hover:text-red-800"
                                     >

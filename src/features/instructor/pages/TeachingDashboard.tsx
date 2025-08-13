@@ -17,6 +17,7 @@ import { usePayoutSummary } from '../hooks/usePayoutSummary';
 import { useUpcomingInstructorClasses } from '../hooks/useUpcomingInstructorClasses';
 
 // NEW components
+import { AssignmentCreationService } from '../../dashboard/components/Modules/ClassAssignmentManager/services/assignmentCreation';
 import { AttendanceStatusBadge } from '../components/AttendanceStatusBadge';
 import { PaymentStatusBadge } from '../components/PaymentStatusBadge';
 import { RatingWidget } from '../components/RatingWidget';
@@ -38,6 +39,7 @@ export function TeachingDashboard() {
   const [showPayoutSummary, setShowPayoutSummary] = useState(true);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<any>(null);
+  const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
 
   // Date range just for filtering UI (the underlying hook already constrains to next 60 days)
   const [dateRange, setDateRange] = useState({
@@ -81,6 +83,7 @@ export function TeachingDashboard() {
 
   const filteredClasses = (classes || []).filter(c => {
     if (filterStatus === 'all') return true;
+    if (filterStatus === 'canceled') return c.class_status === 'not_conducted';
     return c.class_status === filterStatus;
   });
 
@@ -283,7 +286,7 @@ export function TeachingDashboard() {
                 Filter Status
               </span>
               <div className="flex flex-wrap gap-2">
-                {(['all', 'scheduled', 'completed', 'canceled', 'rescheduled'] as ClassFilterStatus[]).map(status => (
+                {(['all', 'scheduled', 'completed', 'canceled'] as ClassFilterStatus[]).map(status => (
                   <button
                     key={status}
                     onClick={() => setFilterStatus(status)}
@@ -366,7 +369,11 @@ export function TeachingDashboard() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="flex flex-col">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          {(c as any).class_types?.name || 'Class'}
+                          {[
+                            c.schedule_type,
+                            c.booking_type,
+                            (c as any).class_types?.name
+                          ].filter(Boolean).join(' | ') + (c.participant_count ? ` | Participants - ${c.participant_count}` : '')}
                         </h3>
                         <p className="text-sm text-gray-600 dark:text-slate-400">
                           {start} • {end}
@@ -388,6 +395,33 @@ export function TeachingDashboard() {
                             <span className="text-xs text-gray-500 dark:text-slate-400">
                               Avg Rating: {c.avg_rating?.toFixed(2)} ({c.rating_count})
                             </span>
+                          )}
+                        </div>
+                        {/* Status Change Dropdown */}
+                        <div className="mt-2">
+                          <label className="text-xs text-gray-500 dark:text-slate-400 mr-2">Class Status:</label>
+                          <select
+                            value={c.class_status}
+                            disabled={statusUpdating === c.assignment_id}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value;
+                              setStatusUpdating(c.assignment_id);
+                              try {
+                                await AssignmentCreationService.updateBookingStatus(c.assignment_id, newStatus);
+                                refetchUpcoming();
+                              } catch (err) {
+                                alert('Failed to update class status');
+                              }
+                              setStatusUpdating(null);
+                            }}
+                            className="px-2 py-1 rounded border border-gray-300 dark:border-slate-600 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                          >
+                            <option value="scheduled">Scheduled</option>
+                            <option value="completed">Completed</option>
+                            <option value="not_conducted">Canceled</option>
+                          </select>
+                          {statusUpdating === c.assignment_id && (
+                            <span className="ml-2 text-xs text-blue-500">Updating...</span>
                           )}
                         </div>
                       </div>

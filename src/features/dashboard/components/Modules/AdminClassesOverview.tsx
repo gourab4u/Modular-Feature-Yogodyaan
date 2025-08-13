@@ -320,8 +320,8 @@ export const AdminClassesOverview: React.FC = () => {
                         <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700 text-sm">
                             <thead className="bg-gray-50 dark:bg-slate-800/60">
                                 <tr>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">Date</th>
-                                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">Time</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">Class</th>
+                                    <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">When</th>
                                     <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">Assignment</th>
                                     <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">Instructor</th>
                                     <th className="px-3 py-2 text-left font-medium text-gray-600 dark:text-slate-300">Status</th>
@@ -339,11 +339,24 @@ export const AdminClassesOverview: React.FC = () => {
                                             key={r.assignment_id}
                                             className="hover:bg-gray-50 dark:hover:bg-slate-800/60"
                                         >
-                                            <td className="px-3 py-2 text-gray-700 dark:text-slate-300">
-                                                {r.date}
+                                            <td className="px-3 py-2 text-gray-900 dark:text-white">
+                                                <div className="flex flex-col">
+                                                    <span className="font-semibold">{r.class_type_name || '—'}</span>
+                                                    {r.class_type_difficulty && (
+                                                        <span className="text-xs text-gray-500 dark:text-slate-400">{r.class_type_difficulty}</span>
+                                                    )}
+                                                    {r.class_type_duration && (
+                                                        <span className="text-xs text-gray-500 dark:text-slate-400">{r.class_type_duration} min</span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-3 py-2 text-gray-700 dark:text-slate-300">
-                                                {r.start_time}-{r.end_time}
+                                                <span>
+                                                    {r.date} • {r.start_time}-{r.end_time}
+                                                    {r.timezone && (
+                                                        <span className="text-xs text-gray-500 dark:text-slate-400 ml-1">{r.timezone}</span>
+                                                    )}
+                                                </span>
                                             </td>
                                             <td className="px-3 py-2 text-blue-600 dark:text-blue-400 text-xs">
                                                 <div className="flex items-center gap-2">

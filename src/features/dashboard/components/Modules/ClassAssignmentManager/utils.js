@@ -108,6 +108,10 @@ export const formatTime = (timeString) => {
     }
 };
 export const getAssignmentType = (assignment) => {
+    // Handle package assignments by class_package_id
+    if (assignment.class_package_id) {
+        return 'package';
+    }
     // Handle missing schedule_type
     if (!assignment.schedule_type) {
         return 'adhoc';

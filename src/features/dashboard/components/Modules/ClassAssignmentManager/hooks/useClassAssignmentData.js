@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../../../../../shared/lib/supabase';
 export const useClassAssignmentData = () => {
     const [assignments, setAssignments] = useState([]);
@@ -20,35 +20,20 @@ export const useClassAssignmentData = () => {
         try {
             setLoading(true);
             setLoadingStates(prev => ({ ...prev, fetchingData: true }));
+            // Check authentication first
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            console.log('Current auth session:', session ? `Authenticated as ${session.user?.email}` : 'Not authenticated');
+            if (sessionError) {
+                console.error('Session error:', sessionError);
+            }
             // Execute all independent queries in parallel
+            console.log('Starting parallel queries...');
             const [classTypesResult, packagesResult, rolesResult, assignmentsResult, weeklySchedulesResult, scheduleTemplatesResult, bookingsResult] = await Promise.all([
                 supabase.from('class_types').select('id, name, difficulty_level'),
                 supabase.from('class_packages').select('id, name, description, duration, price, class_count, validity_days, type, course_type, is_active').eq('is_active', true).eq('is_archived', false),
                 supabase.from('roles').select('id, name').in('name', ['instructor', 'yoga_acharya']),
                 supabase.from('class_assignments').select(`
-                    *,
-                    class_type:class_types(id, name, difficulty_level),
-                    package:class_packages(id, name, description, class_count, validity_days),
-                    instructor_status,
-                    instructor_response_at,
-                    assignment_bookings(
-                        id,
-                        booking_id,
-                        created_at,
-                        booking:bookings!assignment_bookings_booking_id_fkey(
-                            id,
-                            booking_id,
-                            first_name,
-                            last_name,
-                            email,
-                            phone,
-                            status,
-                            class_name,
-                            class_date,
-                            class_time,
-                            booking_type
-                        )
-                    )
+                    *
                 `).order('assigned_at', { ascending: false }),
                 supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true }),
                 supabase.from('class_schedules').select(`
@@ -84,31 +69,26 @@ export const useClassAssignmentData = () => {
             const weeklySchedulesData = weeklySchedulesResult.data || [];
             const scheduleTemplatesData = scheduleTemplatesResult.data || [];
             const bookingsData = bookingsResult.data || [];
+            // Log query results and errors
+            console.log('Query results:');
+            console.log('- Class types:', classTypesData?.length || 0, classTypesResult.error ? `Error: ${classTypesResult.error.message}` : '✓');
+            console.log('- Packages:', packagesData?.length || 0, packagesResult.error ? `Error: ${packagesResult.error.message}` : '✓');
+            console.log('- Roles:', roles?.length || 0, rolesResult.error ? `Error: ${rolesResult.error.message}` : '✓');
+            console.log('- Assignments:', assignmentsData?.length || 0, assignmentsResult.error ? `Error: ${assignmentsResult.error.message}` : '✓');
+            console.log('- Weekly schedules:', weeklySchedulesData?.length || 0, weeklySchedulesResult.error ? `Error: ${weeklySchedulesResult.error.message}` : '✓');
+            console.log('- Schedule templates:', scheduleTemplatesData?.length || 0, scheduleTemplatesResult.error ? `Error: ${scheduleTemplatesResult.error.message}` : '✓');
+            console.log('- Bookings:', bookingsData?.length || 0, bookingsResult.error ? `Error: ${bookingsResult.error.message}` : '✓');
             // Create maps for efficient lookups
             const classTypeMap = new Map(classTypesData.map(ct => [ct.id, ct]));
             // Now fetch user roles and profiles based on role data
             const roleIds = roles.map(r => r.id);
-            if (roleIds.length === 0) {
-                // No instructor roles found, return empty data
-                setClassTypes(classTypesData);
-                setPackages(packagesData);
-                setUserProfiles([]);
-                setAssignments([]);
-                setWeeklySchedules([]);
-                setScheduleTemplates([]);
-                setBookings(bookingsData.map(booking => ({
-                    ...booking,
-                    class_packages: Array.isArray(booking.class_packages) && booking.class_packages.length > 0
-                        ? booking.class_packages[0]
-                        : null
-                })));
-                return;
-            }
             // First get user roles
-            const { data: userRoles } = await supabase
-                .from('user_roles')
-                .select('user_id, role_id')
-                .in('role_id', roleIds);
+            const { data: userRoles } = roleIds.length > 0
+                ? await supabase
+                    .from('user_roles')
+                    .select('user_id, role_id')
+                    .in('role_id', roleIds)
+                : { data: [] };
             // Then get profiles for those users
             const userIds = [...new Set((userRoles || []).map(ur => ur.user_id))];
             const { data: profiles } = userIds.length > 0
@@ -132,10 +112,22 @@ export const useClassAssignmentData = () => {
             // Build lookup maps for better performance
             const profileMap = new Map(profilesWithRoles.map(p => [p.user_id, p]));
             // Enrich data more efficiently
+            const toNumber = (v) => {
+                if (v === null || v === undefined)
+                    return 0;
+                if (typeof v === 'number')
+                    return v;
+                const n = Number.parseFloat(v);
+                return Number.isFinite(n) ? n : 0;
+            };
             const enrichedAssignments = assignmentsData.map(assignment => ({
                 ...assignment,
-                class_type: classTypeMap.get(assignment.class_type_id),
-                instructor_profile: profileMap.get(assignment.instructor_id)
+                // prefer looked-up class type but fall back to pre-joined alias if present
+                class_type: classTypeMap.get(assignment.class_type_id) || assignment.class_type,
+                instructor_profile: profileMap.get(assignment.instructor_id),
+                payment_amount: toNumber(assignment.payment_amount),
+                override_payment_amount: assignment.override_payment_amount == null ? null : toNumber(assignment.override_payment_amount),
+                final_payment_amount: assignment.final_payment_amount == null ? null : toNumber(assignment.final_payment_amount)
             }));
             const enrichedWeeklySchedules = weeklySchedulesData.map(schedule => ({
                 ...schedule,
