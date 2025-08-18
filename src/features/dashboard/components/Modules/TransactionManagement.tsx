@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import EmailService from '../../../../services/emailService';
 import { supabase } from '../../../../shared/lib/supabase';
 import { renderEmailTemplate } from '../../../../shared/utils/emailTemplates';
+import logoImage from '/images/newcartoon-modified.png';
 
 
 type BillingPlanType = 'one_time' | 'monthly' | 'crash_course';
@@ -346,7 +347,8 @@ const TransactionManagement = () => {
           const baseUrl = (import.meta as any)?.env?.BASE_URL || '/';
           const logoCandidates = [
             businessConfig?.profile?.logo_url,                             // DB configured
-            (import.meta as any)?.env?.VITE_INVOICE_LOGO_URL,              // Env override
+            (import.meta as any)?.env?.VITE_INVOICE_LOGO_URL,// Env override
+            logoImage,
             `${baseUrl}images/Brand.png`,                                  // Public Brand.png (if exists)
             `${baseUrl}images/newcartoon-modified.png`,                    // Public original logo
             '/images/newcartoon-modified.png',                             // Absolute fallback

@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import EmailService from '../../../../services/emailService';
 import { supabase } from '../../../../shared/lib/supabase';
 import { renderEmailTemplate } from '../../../../shared/utils/emailTemplates';
+import logoImage from '/images/newcartoon-modified.png';
 const humanPlanType = (p) => {
     switch (p) {
         case 'monthly': return 'Monthly Subscription';
@@ -308,6 +309,7 @@ const TransactionManagement = () => {
                     const logoCandidates = [
                         businessConfig?.profile?.logo_url, // DB configured
                         import.meta?.env?.VITE_INVOICE_LOGO_URL, // Env override
+                        logoImage,
                         `${baseUrl}images/Brand.png`, // Public Brand.png (if exists)
                         `${baseUrl}images/newcartoon-modified.png`, // Public original logo
                         '/images/newcartoon-modified.png', // Absolute fallback
