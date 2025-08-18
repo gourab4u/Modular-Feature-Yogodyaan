@@ -105,9 +105,9 @@ export const createAssignmentBookings = async (assignmentId, bookingIds) => {
     const associations = bookingIds
         .filter(id => id && id.trim() !== '' && id.trim() !== 'null' && id.trim() !== 'undefined')
         .map(bookingId => ({
-            assignment_id: assignmentId,
-            booking_id: bookingId.trim()
-        }));
+        assignment_id: assignmentId,
+        booking_id: bookingId.trim()
+    }));
     if (associations.length > 0) {
         const { error } = await supabase
             .from('assignment_bookings')
@@ -538,9 +538,9 @@ export class AssignmentCreationService {
         const { error: updateError } = await supabase
             .from('class_schedules')
             .update({
-                instructor_id: formData.instructor_id,
-                notes: formData.notes
-            })
+            instructor_id: formData.instructor_id,
+            notes: formData.notes
+        })
             .eq('id', formData.selected_template_id);
         if (updateError) {
             throw new Error(`Failed to update template: ${updateError.message}`);
