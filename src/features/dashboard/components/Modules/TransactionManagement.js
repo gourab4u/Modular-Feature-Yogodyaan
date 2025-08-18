@@ -31,7 +31,8 @@ const TransactionManagement = () => {
         payment_method: 'manual',
         category: 'class_booking',
         billing_plan_type: 'one_time', // one_time | monthly | crash_course
-        billing_period_month: '' // YYYY-MM when monthly
+        billing_period_month: '', // YYYY-MM when monthly
+        gst_rate: '0'
     });
     const [selectedTransaction, setSelectedTransaction] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
@@ -217,6 +218,7 @@ const TransactionManagement = () => {
             billing_period_month: newTx.billing_plan_type === 'monthly' && newTx.billing_period_month
                 ? newTx.billing_period_month
                 : null,
+            gst_rate: newTx.gst_rate,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -303,6 +305,7 @@ const TransactionManagement = () => {
                     color: primaryColor
                 });
                 // Logo
+                let logoMetrics = { x: 20, y: 0, width: 0, height: 0 };
                 try {
                     const normalize = (c) => {
                         if (!c)
@@ -410,13 +413,13 @@ const TransactionManagement = () => {
                         catch {
                             img = await pdfDoc.embedJpg(imgBytes);
                         }
-                        // Enhanced logo sizing & centering logic (adjusted smaller & further left per request).
+                        // Enhanced logo sizing (further reduced) & positioning.
                         const headerBandHeight = 140;
                         const headerBandBottomY = height - headerBandHeight;
-                        const maxW = 140;
-                        const maxH = 70;
-                        const minH = 40; // lowered minimum for smaller appearance
-                        const minW = 40;
+                        const maxW = 110;
+                        const maxH = 55;
+                        const minH = 32; // further reduced for smaller appearance
+                        const minW = 32;
                         const { width: rawW, height: rawH } = img;
                         let scale = Math.min(maxW / rawW, maxH / rawH, 1);
                         let drawW = rawW * scale;
@@ -441,11 +444,15 @@ const TransactionManagement = () => {
                         }
                         const centeredY = headerBandBottomY + (headerBandHeight - drawH) / 2;
                         page.drawImage(img, {
-                            x: 20, // moved further left
+                            x: 20,
                             y: centeredY,
                             width: drawW,
                             height: drawH
                         });
+                        logoMetrics.x = 20;
+                        logoMetrics.y = centeredY;
+                        logoMetrics.width = drawW;
+                        logoMetrics.height = drawH;
                     }
                     else {
                         console.warn('Invoice PDF: no logo loaded from candidates', logoCandidates);
@@ -460,22 +467,33 @@ const TransactionManagement = () => {
                     }
                 }
                 catch { /* ignore */ }
-                // Name
-                page.drawText(businessConfig?.profile?.name || 'Yogodyaan', {
-                    x: 120,
-                    y: height - 70,
-                    size: 20,
-                    font: boldFont,
-                    color: headerTextColor
-                });
-                // Tagline (updated wording already in DB or fallback)
-                page.drawText(businessConfig?.profile?.tagline || 'Experience the Rhythm.', {
-                    x: 120,
-                    y: height - 95,
-                    size: 10,
-                    font,
-                    color: headerTextColor
-                });
+                // Brand text (dynamically positioned next to logo)
+                {
+                    const gap = 4; // tighter gap to sit closer to logo
+                    const brandFontSize = 14;
+                    const computedX = (logoMetrics.width ? (logoMetrics.x + logoMetrics.width + gap) : 64);
+                    // Vertically align brand name to visual mid-line of logo if we have metrics
+                    const brandNameY = (logoMetrics.height
+                        ? (logoMetrics.y + (logoMetrics.height / 2) + (brandFontSize / 3))
+                        : (height - 82));
+                    const brandName = businessConfig?.profile?.name || 'Yogodyaan';
+                    page.drawText(brandName, {
+                        x: computedX,
+                        y: brandNameY,
+                        size: brandFontSize,
+                        font: boldFont,
+                        color: headerTextColor
+                    });
+                    const tagline = businessConfig?.profile?.tagline || 'Holistic Health • Movement • Mindfulness';
+                    const taglineY = brandNameY - (brandFontSize + 4);
+                    page.drawText(tagline, {
+                        x: computedX,
+                        y: taglineY,
+                        size: 8,
+                        font,
+                        color: headerTextColor
+                    });
+                }
                 // Address
                 const addressLines = businessConfig?.contact?.address_lines || [
                     'Yoga Studio & Wellness Center',
@@ -484,11 +502,11 @@ const TransactionManagement = () => {
                 const address = [
                     ...addressLines,
                     `Phone: ${businessConfig?.contact?.phone || '+91 98765 43210'}`,
-                    `Email: ${businessConfig?.contact?.email || 'info@yogodyaan.com'}`
+                    `Email: ${businessConfig?.contact?.email || 'info@yogodyaan.site'}`
                 ];
                 address.forEach((line, i) => {
                     page.drawText(line, {
-                        x: width - 250,
+                        x: width - 180,
                         y: height - 60 - (i * 15),
                         size: 10,
                         font,
@@ -544,7 +562,7 @@ const TransactionManagement = () => {
                 });
                 // Bill To
                 page.drawText('BILL TO:', {
-                    x: width - 250,
+                    x: width - 180,
                     y: currentY,
                     size: 12,
                     font: boldFont,
@@ -556,7 +574,7 @@ const TransactionManagement = () => {
                 ].filter(Boolean);
                 billToInfo.forEach((line, i) => {
                     page.drawText(line, {
-                        x: width - 250,
+                        x: width - 180,
                         y: currentY - 25 - (i * 15),
                         size: 11,
                         font,
@@ -627,7 +645,7 @@ const TransactionManagement = () => {
                     });
                 });
                 currentY = tableStartY - tableHeight - 30;
-                const invoiceTaxRate = Number(businessConfig?.invoice?.tax_rate || 0);
+                const invoiceTaxRate = Number(newTx.gst_rate || businessConfig?.invoice?.tax_rate || 0);
                 const taxAmount = tx.amount * (invoiceTaxRate / 100);
                 const grandTotal = tx.amount + taxAmount;
                 const totalBoxHeight = 110;
@@ -642,7 +660,7 @@ const TransactionManagement = () => {
                 });
                 const totals = [
                     ['Subtotal:', formatCurrency(tx.amount, tx.currency, true)],
-                    [`Tax (${invoiceTaxRate.toFixed(2)}%):`, formatCurrency(taxAmount, tx.currency, true)],
+                    [`GST (${invoiceTaxRate.toFixed(2)}%):`, formatCurrency(taxAmount, tx.currency, true)],
                     ['Plan Type:', humanPlanType(tx.billing_plan_type)],
                 ];
                 if (tx.billing_plan_type === 'monthly' && tx.billing_period_month) {
@@ -739,10 +757,14 @@ const TransactionManagement = () => {
                     color: primaryColor
                 });
                 const footerName = businessConfig?.profile?.name || 'Yogodyaan';
-                const footerEmail = businessConfig?.contact?.email || 'info@yogodyaan.com';
+                // Force .site domain even if business settings still have .com
+                let hostDomainRaw = businessConfig?.profile?.website_url || 'https://www.yogodyaan.site';
+                hostDomainRaw = hostDomainRaw.replace(/yogodyaan\.com/gi, 'yogodyaan.site');
+                const hostDomain = hostDomainRaw.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+                const footerEmail = businessConfig?.contact?.email || `contact@${hostDomain}`;
                 const footerPhone = businessConfig?.contact?.phone || '+91 98765 43210';
-                const footerWebsite = businessConfig?.profile?.website_url || 'www.yogodyaan.com';
-                const footerTerms = businessConfig?.invoice?.terms || 'Thank you for your business.';
+                const footerWebsite = hostDomain;
+                const footerTerms = businessConfig?.invoice?.terms || 'Thank you for supporting your holistic health journey with us.';
                 page.drawText(footerTerms, {
                     x: 40,
                     y: 50,
@@ -773,6 +795,10 @@ const TransactionManagement = () => {
             const accentHex = businessConfig?.invoice?.color_accent;
             const companyName = businessConfig?.profile?.name || 'Yogodyaan';
             const companyAddress = (businessConfig?.contact?.address_lines || []).join(', ');
+            // GST / Total calculations for email body
+            const taxRateDisplay = Number(newTx.gst_rate || businessConfig?.invoice?.tax_rate || 0);
+            const taxAmountDisplay = tx.amount * (taxRateDisplay / 100);
+            const grandTotalDisplay = tx.amount + taxAmountDisplay;
             const html = renderEmailTemplate('corporate-professional', {
                 title: 'Payment Invoice',
                 headerTitle: 'Invoice',
@@ -780,7 +806,9 @@ const TransactionManagement = () => {
           <p>Hi ${tx.user_name || ''},</p>
           <p>Thanks for your payment. Your invoice is attached as a PDF.</p>
           <p>
-            <strong>Amount:</strong> ${formatCurrency(tx.amount, tx.currency)}<br/>
+            <strong>Subtotal:</strong> ${formatCurrency(tx.amount, tx.currency)}<br/>
+            ${taxRateDisplay > 0 ? `<strong>GST (${taxRateDisplay.toFixed(2)}%):</strong> ${formatCurrency(taxAmountDisplay, tx.currency)}<br/>` : ''}
+            <strong>Total:</strong> ${formatCurrency(grandTotalDisplay, tx.currency)}<br/>
             <strong>Invoice ID:</strong> ${generateProfessionalInvoiceNumber(String(tx.id))}<br/>
             <strong>Date:</strong> ${formatDate(tx.created_at)}<br/>
             <strong>Plan Type:</strong> ${humanPlanType(tx.billing_plan_type)}${tx.billing_plan_type === 'monthly' && tx.billing_period_month ? `<br/><strong>Billing Month:</strong> ${formatBillingMonth(tx.billing_period_month)}` : ''}
@@ -792,6 +820,7 @@ const TransactionManagement = () => {
                 fontFamily: 'Arial, sans-serif',
                 companyName,
                 companyAddress,
+                // Intentionally omit logoUrl so logo not shown in email body
                 unsubscribeUrl: `${window.location.origin}/unsubscribe`
             });
             const res = await EmailService.sendTransactionalEmail(newTx.userEmail, 'Your Yogodyaan Invoice', html, [
@@ -823,7 +852,8 @@ const TransactionManagement = () => {
                 payment_method: 'manual',
                 category: 'class_booking',
                 billing_plan_type: 'one_time',
-                billing_period_month: ''
+                billing_period_month: '',
+                gst_rate: '0'
             });
         }
     };
@@ -832,13 +862,13 @@ const TransactionManagement = () => {
     }
     return (_jsxs("div", { className: "min-h-screen bg-gray-50", children: [_jsx("div", { className: "bg-white shadow-sm border-b border-gray-200", children: _jsx("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", children: _jsxs("div", { className: "flex justify-between items-center py-4", children: [_jsxs("div", { children: [_jsx("h1", { className: "text-2xl font-bold text-gray-900", children: "Transaction Management" }), _jsx("p", { className: "text-sm text-gray-600", children: "Manage all financial transactions" })] }), _jsxs("div", { className: "flex space-x-3", children: [_jsxs("button", { className: "bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 flex items-center space-x-2", children: [_jsx(Download, { className: "h-4 w-4" }), _jsx("span", { children: "Export" })] }), canEdit && (_jsxs("button", { onClick: () => setShowAddTransaction(true), className: "bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2", children: [_jsx(Plus, { className: "h-4 w-4" }), _jsx("span", { children: "Add Transaction" })] }))] })] }) }) }), _jsxs("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6", children: [_jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6", children: [_jsx("div", { className: "bg-white rounded-lg shadow p-6", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-medium text-gray-600", children: "Total Income" }), _jsx("p", { className: "text-2xl font-bold text-green-600", children: formatCurrency(totalIncome) })] }), _jsx(TrendingUp, { className: "h-8 w-8 text-green-500" })] }) }), _jsx("div", { className: "bg-white rounded-lg shadow p-6", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-medium text-gray-600", children: "Total Expenses" }), _jsx("p", { className: "text-2xl font-bold text-red-600", children: formatCurrency(totalExpense) })] }), _jsx(TrendingDown, { className: "h-8 w-8 text-red-500" })] }) }), _jsx("div", { className: "bg-white rounded-lg shadow p-6", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-medium text-gray-600", children: "Net Profit" }), _jsx("p", { className: `text-2xl font-bold ${netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`, children: formatCurrency(netProfit) })] }), _jsx(DollarSign, { className: "h-8 w-8 text-blue-500" })] }) }), _jsx("div", { className: "bg-white rounded-lg shadow p-6", children: _jsxs("div", { className: "flex items-center justify-between", children: [_jsxs("div", { children: [_jsx("p", { className: "text-sm font-medium text-gray-600", children: "Pending" }), _jsx("p", { className: "text-2xl font-bold text-yellow-600", children: pendingTransactions })] }), _jsx(Clock, { className: "h-8 w-8 text-yellow-500" })] }) })] }), _jsx("div", { className: "bg-white rounded-lg shadow p-6 mb-6", children: _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-4 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Search" }), _jsxs("div", { className: "relative", children: [_jsx(Search, { className: "absolute left-3 top-3 h-4 w-4 text-gray-400" }), _jsx("input", { type: "text", placeholder: "Search transactions...", value: searchTerm, onChange: (e) => setSearchTerm(e.target.value), className: "w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Status" }), _jsxs("select", { value: filterStatus, onChange: (e) => setFilterStatus(e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: [_jsx("option", { value: "all", children: "All Status" }), _jsx("option", { value: "completed", children: "Completed" }), _jsx("option", { value: "pending", children: "Pending" }), _jsx("option", { value: "failed", children: "Failed" })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Type" }), _jsxs("select", { value: filterType, onChange: (e) => setFilterType(e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: [_jsx("option", { value: "all", children: "All Types" }), _jsx("option", { value: "income", children: "Income" }), _jsx("option", { value: "expense", children: "Expense" })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-2", children: "Date Range" }), _jsxs("select", { value: dateRange, onChange: (e) => setDateRange(e.target.value), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: [_jsx("option", { value: "all", children: "All Time" }), _jsx("option", { value: "today", children: "Today" }), _jsx("option", { value: "week", children: "This Week" }), _jsx("option", { value: "month", children: "This Month" }), _jsx("option", { value: "quarter", children: "This Quarter" })] })] })] }) }), loadError && _jsxs("div", { className: "mb-4 text-sm text-red-600", children: ["Error loading transactions: ", loadError] }), loading && _jsx("div", { className: "mb-4 text-sm text-gray-600", children: "Loading transactions..." }), _jsxs("div", { className: "bg-white rounded-lg shadow overflow-hidden", children: [_jsx("div", { className: "overflow-x-auto", children: _jsxs("table", { className: "w-full", children: [_jsx("thead", { className: "bg-gray-50", children: _jsxs("tr", { children: [_jsx("th", { className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", children: "User/Vendor" }), _jsx("th", { className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", children: "Amount" }), _jsx("th", { className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", children: "Status" }), _jsx("th", { className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", children: "Category" }), _jsx("th", { className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", children: "Payment Method" }), _jsx("th", { className: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider", children: "Date" }), _jsx("th", { className: "px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider", children: "Actions" })] }) }), _jsx("tbody", { className: "bg-white divide-y divide-gray-200", children: currentItems.map((transaction) => (_jsxs("tr", { className: "hover:bg-gray-50", children: [_jsx("td", { className: "px-6 py-4 whitespace-nowrap", children: _jsxs("div", { children: [_jsx("div", { className: "text-sm font-medium text-gray-900", children: transaction.user_name }), _jsxs("div", { className: "text-xs text-gray-500", children: [humanPlanType(transaction.billing_plan_type), transaction.billing_plan_type === 'monthly' && transaction.billing_period_month ? ` • ${formatBillingMonth(transaction.billing_period_month)}` : ''] }), _jsx("div", { className: "text-sm text-gray-500", children: transaction.description })] }) }), _jsx("td", { className: "px-6 py-4 whitespace-nowrap", children: _jsxs("div", { className: `text-sm font-medium ${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`, children: [transaction.type === 'income' ? '+' : '-', formatCurrency(transaction.amount, transaction.currency)] }) }), _jsx("td", { className: "px-6 py-4 whitespace-nowrap", children: _jsx("span", { className: `inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(transaction.status)}`, children: transaction.status }) }), _jsx("td", { className: "px-6 py-4 whitespace-nowrap", children: _jsx("span", { className: `inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(transaction.category)}`, children: transaction.category.replace('_', ' ') }) }), _jsx("td", { className: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", children: transaction.payment_method.replace('_', ' ') }), _jsx("td", { className: "px-6 py-4 whitespace-nowrap text-sm text-gray-900", children: formatDate(transaction.created_at) }), _jsx("td", { className: "px-6 py-4 whitespace-nowrap text-right text-sm font-medium", children: _jsxs("div", { className: "flex justify-end space-x-2", children: [_jsx("button", { onClick: () => setSelectedTransaction(transaction), className: "text-blue-600 hover:text-blue-900", children: _jsx(Eye, { className: "h-4 w-4" }) }), canEdit && (_jsx("button", { className: "text-green-600 hover:text-green-900", children: _jsx(Edit3, { className: "h-4 w-4" }) }))] }) })] }, transaction.id))) })] }) }), _jsxs("div", { className: "bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6", children: [_jsxs("div", { className: "flex-1 flex justify-between sm:hidden", children: [_jsx("button", { onClick: () => setCurrentPage(Math.max(1, currentPage - 1)), disabled: currentPage === 1, className: "relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50", children: "Previous" }), _jsx("button", { onClick: () => setCurrentPage(Math.min(totalPages, currentPage + 1)), disabled: currentPage === totalPages, className: "ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50", children: "Next" })] }), _jsxs("div", { className: "hidden sm:flex-1 sm:flex sm:items-center sm:justify-between", children: [_jsx("div", { children: _jsxs("p", { className: "text-sm text-gray-700", children: ["Showing ", _jsx("span", { className: "font-medium", children: indexOfFirstItem + 1 }), " to", ' ', _jsx("span", { className: "font-medium", children: Math.min(indexOfLastItem, filteredTransactions.length) }), " of", ' ', _jsx("span", { className: "font-medium", children: filteredTransactions.length }), " results"] }) }), _jsx("div", { children: _jsx("nav", { className: "relative z-0 inline-flex rounded-md shadow-sm -space-x-px", children: [...Array(totalPages)].map((_, i) => (_jsx("button", { onClick: () => setCurrentPage(i + 1), className: `relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === i + 1
                                                             ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`, children: i + 1 }, i + 1))) }) })] })] })] })] }), showAddTransaction && (_jsx("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50", children: _jsx("div", { className: "bg-white rounded-lg w-full max-w-lg", children: _jsxs("div", { className: "p-6", children: [_jsxs("div", { className: "flex justify-between items-center mb-4", children: [_jsx("h2", { className: "text-xl font-bold text-gray-900", children: "Add Manual Transaction" }), _jsx("button", { onClick: () => setShowAddTransaction(false), className: "text-gray-400 hover:text-gray-600", children: _jsx(X, { className: "h-6 w-6" }) })] }), _jsxs("div", { className: "space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "User Email" }), _jsx("input", { type: "email", value: newTx.userEmail, onChange: (e) => setNewTx({ ...newTx, userEmail: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "User Name" }), _jsx("input", { type: "text", value: newTx.user_name, onChange: (e) => setNewTx({ ...newTx, user_name: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }), _jsxs("div", { className: "grid grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Amount" }), _jsx("input", { type: "number", value: newTx.amount, onChange: (e) => setNewTx({ ...newTx, amount: Number(e.target.value) }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Currency" }), _jsxs("select", { value: newTx.currency, onChange: (e) => setNewTx({ ...newTx, currency: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: [_jsx("option", { value: "INR", children: "INR" }), _jsx("option", { value: "USD", children: "USD" })] })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Description" }), _jsx("input", { type: "text", value: newTx.description, onChange: (e) => setNewTx({ ...newTx, description: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Payment Method" }), _jsx("select", { value: newTx.payment_method, onChange: (e) => setNewTx({ ...newTx, payment_method: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: paymentMethodOptions.map(pm => (_jsx("option", { value: pm.value, children: pm.label }, pm.value))) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Billing Type" }), _jsxs("select", { value: newTx.billing_plan_type, onChange: (e) => {
+                                                            : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'}`, children: i + 1 }, i + 1))) }) })] })] })] })] }), showAddTransaction && (_jsx("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50", children: _jsx("div", { className: "bg-white rounded-lg w-full max-w-lg", children: _jsxs("div", { className: "p-6", children: [_jsxs("div", { className: "flex justify-between items-center mb-4", children: [_jsx("h2", { className: "text-xl font-bold text-gray-900", children: "Add Manual Transaction" }), _jsx("button", { onClick: () => setShowAddTransaction(false), className: "text-gray-400 hover:text-gray-600", children: _jsx(X, { className: "h-6 w-6" }) })] }), _jsxs("div", { className: "space-y-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "User Email" }), _jsx("input", { type: "email", value: newTx.userEmail, onChange: (e) => setNewTx({ ...newTx, userEmail: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "User Name" }), _jsx("input", { type: "text", value: newTx.user_name, onChange: (e) => setNewTx({ ...newTx, user_name: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }), _jsxs("div", { className: "grid grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Amount" }), _jsx("input", { type: "number", value: newTx.amount, onChange: (e) => setNewTx({ ...newTx, amount: Number(e.target.value) }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Currency" }), _jsxs("select", { value: newTx.currency, onChange: (e) => setNewTx({ ...newTx, currency: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: [_jsx("option", { value: "INR", children: "INR" }), _jsx("option", { value: "USD", children: "USD" })] })] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Description" }), _jsx("input", { type: "text", value: newTx.description, onChange: (e) => setNewTx({ ...newTx, description: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Payment Method" }), _jsx("select", { value: newTx.payment_method, onChange: (e) => setNewTx({ ...newTx, payment_method: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: paymentMethodOptions.map(pm => (_jsx("option", { value: pm.value, children: pm.label }, pm.value))) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "GST %" }), _jsx("select", { value: newTx.gst_rate, onChange: (e) => setNewTx({ ...newTx, gst_rate: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: ['0', '5', '10', '18', '28'].map(r => _jsxs("option", { value: r, children: [r, "%"] }, r)) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Billing Type" }), _jsxs("select", { value: newTx.billing_plan_type, onChange: (e) => {
                                                     const val = e.target.value;
                                                     setNewTx({
                                                         ...newTx,
                                                         billing_plan_type: val,
                                                         billing_period_month: val === 'monthly' ? newTx.billing_period_month : ''
                                                     });
-                                                }, className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: [_jsx("option", { value: "one_time", children: "One Time" }), _jsx("option", { value: "monthly", children: "Monthly Subscription" }), _jsx("option", { value: "crash_course", children: "Crash Course" })] })] }), newTx.billing_plan_type === 'monthly' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Billing Month" }), _jsx("input", { type: "month", value: newTx.billing_period_month, onChange: (e) => setNewTx({ ...newTx, billing_period_month: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }))] }), _jsxs("div", { className: "mt-6 flex justify-end space-x-2", children: [_jsx("button", { onClick: () => setShowAddTransaction(false), className: "px-4 py-2 rounded-lg border", children: "Cancel" }), _jsx("button", { onClick: handleInitiateSave, className: "px-4 py-2 rounded-lg bg-blue-600 text-white", children: "Review & Send Invoice" })] })] }) }) })), showConfirm && (_jsx("div", { className: "fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50", children: _jsx("div", { className: "bg-white rounded-lg w-full max-w-lg", children: _jsxs("div", { className: "p-6 space-y-4", children: [_jsxs("div", { className: "flex justify-between items-center", children: [_jsx("h2", { className: "text-xl font-bold text-gray-900", children: "Confirm Transaction" }), _jsx("button", { onClick: () => setShowConfirm(false), className: "text-gray-400 hover:text-gray-600", children: _jsx(X, { className: "h-6 w-6" }) })] }), _jsx("p", { className: "text-sm text-gray-600", children: "Please review the details before saving & sending the invoice." }), _jsxs("div", { className: "divide-y text-sm", children: [_jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "User Email" }), _jsx("span", { children: newTx.userEmail || '-' })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "User Name" }), _jsx("span", { children: newTx.user_name || newTx.userEmail || '-' })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Amount" }), _jsxs("span", { children: [newTx.amount, " ", newTx.currency] })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Currency" }), _jsx("span", { children: newTx.currency })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Payment Method" }), _jsx("span", { children: newTx.payment_method.replace('_', ' ') })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Billing Type" }), _jsx("span", { children: humanPlanType(newTx.billing_plan_type) })] }), newTx.billing_plan_type === 'monthly' && (_jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Billing Month" }), _jsx("span", { children: newTx.billing_period_month || '-' })] })), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Description" }), _jsx("span", { className: "max-w-[60%] text-right", children: newTx.description || '-' })] })] }), _jsxs("div", { className: "flex justify-end space-x-2 pt-2", children: [_jsx("button", { onClick: () => setShowConfirm(false), className: "px-4 py-2 rounded-lg border", disabled: saving, children: "Edit" }), _jsx("button", { onClick: handleConfirmSaveTransaction, disabled: saving, className: "px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60", children: saving ? 'Saving...' : 'Confirm & Send' })] })] }) }) })), selectedTransaction && (_jsx("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50", children: _jsx("div", { className: "bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto", children: _jsxs("div", { className: "p-6", children: [_jsxs("div", { className: "flex justify-between items-center mb-4", children: [_jsx("h2", { className: "text-xl font-bold text-gray-900", children: "Transaction Details" }), _jsx("button", { onClick: () => setSelectedTransaction(null), className: "text-gray-400 hover:text-gray-600", children: _jsx(X, { className: "h-6 w-6" }) })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Transaction ID" }), _jsx("p", { className: "text-sm text-gray-900", children: selectedTransaction.id })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "User/Vendor" }), _jsx("p", { className: "text-sm text-gray-900", children: selectedTransaction.user_name })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Amount" }), _jsxs("p", { className: `text-sm font-medium ${selectedTransaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`, children: [selectedTransaction.type === 'income' ? '+' : '-', formatCurrency(selectedTransaction.amount, selectedTransaction.currency)] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Status" }), _jsx("span", { className: `inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTransaction.status)}`, children: selectedTransaction.status })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Category" }), _jsx("span", { className: `inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(selectedTransaction.category)}`, children: selectedTransaction.category.replace('_', ' ') })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Payment Method" }), _jsx("p", { className: "text-sm text-gray-900", children: selectedTransaction.payment_method.replace('_', ' ') })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Created Date" }), _jsx("p", { className: "text-sm text-gray-900", children: formatDate(selectedTransaction.created_at) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Updated Date" }), _jsx("p", { className: "text-sm text-gray-900", children: formatDate(selectedTransaction.updated_at) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Plan Type" }), _jsx("p", { className: "text-sm text-gray-900", children: humanPlanType(selectedTransaction.billing_plan_type) })] }), selectedTransaction.billing_plan_type === 'monthly' && selectedTransaction.billing_period_month && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Billing Month" }), _jsx("p", { className: "text-sm text-gray-900", children: formatBillingMonth(selectedTransaction.billing_period_month) })] }))] }), _jsxs("div", { className: "mt-4", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Description" }), _jsx("p", { className: "text-sm text-gray-900", children: selectedTransaction.description })] })] }) }) }))] }));
+                                                }, className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500", children: [_jsx("option", { value: "one_time", children: "One Time" }), _jsx("option", { value: "monthly", children: "Monthly Subscription" }), _jsx("option", { value: "crash_course", children: "Crash Course" })] })] }), newTx.billing_plan_type === 'monthly' && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Billing Month" }), _jsx("input", { type: "month", value: newTx.billing_period_month, onChange: (e) => setNewTx({ ...newTx, billing_period_month: e.target.value }), className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500" })] }))] }), _jsxs("div", { className: "mt-6 flex justify-end space-x-2", children: [_jsx("button", { onClick: () => setShowAddTransaction(false), className: "px-4 py-2 rounded-lg border", children: "Cancel" }), _jsx("button", { onClick: handleInitiateSave, className: "px-4 py-2 rounded-lg bg-blue-600 text-white", children: "Review & Send Invoice" })] })] }) }) })), showConfirm && (_jsx("div", { className: "fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center p-4 z-50", children: _jsx("div", { className: "bg-white rounded-lg w-full max-w-lg", children: _jsxs("div", { className: "p-6 space-y-4", children: [_jsxs("div", { className: "flex justify-between items-center", children: [_jsx("h2", { className: "text-xl font-bold text-gray-900", children: "Confirm Transaction" }), _jsx("button", { onClick: () => setShowConfirm(false), className: "text-gray-400 hover:text-gray-600", children: _jsx(X, { className: "h-6 w-6" }) })] }), _jsx("p", { className: "text-sm text-gray-600", children: "Please review the details before saving & sending the invoice." }), _jsxs("div", { className: "divide-y text-sm", children: [_jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "User Email" }), _jsx("span", { children: newTx.userEmail || '-' })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "User Name" }), _jsx("span", { children: newTx.user_name || newTx.userEmail || '-' })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Amount" }), _jsxs("span", { children: [newTx.amount, " ", newTx.currency] })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Currency" }), _jsx("span", { children: newTx.currency })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "GST %" }), _jsx("span", { children: newTx.gst_rate })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Payment Method" }), _jsx("span", { children: newTx.payment_method.replace('_', ' ') })] }), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Billing Type" }), _jsx("span", { children: humanPlanType(newTx.billing_plan_type) })] }), newTx.billing_plan_type === 'monthly' && (_jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Billing Month" }), _jsx("span", { children: newTx.billing_period_month || '-' })] })), _jsxs("div", { className: "py-2 flex justify-between", children: [_jsx("span", { className: "text-gray-500", children: "Description" }), _jsx("span", { className: "max-w-[60%] text-right", children: newTx.description || '-' })] })] }), _jsxs("div", { className: "flex justify-end space-x-2 pt-2", children: [_jsx("button", { onClick: () => setShowConfirm(false), className: "px-4 py-2 rounded-lg border", disabled: saving, children: "Edit" }), _jsx("button", { onClick: handleConfirmSaveTransaction, disabled: saving, className: "px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60", children: saving ? 'Saving...' : 'Confirm & Send' })] })] }) }) })), selectedTransaction && (_jsx("div", { className: "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50", children: _jsx("div", { className: "bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto", children: _jsxs("div", { className: "p-6", children: [_jsxs("div", { className: "flex justify-between items-center mb-4", children: [_jsx("h2", { className: "text-xl font-bold text-gray-900", children: "Transaction Details" }), _jsx("button", { onClick: () => setSelectedTransaction(null), className: "text-gray-400 hover:text-gray-600", children: _jsx(X, { className: "h-6 w-6" }) })] }), _jsxs("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-4", children: [_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Transaction ID" }), _jsx("p", { className: "text-sm text-gray-900", children: selectedTransaction.id })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "User/Vendor" }), _jsx("p", { className: "text-sm text-gray-900", children: selectedTransaction.user_name })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Amount" }), _jsxs("p", { className: `text-sm font-medium ${selectedTransaction.type === 'income' ? 'text-green-600' : 'text-red-600'}`, children: [selectedTransaction.type === 'income' ? '+' : '-', formatCurrency(selectedTransaction.amount, selectedTransaction.currency)] })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Status" }), _jsx("span", { className: `inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(selectedTransaction.status)}`, children: selectedTransaction.status })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Category" }), _jsx("span", { className: `inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCategoryColor(selectedTransaction.category)}`, children: selectedTransaction.category.replace('_', ' ') })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Payment Method" }), _jsx("p", { className: "text-sm text-gray-900", children: selectedTransaction.payment_method.replace('_', ' ') })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Created Date" }), _jsx("p", { className: "text-sm text-gray-900", children: formatDate(selectedTransaction.created_at) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Updated Date" }), _jsx("p", { className: "text-sm text-gray-900", children: formatDate(selectedTransaction.updated_at) })] }), _jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Plan Type" }), _jsx("p", { className: "text-sm text-gray-900", children: humanPlanType(selectedTransaction.billing_plan_type) })] }), selectedTransaction.billing_plan_type === 'monthly' && selectedTransaction.billing_period_month && (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Billing Month" }), _jsx("p", { className: "text-sm text-gray-900", children: formatBillingMonth(selectedTransaction.billing_period_month) })] }))] }), _jsxs("div", { className: "mt-4", children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: "Description" }), _jsx("p", { className: "text-sm text-gray-900", children: selectedTransaction.description })] })] }) }) }))] }));
 };
 export default TransactionManagement;

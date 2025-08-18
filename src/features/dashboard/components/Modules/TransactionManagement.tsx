@@ -47,7 +47,8 @@ const TransactionManagement = () => {
     payment_method: 'manual',
     category: 'class_booking',
     billing_plan_type: 'one_time' as BillingPlanType, // one_time | monthly | crash_course
-    billing_period_month: '' // YYYY-MM when monthly
+    billing_period_month: '', // YYYY-MM when monthly
+    gst_rate: '0'
   });
   const [selectedTransaction, setSelectedTransaction] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -244,6 +245,7 @@ const TransactionManagement = () => {
       billing_period_month: newTx.billing_plan_type === 'monthly' && newTx.billing_period_month
         ? newTx.billing_period_month
         : null,
+      gst_rate: newTx.gst_rate,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -342,6 +344,7 @@ const TransactionManagement = () => {
         });
 
         // Logo
+        let logoMetrics = { x: 20, y: 0, width: 0, height: 0 };
         try {
           const normalize = (c: string) => {
             if (!c) return null;
@@ -444,14 +447,14 @@ const TransactionManagement = () => {
             } catch {
               img = await pdfDoc.embedJpg(imgBytes);
             }
-            // Enhanced logo sizing & centering logic (adjusted smaller & further left per request).
+            // Enhanced logo sizing (further reduced) & positioning.
             const headerBandHeight = 140;
             const headerBandBottomY = height - headerBandHeight;
 
-            const maxW = 140;
-            const maxH = 70;
-            const minH = 40; // lowered minimum for smaller appearance
-            const minW = 40;
+            const maxW = 110;
+            const maxH = 55;
+            const minH = 32; // further reduced for smaller appearance
+            const minW = 32;
 
             const { width: rawW, height: rawH } = img;
 
@@ -480,11 +483,15 @@ const TransactionManagement = () => {
 
             const centeredY = headerBandBottomY + (headerBandHeight - drawH) / 2;
             page.drawImage(img, {
-              x: 20, // moved further left
+              x: 20,
               y: centeredY,
               width: drawW,
               height: drawH
             });
+            logoMetrics.x = 20;
+            logoMetrics.y = centeredY;
+            logoMetrics.width = drawW;
+            logoMetrics.height = drawH;
           } else {
             console.warn('Invoice PDF: no logo loaded from candidates', logoCandidates);
             // Visible placeholder so issue is obvious in PDF
@@ -498,23 +505,33 @@ const TransactionManagement = () => {
           }
         } catch {/* ignore */ }
 
-        // Name
-        page.drawText(businessConfig?.profile?.name || 'Yogodyaan', {
-          x: 120,
-          y: height - 70,
-          size: 20,
-          font: boldFont,
-          color: headerTextColor
-        });
-
-        // Tagline (updated wording already in DB or fallback)
-        page.drawText(businessConfig?.profile?.tagline || 'Experience the Rhythm.', {
-          x: 120,
-          y: height - 95,
-          size: 10,
-          font,
-          color: headerTextColor
-        });
+        // Brand text (dynamically positioned next to logo)
+        {
+          const gap = 4; // tighter gap to sit closer to logo
+          const brandFontSize = 14;
+          const computedX = (logoMetrics.width ? (logoMetrics.x + logoMetrics.width + gap) : 64);
+          // Vertically align brand name to visual mid-line of logo if we have metrics
+          const brandNameY = (logoMetrics.height
+            ? (logoMetrics.y + (logoMetrics.height / 2) + (brandFontSize / 3))
+            : (height - 82));
+          const brandName = businessConfig?.profile?.name || 'Yogodyaan';
+          page.drawText(brandName, {
+            x: computedX,
+            y: brandNameY,
+            size: brandFontSize,
+            font: boldFont,
+            color: headerTextColor
+          });
+          const tagline = businessConfig?.profile?.tagline || 'Holistic Health • Movement • Mindfulness';
+          const taglineY = brandNameY - (brandFontSize + 4);
+          page.drawText(tagline, {
+            x: computedX,
+            y: taglineY,
+            size: 8,
+            font,
+            color: headerTextColor
+          });
+        }
 
         // Address
         const addressLines: string[] = businessConfig?.contact?.address_lines || [
@@ -524,11 +541,11 @@ const TransactionManagement = () => {
         const address = [
           ...addressLines,
           `Phone: ${businessConfig?.contact?.phone || '+91 98765 43210'}`,
-          `Email: ${businessConfig?.contact?.email || 'info@yogodyaan.com'}`
+          `Email: ${businessConfig?.contact?.email || 'info@yogodyaan.site'}`
         ];
         address.forEach((line, i) => {
           page.drawText(line, {
-            x: width - 250,
+            x: width - 180,
             y: height - 60 - (i * 15),
             size: 10,
             font,
@@ -591,7 +608,7 @@ const TransactionManagement = () => {
 
         // Bill To
         page.drawText('BILL TO:', {
-          x: width - 250,
+          x: width - 180,
           y: currentY,
           size: 12,
           font: boldFont,
@@ -603,7 +620,7 @@ const TransactionManagement = () => {
         ].filter(Boolean);
         billToInfo.forEach((line, i) => {
           page.drawText(line, {
-            x: width - 250,
+            x: width - 180,
             y: currentY - 25 - (i * 15),
             size: 11,
             font,
@@ -686,7 +703,7 @@ const TransactionManagement = () => {
 
         currentY = tableStartY - tableHeight - 30;
 
-        const invoiceTaxRate = Number(businessConfig?.invoice?.tax_rate || 0);
+        const invoiceTaxRate = Number(newTx.gst_rate || businessConfig?.invoice?.tax_rate || 0);
         const taxAmount = tx.amount * (invoiceTaxRate / 100);
         const grandTotal = tx.amount + taxAmount;
 
@@ -703,7 +720,7 @@ const TransactionManagement = () => {
 
         const totals: [string, string][] = [
           ['Subtotal:', formatCurrency(tx.amount, tx.currency, true)],
-          [`Tax (${invoiceTaxRate.toFixed(2)}%):`, formatCurrency(taxAmount, tx.currency, true)],
+          [`GST (${invoiceTaxRate.toFixed(2)}%):`, formatCurrency(taxAmount, tx.currency, true)],
           ['Plan Type:', humanPlanType(tx.billing_plan_type)],
         ];
         if (tx.billing_plan_type === 'monthly' && tx.billing_period_month) {
@@ -809,10 +826,14 @@ const TransactionManagement = () => {
         });
 
         const footerName = businessConfig?.profile?.name || 'Yogodyaan';
-        const footerEmail = businessConfig?.contact?.email || 'info@yogodyaan.com';
+        // Force .site domain even if business settings still have .com
+        let hostDomainRaw = businessConfig?.profile?.website_url || 'https://www.yogodyaan.site';
+        hostDomainRaw = hostDomainRaw.replace(/yogodyaan\.com/gi, 'yogodyaan.site');
+        const hostDomain = hostDomainRaw.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        const footerEmail = businessConfig?.contact?.email || `contact@${hostDomain}`;
         const footerPhone = businessConfig?.contact?.phone || '+91 98765 43210';
-        const footerWebsite = businessConfig?.profile?.website_url || 'www.yogodyaan.com';
-        const footerTerms = businessConfig?.invoice?.terms || 'Thank you for your business.';
+        const footerWebsite = hostDomain;
+        const footerTerms = businessConfig?.invoice?.terms || 'Thank you for supporting your holistic health journey with us.';
 
         page.drawText(footerTerms, {
           x: 40,
@@ -850,6 +871,11 @@ const TransactionManagement = () => {
       const companyName = businessConfig?.profile?.name || 'Yogodyaan';
       const companyAddress = (businessConfig?.contact?.address_lines || []).join(', ');
 
+      // GST / Total calculations for email body
+      const taxRateDisplay = Number(newTx.gst_rate || businessConfig?.invoice?.tax_rate || 0);
+      const taxAmountDisplay = tx.amount * (taxRateDisplay / 100);
+      const grandTotalDisplay = tx.amount + taxAmountDisplay;
+
       const html = renderEmailTemplate('corporate-professional', {
         title: 'Payment Invoice',
         headerTitle: 'Invoice',
@@ -857,7 +883,9 @@ const TransactionManagement = () => {
           <p>Hi ${tx.user_name || ''},</p>
           <p>Thanks for your payment. Your invoice is attached as a PDF.</p>
           <p>
-            <strong>Amount:</strong> ${formatCurrency(tx.amount, tx.currency)}<br/>
+            <strong>Subtotal:</strong> ${formatCurrency(tx.amount, tx.currency)}<br/>
+            ${taxRateDisplay > 0 ? `<strong>GST (${taxRateDisplay.toFixed(2)}%):</strong> ${formatCurrency(taxAmountDisplay, tx.currency)}<br/>` : ''}
+            <strong>Total:</strong> ${formatCurrency(grandTotalDisplay, tx.currency)}<br/>
             <strong>Invoice ID:</strong> ${generateProfessionalInvoiceNumber(String(tx.id))}<br/>
             <strong>Date:</strong> ${formatDate(tx.created_at)}<br/>
             <strong>Plan Type:</strong> ${humanPlanType(tx.billing_plan_type)}${tx.billing_plan_type === 'monthly' && tx.billing_period_month ? `<br/><strong>Billing Month:</strong> ${formatBillingMonth(tx.billing_period_month)}` : ''}
@@ -869,6 +897,7 @@ const TransactionManagement = () => {
         fontFamily: 'Arial, sans-serif',
         companyName,
         companyAddress,
+        // Intentionally omit logoUrl so logo not shown in email body
         unsubscribeUrl: `${window.location.origin}/unsubscribe`
       });
 
@@ -906,7 +935,8 @@ const TransactionManagement = () => {
         payment_method: 'manual',
         category: 'class_booking',
         billing_plan_type: 'one_time',
-        billing_period_month: ''
+        billing_period_month: '',
+        gst_rate: '0'
       });
     }
   };
@@ -1240,6 +1270,16 @@ const TransactionManagement = () => {
                   </select>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">GST %</label>
+                  <select
+                    value={newTx.gst_rate}
+                    onChange={(e) => setNewTx({ ...newTx, gst_rate: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {['0', '5', '10', '18', '28'].map(r => <option key={r} value={r}>{r}%</option>)}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Billing Type</label>
                   <select
                     value={newTx.billing_plan_type}
@@ -1300,6 +1340,7 @@ const TransactionManagement = () => {
                 <div className="py-2 flex justify-between"><span className="text-gray-500">User Name</span><span>{newTx.user_name || newTx.userEmail || '-'}</span></div>
                 <div className="py-2 flex justify-between"><span className="text-gray-500">Amount</span><span>{newTx.amount} {newTx.currency}</span></div>
                 <div className="py-2 flex justify-between"><span className="text-gray-500">Currency</span><span>{newTx.currency}</span></div>
+                <div className="py-2 flex justify-between"><span className="text-gray-500">GST %</span><span>{newTx.gst_rate}</span></div>
                 <div className="py-2 flex justify-between"><span className="text-gray-500">Payment Method</span><span>{newTx.payment_method.replace('_', ' ')}</span></div>
                 <div className="py-2 flex justify-between"><span className="text-gray-500">Billing Type</span><span>{humanPlanType(newTx.billing_plan_type)}</span></div>
                 {newTx.billing_plan_type === 'monthly' && (
