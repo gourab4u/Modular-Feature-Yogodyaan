@@ -5,6 +5,7 @@ import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { NotificationDropdown } from '../../../features/notifications/components/NotificationDropdown';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import logoImage from '/images/Brand.png';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -12,7 +13,7 @@ export function Header() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -48,13 +49,14 @@ export function Header() {
   return (
     <header className="bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-50 border-b border-gray-100 dark:border-slate-700 backdrop-blur-sm">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-4">
+        <div className="flex justify-between items-center py-2">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-lg">Y</span>
-            </div>
-            <span className="text-2xl font-bold text-gray-900 dark:text-slate-100">Yogodyaan</span>
+          <Link to="/" className="flex items-center">
+            <img
+              src={logoImage}
+              alt="Yogodyaan Logo"
+              className="h-16 w-16 object-contain rounded-full"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -77,7 +79,7 @@ export function Header() {
           <div className="hidden md:flex items-center space-x-4">
             {/* Theme Toggle */}
             <ThemeToggle />
-            
+
             {user ? (
               <>
                 {/* 🔔 Notification Bell - Enhanced styling */}
@@ -178,7 +180,7 @@ export function Header() {
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Theme</span>
                   <ThemeToggle />
                 </div>
-                
+
                 {user ? (
                   <div className="space-y-3">
                     {/* 🔔 Mobile Notification Section - Enhanced */}
