@@ -112,7 +112,6 @@ site_url = "https://yogodyaan.site"
 additional_redirect_urls = [
     "http://localhost:3000/auth/callback",
     "https://yogodyaan.netlify.app/auth/callback",
-"http://yogodyaan.site/auth/v1/callback",
 "https://yogodyaan.site/auth/v1/callback"
 ]
 
