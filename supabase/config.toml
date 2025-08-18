@@ -112,7 +112,8 @@ site_url = "https://yogodyaan.site"
 additional_redirect_urls = [
     "http://localhost:3000/auth/callback",
     "https://yogodyaan.netlify.app/auth/callback",
-"https://yogodyaan.site/auth/v1/callback"
+    "https://yogodyaan.site/auth/callback",
+    "https://yogodyaan.site/auth/v1/callback"
 ]
 
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
