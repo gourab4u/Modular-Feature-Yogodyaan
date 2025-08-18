@@ -233,7 +233,7 @@ const corporateProfessionalTemplate = (vars) => `
                             <img src="${vars.logoUrl}" alt="Logo" style="height: 40px; width: auto;">
                             ` : ''}
                             <h2 style="color: #ffffff; margin: 10px 0 0 0; font-size: 24px; font-family: ${vars.fontFamily};">
-                                Newsletter
+                                ${vars.headerTitle || vars.companyName || 'Invoice'}
                             </h2>
                         </td>
                     </tr>

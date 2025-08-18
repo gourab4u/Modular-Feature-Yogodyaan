@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import EmailService from '../../../../services/emailService';
 import { supabase } from '../../../../shared/lib/supabase';
 import { renderEmailTemplate } from '../../../../shared/utils/emailTemplates';
-import logoImage from '/images/newcartoon-modified.png';
+import logoImage from '/images/Brand.png';
 const humanPlanType = (p) => {
     switch (p) {
         case 'monthly': return 'Monthly Subscription';
@@ -304,23 +304,37 @@ const TransactionManagement = () => {
                 });
                 // Logo
                 try {
-                    // Robust multi-fallback logo resolution. Tries each path until one succeeds.
+                    const normalize = (c) => {
+                        if (!c)
+                            return null;
+                        if (c.startsWith('data:'))
+                            return c;
+                        if (c.startsWith('http'))
+                            return c;
+                        if (c.startsWith('/'))
+                            return window.location.origin + c;
+                        return window.location.origin + (c.startsWith('images') ? '/' + c : '/' + c);
+                    };
                     const baseUrl = import.meta?.env?.BASE_URL || '/';
-                    const logoCandidates = [
-                        businessConfig?.profile?.logo_url, // DB configured
-                        import.meta?.env?.VITE_INVOICE_LOGO_URL, // Env override
+                    const rawCandidates = [
+                        businessConfig?.profile?.logo_url,
+                        import.meta?.env?.VITE_INVOICE_LOGO_URL,
                         logoImage,
-                        `${baseUrl}images/Brand.png`, // Public Brand.png (if exists)
-                        `${baseUrl}images/newcartoon-modified.png`, // Public original logo
-                        '/images/newcartoon-modified.png', // Absolute fallback
-                        '/images/Brand.png', // Absolute alt
-                        '/dist/images/newcartoon-modified.png', // Dist build fallback
-                        '/dist/images/Brand.png' // Dist alt
+                        `${baseUrl}images/Brand.png`,
+                        '/images/Brand.png',
+                        '/dist/images/Brand.png'
                     ].filter(Boolean);
+                    const logoCandidates = rawCandidates.map(normalize).filter(Boolean);
                     let imgBytes = null;
                     const logoFetchAttempts = [];
                     for (const candidate of logoCandidates) {
                         try {
+                            if (candidate.startsWith('data:')) {
+                                const base64 = candidate.split(',')[1];
+                                imgBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
+                                logoFetchAttempts.push({ url: candidate, ok: true, status: 200 });
+                                break;
+                            }
                             const r = await fetch(candidate);
                             logoFetchAttempts.push({ url: candidate, ok: r.ok, status: r.status });
                             if (r.ok) {
@@ -332,7 +346,62 @@ const TransactionManagement = () => {
                             logoFetchAttempts.push({ url: candidate, ok: false });
                         }
                     }
-                    console.log('Invoice PDF logo fetch attempts:', logoFetchAttempts);
+                    // Canvas fallback (handles scenarios where fetch is blocked / CORS)
+                    if (!imgBytes && logoImage) {
+                        try {
+                            const imgEl = new Image();
+                            imgEl.crossOrigin = 'anonymous';
+                            imgEl.src = normalize(logoImage);
+                            await new Promise((res, rej) => {
+                                imgEl.onload = res;
+                                imgEl.onerror = rej;
+                            });
+                            const canvas = document.createElement('canvas');
+                            canvas.width = imgEl.naturalWidth;
+                            canvas.height = imgEl.naturalHeight;
+                            const ctx = canvas.getContext('2d');
+                            if (ctx) {
+                                ctx.drawImage(imgEl, 0, 0);
+                                const dataUrl = canvas.toDataURL('image/png');
+                                const base64 = dataUrl.split(',')[1];
+                                imgBytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
+                                logoFetchAttempts.push({ url: 'canvas-fallback', ok: true, status: 200 });
+                            }
+                        }
+                        catch {
+                            logoFetchAttempts.push({ url: 'canvas-fallback', ok: false });
+                        }
+                    }
+                    console.log('Invoice PDF logo attempts:', logoFetchAttempts);
+                    if (!imgBytes) {
+                        try {
+                            const forced = normalize('/images/Brand.png');
+                            if (forced) {
+                                const r = await fetch(forced);
+                                if (r.ok) {
+                                    imgBytes = await r.arrayBuffer();
+                                    logoFetchAttempts.push({ url: forced + ' (forced)', ok: true, status: 200 });
+                                    console.log('Forced invoice logo loaded:', forced);
+                                }
+                                else {
+                                    logoFetchAttempts.push({ url: forced + ' (forced)', ok: false, status: r.status });
+                                }
+                            }
+                        }
+                        catch (e) {
+                            console.warn('Forced logo fetch failed', e);
+                        }
+                    }
+                    if (!imgBytes) {
+                        try {
+                            // As a last resort embed a 1x1 transparent pixel to avoid errors (placeholder)
+                            const transparentPixel = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+                            imgBytes = Uint8Array.from(atob(transparentPixel), c => c.charCodeAt(0)).buffer;
+                            logoFetchAttempts.push({ url: 'transparent-pixel', ok: true, status: 200 });
+                        }
+                        catch { /* ignore */ }
+                    }
+                    console.log('Final invoice logo decision bytesLength=', imgBytes ? imgBytes.byteLength : 0);
                     if (imgBytes) {
                         let img;
                         try {
@@ -341,13 +410,13 @@ const TransactionManagement = () => {
                         catch {
                             img = await pdfDoc.embedJpg(imgBytes);
                         }
-                        // Enhanced logo sizing & centering logic.
+                        // Enhanced logo sizing & centering logic (adjusted smaller & further left per request).
                         const headerBandHeight = 140;
                         const headerBandBottomY = height - headerBandHeight;
-                        const maxW = 260;
-                        const maxH = 120;
-                        const minH = 70; // larger minimum so it is clearly visible
-                        const minW = 70;
+                        const maxW = 140;
+                        const maxH = 70;
+                        const minH = 40; // lowered minimum for smaller appearance
+                        const minW = 40;
                         const { width: rawW, height: rawH } = img;
                         let scale = Math.min(maxW / rawW, maxH / rawH, 1);
                         let drawW = rawW * scale;
@@ -372,7 +441,7 @@ const TransactionManagement = () => {
                         }
                         const centeredY = headerBandBottomY + (headerBandHeight - drawH) / 2;
                         page.drawImage(img, {
-                            x: 40,
+                            x: 20, // moved further left
                             y: centeredY,
                             width: drawW,
                             height: drawH
@@ -395,7 +464,7 @@ const TransactionManagement = () => {
                 page.drawText(businessConfig?.profile?.name || 'Yogodyaan', {
                     x: 120,
                     y: height - 70,
-                    size: 30,
+                    size: 20,
                     font: boldFont,
                     color: headerTextColor
                 });
@@ -403,7 +472,7 @@ const TransactionManagement = () => {
                 page.drawText(businessConfig?.profile?.tagline || 'Experience the Rhythm.', {
                     x: 120,
                     y: height - 95,
-                    size: 12,
+                    size: 10,
                     font,
                     color: headerTextColor
                 });
@@ -706,6 +775,7 @@ const TransactionManagement = () => {
             const companyAddress = (businessConfig?.contact?.address_lines || []).join(', ');
             const html = renderEmailTemplate('corporate-professional', {
                 title: 'Payment Invoice',
+                headerTitle: 'Invoice',
                 content: `
           <p>Hi ${tx.user_name || ''},</p>
           <p>Thanks for your payment. Your invoice is attached as a PDF.</p>
@@ -716,8 +786,8 @@ const TransactionManagement = () => {
             <strong>Plan Type:</strong> ${humanPlanType(tx.billing_plan_type)}${tx.billing_plan_type === 'monthly' && tx.billing_period_month ? `<br/><strong>Billing Month:</strong> ${formatBillingMonth(tx.billing_period_month)}` : ''}
           </p>
         `,
-                primaryColor: primaryHex,
-                secondaryColor: accentHex,
+                primaryColor: primaryHex || '#2563eb',
+                secondaryColor: accentHex || primaryHex || '#1d4ed8',
                 backgroundColor: '#ffffff',
                 fontFamily: 'Arial, sans-serif',
                 companyName,
