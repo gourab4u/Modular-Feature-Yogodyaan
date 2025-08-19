@@ -1,5 +1,6 @@
 // BusinessSettings.tsx
 import { useEffect, useState } from 'react'
+import { useSettings } from '../../../../shared/contexts/SettingsContext'
 import { supabase } from '../../../../shared/lib/supabase'
 
 function TextInput({ label, value, onChange }: any) {
@@ -79,6 +80,7 @@ export default function BusinessSettings() {
   const [settings, setSettings] = useState<any>({})
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const { refresh } = useSettings() || {}
 
   useEffect(() => {
     fetchSettings()
@@ -123,6 +125,12 @@ export default function BusinessSettings() {
       if (error) {
         console.error(`Error saving ${key}:`, error)
       }
+    }
+    // refresh global settings so consumers update immediately
+    try {
+      await refresh?.()
+    } catch (e) {
+      // ignore
     }
     setSaving(false)
     alert('Settings saved!')

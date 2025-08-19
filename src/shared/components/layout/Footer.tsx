@@ -1,33 +1,61 @@
 import { Facebook, Instagram, Mail, MapPin, Phone, Twitter } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { NewsletterSignup } from '../../../features/marketing/components/NewsletterSignup'
+import { useSettings } from '../../contexts/SettingsContext'
 
 export function Footer() {
+  const { settings = {} } = useSettings() || {}
+
+  const profile = settings.business_profile || {}
+  const contact = settings.business_contact || {}
+  const social = settings.social_links || {}
+  const legal = settings.legal_disclaimer || {}
+
+  const brandName = profile.name || 'Yogodyaan'
+  // Prefer a footer-specific logo if present, then fall back to the general profile logo
+  const logoUrl = profile.footer_logo_url || profile.logo_url || ''
+  const description = profile.tagline || 'Transform your life through the ancient practice of yoga.'
+  const email = contact.email || 'info@yogodyaan.com'
+  const phone = contact.phone || '+1 (555) 123-4567'
+  const addressLines = (contact.address_lines && contact.address_lines.join('\n')) || '123 Wellness Street\nYoga City, YC 12345'
+
   return (
     <footer className="bg-slate-900 dark:bg-slate-950 text-white border-t border-slate-800 dark:border-slate-700">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="col-span-1 md:col-span-2">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-lg">Y</span>
+            <div className="flex items-center space-x-3 mb-4">
+              {logoUrl ? (
+                // render logo image directly to avoid clipping/background
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={logoUrl} alt={brandName} className="w-10 h-10 object-contain" />
+              ) : (
+                // fallback to public image for footer
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/images/Brand-orange-footer.png" alt={brandName} className="w-10 h-10 object-contain" />
+              )}
+              <div className="flex flex-col">
+                <span className="text-2xl font-bold leading-tight">{brandName}</span>
+                <span className="text-sm text-gray-300 mt-1 max-w-md">{description}</span>
               </div>
-              <span className="text-2xl font-bold">Yogodyaan</span>
             </div>
-            <p className="text-gray-300 mb-6 max-w-md">
-              Transform your life through the ancient practice of yoga. Join our community and discover inner peace, strength, and wellness.
-            </p>
             <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors">
-                <Facebook size={20} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors">
-                <Instagram size={20} />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors">
-                <Twitter size={20} />
-              </a>
+              {social.facebook ? (
+                <a href={social.facebook} className="text-gray-400 hover:text-emerald-400 transition-colors"><Facebook size={20} /></a>
+              ) : (
+                <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors"><Facebook size={20} /></a>
+              )}
+              {social.instagram ? (
+                <a href={social.instagram} className="text-gray-400 hover:text-emerald-400 transition-colors"><Instagram size={20} /></a>
+              ) : (
+                <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors"><Instagram size={20} /></a>
+              )}
+              {social.twitter ? (
+                <a href={social.twitter} className="text-gray-400 hover:text-emerald-400 transition-colors"><Twitter size={20} /></a>
+              ) : (
+                <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors"><Twitter size={20} /></a>
+              )}
             </div>
           </div>
 
@@ -49,15 +77,15 @@ export function Footer() {
             <ul className="space-y-3">
               <li className="flex items-center space-x-2">
                 <Mail size={16} className="text-emerald-400" />
-                <span className="text-gray-300">info@yogodyaan.com</span>
+                <span className="text-gray-300">{email}</span>
               </li>
               <li className="flex items-center space-x-2">
                 <Phone size={16} className="text-emerald-400" />
-                <span className="text-gray-300">+1 (555) 123-4567</span>
+                <span className="text-gray-300">{phone}</span>
               </li>
               <li className="flex items-start space-x-2">
                 <MapPin size={16} className="text-emerald-400 mt-1" />
-                <span className="text-gray-300">123 Wellness Street<br />Yoga City, YC 12345</span>
+                <span className="text-gray-300 whitespace-pre-line">{addressLines}</span>
               </li>
             </ul>
           </div>
@@ -74,9 +102,7 @@ export function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-gray-400">
-            © 2024 Yogodyaan. All rights reserved. Made with ❤️ for your wellness journey.
-          </p>
+          <p className="text-gray-400">© {new Date().getFullYear()} {brandName}. All rights reserved. {legal.disclaimer ? '' : 'Made with ❤️ for your wellness journey.'}</p>
         </div>
       </div>
     </footer >

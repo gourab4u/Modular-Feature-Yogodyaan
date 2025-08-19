@@ -1,6 +1,7 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 // BusinessSettings.tsx
 import { useEffect, useState } from 'react';
+import { useSettings } from '../../../../shared/contexts/SettingsContext';
 import { supabase } from '../../../../shared/lib/supabase';
 function TextInput({ label, value, onChange }) {
     return (_jsxs("div", { children: [_jsx("label", { className: "block text-sm font-medium text-gray-700 mb-1", children: label }), _jsx("input", { type: "text", value: value, onChange: onChange, className: "w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" })] }));
@@ -21,6 +22,7 @@ export default function BusinessSettings() {
     const [settings, setSettings] = useState({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const { refresh } = useSettings() || {};
     useEffect(() => {
         fetchSettings();
     }, []);
@@ -62,6 +64,13 @@ export default function BusinessSettings() {
             if (error) {
                 console.error(`Error saving ${key}:`, error);
             }
+        }
+        // refresh global settings so consumers update immediately
+        try {
+            await refresh?.();
+        }
+        catch (e) {
+            // ignore
         }
         setSaving(false);
         alert('Settings saved!');

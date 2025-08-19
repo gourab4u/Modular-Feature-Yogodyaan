@@ -3,11 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { NotificationDropdown } from '../../../features/notifications/components/NotificationDropdown';
-import { useTheme } from '../../contexts/ThemeContext';
+// ...existing imports...
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../ui/ThemeToggle';
-import logoLight from '/images/Brand-orange.png';
-import logoImage from '/images/Brand.png';
+import logoOrange from '/images/Brand-orange.png';
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -15,7 +14,7 @@ export function Header() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { isDark } = useTheme();
+  // removed isDark usage - header now uses a single orange logo for both themes
 
 
   const navigation = [
@@ -50,20 +49,23 @@ export function Header() {
   };
 
   return (
-    <header className="bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-50 border-b border-gray-100 dark:border-slate-700 backdrop-blur-sm">
+    <header className="w-full bg-white dark:bg-slate-900 shadow-sm sticky top-0 z-50 border-b border-gray-100 dark:border-slate-700 backdrop-blur-sm py-2">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-2">
+        <div className="flex justify-between items-center">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
-            <img
-              src={isDark ? logoImage : logoLight}
-              alt="Yogodyaan Logo"
-              className="h-16 w-16 object-contain rounded-full"
-            />
+          <Link to="/" className="flex items-center h-12">
+            <div className="w-12 h-12 sm:w-12 sm:h-12 overflow-visible rounded-full flex items-center justify-center relative">
+              <img
+                src={logoOrange}
+                alt="Yogodyaan Logo"
+                className="logo-zoom w-auto object-contain block"
+                style={{ height: '40px', width: '40px' }}
+              />
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-8">
+          <nav className="hidden lg:flex space-x-8">
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -79,7 +81,7 @@ export function Header() {
           </nav>
 
           {/* User Menu */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden lg:flex items-center space-x-4">
             {/* Theme Toggle */}
             <ThemeToggle />
 
@@ -95,10 +97,10 @@ export function Header() {
                 <div className="relative" ref={dropdownRef}>
                   <button
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="flex items-center text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 p-2.5 rounded-full hover:bg-blue-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-600 hover:border-blue-300 dark:hover:border-slate-500 bg-white dark:bg-slate-900 hover:shadow-sm"
+                    className="flex items-center text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200 p-2 rounded-full hover:bg-blue-50 dark:hover:bg-slate-800 border border-gray-200 dark:border-slate-600 hover:border-blue-300 dark:hover:border-slate-500 bg-white dark:bg-slate-900 hover:shadow-sm leading-none"
                   >
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                      <User size={18} className="text-white" />
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                      <User size={22} className="text-white" />
                     </div>
                     {/* Removed full name and roles */}
                     {isDropdownOpen ? (
@@ -153,7 +155,7 @@ export function Header() {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            className="lg:hidden text-gray-700 dark:text-slate-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -162,7 +164,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+          <div className="lg:hidden py-4 border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
             <nav className="flex flex-col space-y-4">
               {navigation.map((item) => (
                 <Link
@@ -195,8 +197,8 @@ export function Header() {
                     </div>
 
                     <div className="flex items-center space-x-3 text-gray-700 dark:text-gray-200 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                        <User size={18} className="text-white" />
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                        <User size={22} className="text-white" />
                       </div>
                       <span className="text-sm font-medium">Account</span>
                     </div>

@@ -1,0 +1,281 @@
+schemaname,tablename,policyname,permissive,roles,qual,with_check
+auth,users,Authenticated users can update their own row,PERMISSIVE,{authenticated},(id = ( SELECT auth.uid() AS uid)),(id = ( SELECT auth.uid() AS uid))
+auth,users,Authenticated users can select their own row,PERMISSIVE,{authenticated},(id = ( SELECT auth.uid() AS uid)),
+auth,users,Authenticated users can delete their own row,PERMISSIVE,{authenticated},(id = ( SELECT auth.uid() AS uid)),
+auth,users,Anyone can insert (for signup),PERMISSIVE,{anon},,true
+public,admin_users,Allow owner insert for triggers,PERMISSIVE,{public},,true
+public,admin_users,service_role_access,PERMISSIVE,{service_role},true,true
+public,admin_users,Allow owner delete for triggers,PERMISSIVE,{public},true,
+public,admin_users,Service role can manage admin_users,PERMISSIVE,{service_role},true,true
+public,admin_users,Authenticated can read admin_users,PERMISSIVE,{authenticated},true,
+public,admin_users,authenticated_read,PERMISSIVE,{authenticated},true,
+public,article_moderation_logs,sangha_guide_insert_logs,PERMISSIVE,{authenticated},,"(EXISTS ( SELECT 1
+   FROM ((user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+     JOIN profiles p ON ((ur.user_id = p.user_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = 'sangha_guide'::text) AND (p.is_active = true))))"
+public,article_moderation_logs,author_select_own_logs,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM articles
+  WHERE ((articles.id = article_moderation_logs.article_id) AND (articles.author_id = auth.uid()))))",
+public,article_moderation_logs,sangha_guide_select_logs,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM ((user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+     JOIN profiles p ON ((ur.user_id = p.user_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = 'sangha_guide'::text) AND (p.is_active = true))))",
+public,article_views,Admins can read article views,PERMISSIVE,{authenticated},is_admin(),
+public,article_views,Anyone can insert article views,PERMISSIVE,"{anon,authenticated}",,true
+public,articles,Authenticated Users can manage their own articles,PERMISSIVE,{authenticated},(author_id = auth.uid()),(author_id = auth.uid())
+public,articles,sangha_guide_read_all_articles,PERMISSIVE,{public},has_role('sangha_guide'::text),
+public,articles,sangha_guide_update_articles,PERMISSIVE,{public},has_role('sangha_guide'::text),has_role('sangha_guide'::text)
+public,articles,Anyone can read published articles,PERMISSIVE,"{anon,authenticated}",(status = 'published'::text),
+public,articles,Admins can manage articles,PERMISSIVE,{authenticated},is_admin(),is_admin()
+public,blog_posts,Anyone can read published posts,PERMISSIVE,{public},(status = 'published'::post_status),
+public,bookings,authenticated_users_select_own,PERMISSIVE,{authenticated},(user_id = auth.uid()),
+public,bookings,authenticated_users_insert_own,PERMISSIVE,{authenticated},,(user_id = auth.uid())
+public,bookings,Admins can view all bookings,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'yoga_acharya'::text])))))",
+public,bookings,admins_manage_all,PERMISSIVE,{authenticated},is_admin(),is_admin()
+public,business_settings,Anyone can read business settings,PERMISSIVE,{public},true,
+public,class_assignment_templates,Admins can manage all templates,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'yoga_acharya'::text])))))",
+public,class_assignment_templates,Instructors can view own templates,PERMISSIVE,{public},(instructor_id = auth.uid()),
+public,class_assignments,Instructors can view their own assignments,PERMISSIVE,{authenticated},(auth.uid() = instructor_id),
+public,class_assignments,sel_assignment_instructor,PERMISSIVE,{public},((instructor_id = auth.uid()) OR is_admin()),
+public,class_assignments,Admins can manage all class assignments,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))","(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))"
+public,class_assignments,Yoga acharyas can view and manage assignments,PERMISSIVE,{authenticated},"((auth.uid() = instructor_id) OR (EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = 'yoga_acharya'::text)))))","(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['yoga_acharya'::text, 'admin'::text, 'super_admin'::text])))))"
+public,class_assignments,upd_assignment_instructor,PERMISSIVE,{public},((instructor_id = auth.uid()) OR is_admin()),((instructor_id = auth.uid()) OR is_admin())
+public,class_attendance,upd_attendance_instructor,PERMISSIVE,{public},"((EXISTS ( SELECT 1
+   FROM class_assignments ca
+  WHERE ((ca.id = class_attendance.assignment_id) AND (ca.instructor_id = auth.uid()) AND (ca.attendance_locked = false)))) OR is_admin())","((EXISTS ( SELECT 1
+   FROM class_assignments ca
+  WHERE ((ca.id = class_attendance.assignment_id) AND (ca.instructor_id = auth.uid()) AND (ca.attendance_locked = false)))) OR is_admin())"
+public,class_attendance,del_attendance_admin,PERMISSIVE,{public},is_admin(),
+public,class_attendance,ins_attendance_instructor,PERMISSIVE,{public},,"((EXISTS ( SELECT 1
+   FROM class_assignments ca
+  WHERE ((ca.id = class_attendance.assignment_id) AND (ca.instructor_id = auth.uid()) AND (ca.attendance_locked = false)))) OR is_admin())"
+public,class_attendance,sel_attendance_instructor,PERMISSIVE,{public},"((EXISTS ( SELECT 1
+   FROM class_assignments ca
+  WHERE ((ca.id = class_attendance.assignment_id) AND (ca.instructor_id = auth.uid())))) OR is_admin())",
+public,class_attendance,sel_attendance_member,PERMISSIVE,{public},(member_id = auth.uid()),
+public,class_bookings,Anonymous users can create bookings,PERMISSIVE,{anon},,true
+public,class_bookings,Admins can manage all bookings,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,class_bookings,Users can create their own bookings,PERMISSIVE,{authenticated},,(auth.uid() = user_id)
+public,class_bookings,Users can view their own bookings,PERMISSIVE,{authenticated},(auth.uid() = user_id),
+public,class_bookings,Users can update their own bookings,PERMISSIVE,{authenticated},(auth.uid() = user_id),
+public,class_feedback,Users can manage their own feedback,PERMISSIVE,{authenticated},(auth.uid() = user_id),(auth.uid() = user_id)
+public,class_feedback,Admins can read all feedback,PERMISSIVE,{authenticated},check_is_admin(),
+public,class_packages,Admins can manage packages,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,class_packages,Anyone can read active packages,PERMISSIVE,"{anon,authenticated}",(is_active = true),
+public,class_ratings,ins_class_ratings_member,PERMISSIVE,{public},,"((member_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM class_assignments ca
+  WHERE ((ca.id = class_ratings.assignment_id) AND ((((((ca.date)::text || ' '::text) || (ca.end_time)::text))::timestamp without time zone AT TIME ZONE ca.timezone) <= now())))) AND (EXISTS ( SELECT 1
+   FROM class_attendance att
+  WHERE ((att.assignment_id = class_ratings.assignment_id) AND (att.member_id = auth.uid()) AND (att.status = ANY (ARRAY['present'::attendance_status_enum, 'late'::attendance_status_enum, 'makeup_completed'::attendance_status_enum]))))))"
+public,class_ratings,sel_ratings_instructor,PERMISSIVE,{public},"((EXISTS ( SELECT 1
+   FROM class_assignments ca
+  WHERE ((ca.id = class_ratings.assignment_id) AND (ca.instructor_id = auth.uid())))) OR is_admin() OR (member_id = auth.uid()))",
+public,class_ratings,upd_class_ratings_member,PERMISSIVE,{public},"((member_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM class_attendance att
+  WHERE ((att.assignment_id = class_ratings.assignment_id) AND (att.member_id = auth.uid()) AND (att.status = ANY (ARRAY['present'::attendance_status_enum, 'late'::attendance_status_enum, 'makeup_completed'::attendance_status_enum]))))))","((member_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM class_attendance att
+  WHERE ((att.assignment_id = class_ratings.assignment_id) AND (att.member_id = auth.uid()) AND (att.status = ANY (ARRAY['present'::attendance_status_enum, 'late'::attendance_status_enum, 'makeup_completed'::attendance_status_enum]))))))"
+public,class_ratings,mod_ratings_admin,PERMISSIVE,{public},is_admin(),is_admin()
+public,class_schedules,Public can read active class schedules,PERMISSIVE,"{anon,authenticated}",(is_active = true),
+public,class_schedules,Admins can manage all class schedules,PERMISSIVE,{authenticated},is_admin(),is_admin()
+public,class_schedules,Allow insert for admin roles,PERMISSIVE,{authenticated},,"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'super_admin'::text, 'instructor'::text, 'yoga_acharya'::text])))))"
+public,class_schedules,Enable update for users with management roles,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text, 'instructor'::text, 'yoga_acharya'::text])))))",
+public,class_schedules,Allow delete for admin roles,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'super_admin'::text, 'instructor'::text, 'yoga_acharya'::text])))))",
+public,class_schedules,Enable insert for users with management roles,PERMISSIVE,{authenticated},,"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text, 'instructor'::text, 'yoga_acharya'::text])))))"
+public,class_schedules,Allow update for admin roles,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'super_admin'::text, 'instructor'::text, 'yoga_acharya'::text])))))",
+public,class_schedules,Enable delete for users with management roles,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text, 'instructor'::text, 'yoga_acharya'::text])))))",
+public,class_types,Allow all users to view class types,PERMISSIVE,{public},true,
+public,class_types,Admins can manage class types,PERMISSIVE,{authenticated},"((EXISTS ( SELECT 1
+   FROM admin_users
+  WHERE ((admin_users.email = auth.email()) AND (admin_users.role = ANY (ARRAY['admin'::text, 'super_admin'::text]))))) OR (EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text]))))))","((EXISTS ( SELECT 1
+   FROM admin_users
+  WHERE ((admin_users.email = auth.email()) AND (admin_users.role = ANY (ARRAY['admin'::text, 'super_admin'::text]))))) OR (EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text]))))))"
+public,class_types,Allow anon read access to class_types,PERMISSIVE,"{anon,authenticated}",true,
+public,class_types,Anyone can read active class types,PERMISSIVE,{public},(is_active = true),
+public,class_types,Authorized roles can delete class types,PERMISSIVE,{public},"((EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text, 'yoga_acharya'::text]))))) OR (created_by = auth.uid()))",
+public,class_types,Authorized roles can insert class types,PERMISSIVE,{public},,"((EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text, 'yoga_acharya'::text]))))) AND (created_by = auth.uid()) AND (updated_by = auth.uid()))"
+public,class_types,Authorized roles can manage class types,PERMISSIVE,{public},,"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text, 'yoga_acharya'::text])))))"
+public,class_types,Authorized roles can update class types,PERMISSIVE,{public},"((EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text, 'yoga_acharya'::text]))))) OR (created_by = auth.uid()))",((created_by = auth.uid()) AND (updated_by = auth.uid()))
+public,contact_messages,simple_admin_access,PERMISSIVE,{authenticated},true,true
+public,contact_messages,admin_email_access,PERMISSIVE,{authenticated},((auth.jwt() ->> 'email'::text) = 'gourab.master@gmail.com'::text),((auth.jwt() ->> 'email'::text) = 'gourab.master@gmail.com'::text)
+public,contact_messages,auto_admin_access,PERMISSIVE,{authenticated},check_admin_role(),check_admin_role()
+public,contact_messages,users_own_messages,PERMISSIVE,{authenticated},"((user_id = auth.uid()) OR (email = (( SELECT users.email
+   FROM auth.users
+  WHERE (users.id = auth.uid())))::text))",
+public,contact_messages,allow_contact_submissions,PERMISSIVE,{public},,true
+public,form_submissions,Users can create submissions,PERMISSIVE,{public},,true
+public,form_submissions,Admins can manage all submissions,PERMISSIVE,{authenticated},is_admin(),is_admin()
+public,form_submissions,Public users can create submissions,PERMISSIVE,{anon},,true
+public,instructor_availability,Anyone can read instructor availability,PERMISSIVE,"{anon,authenticated}",(is_available = true),
+public,instructor_availability,Admins can manage all instructor availability,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,instructor_rates,Admins can manage instructor rates,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))",
+public,instructor_rates,delete_instructor_rates_policy,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((r.id = ur.role_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))",
+public,instructor_rates,update_instructor_rates_policy,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((r.id = ur.role_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))",
+public,instructor_rates,select_instructor_rates_policy,PERMISSIVE,{public},(auth.uid() IS NOT NULL),
+public,instructor_rates,Users can manage own rates,PERMISSIVE,{authenticated},(created_by = auth.uid()),(created_by = auth.uid())
+public,instructor_rates,insert_instructor_rates_policy,PERMISSIVE,{public},,"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((r.id = ur.role_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))"
+public,instructor_ratings,Allow read for authenticated users,PERMISSIVE,{authenticated},true,
+public,manual_class_selections,Admins can view all manual selections,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'yoga_acharya'::text])))))",
+public,manual_class_selections,Users can view own manual selections,PERMISSIVE,{public},(created_by = auth.uid()),
+public,newsletter_send_logs,insert_newsletter_send_logs_policy,PERMISSIVE,{public},,(auth.uid() IS NOT NULL)
+public,newsletter_subscribers,Anyone can subscribe to newsletter,PERMISSIVE,{public},,true
+public,newsletter_subscribers,Admins can manage newsletter subscribers,PERMISSIVE,{authenticated},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))","(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((ur.role_id = r.id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))"
+public,newsletter_subscriptions,Admins can view all subscriptions,PERMISSIVE,{authenticated},check_is_admin(),
+public,newsletter_subscriptions,Users can manage their own subscriptions,PERMISSIVE,{authenticated},(auth.uid() = user_id),(auth.uid() = user_id)
+public,newsletters,Admins can manage newsletters,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,newsletters,update_newsletters_policy,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((r.id = ur.role_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))","(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((r.id = ur.role_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))"
+public,newsletters,delete_newsletters_policy,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((r.id = ur.role_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))",
+public,newsletters,insert_newsletters_policy,PERMISSIVE,{public},,"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((r.id = ur.role_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))"
+public,newsletters,select_newsletters_policy,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM (user_roles ur
+     JOIN roles r ON ((r.id = ur.role_id)))
+  WHERE ((ur.user_id = auth.uid()) AND (r.name = ANY (ARRAY['admin'::text, 'super_admin'::text])))))",
+public,notifications,Users can delete their own notifications,PERMISSIVE,{public},(auth.uid() = user_id),
+public,notifications,Users can view their own notifications,PERMISSIVE,{public},(auth.uid() = user_id),
+public,notifications,Users can update their own notifications,PERMISSIVE,{public},(auth.uid() = user_id),
+public,notifications,System can insert notifications,PERMISSIVE,{public},,true
+public,payment_methods,Admins can read payment methods,PERMISSIVE,{authenticated},check_is_admin(),
+public,payment_methods,Users can manage their own payment methods,PERMISSIVE,{authenticated},(auth.uid() = user_id),(auth.uid() = user_id)
+public,profiles,Service role can manage profiles,PERMISSIVE,{service_role},true,true
+public,profiles,Users can insert own profile,PERMISSIVE,{authenticated},,(user_id = ( SELECT auth.uid() AS uid))
+public,profiles,Allow anon read access to instructor profiles,PERMISSIVE,"{anon,authenticated}",true,
+public,profiles,Users can update their own profile,PERMISSIVE,{authenticated},(user_id = ( SELECT auth.uid() AS uid)),(user_id = ( SELECT auth.uid() AS uid))
+public,profiles,Users can view their own profile,PERMISSIVE,{authenticated},(user_id = ( SELECT auth.uid() AS uid)),
+public,profiles,Admins can read all profiles,PERMISSIVE,{authenticated},( SELECT (((auth.jwt() -> 'app_metadata'::text) ->> 'role'::text) = 'admin'::text)),
+public,ratings,Anyone can manage their own ratings,PERMISSIVE,"{anon,authenticated}",true,true
+public,referrals,Users can create referrals,PERMISSIVE,{authenticated},,(auth.uid() = referrer_id)
+public,referrals,Admins can manage all referrals,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,referrals,Users can view their own referrals,PERMISSIVE,{authenticated},((auth.uid() = referrer_id) OR (auth.uid() = referee_id)),
+public,role_modules,Allow read for authenticated users,PERMISSIVE,{authenticated},true,
+public,roles,Super admins can manage roles,PERMISSIVE,{authenticated},check_can_manage_roles(),check_can_manage_roles()
+public,roles,Everyone can read roles,PERMISSIVE,{public},true,
+public,roles,Admins can manage roles,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM profiles p
+  WHERE ((p.user_id = auth.uid()) AND (p.role = 'admin'::text))))",
+public,roles,Roles are publicly viewable,PERMISSIVE,{public},true,
+public,roles,Anyone can read roles,PERMISSIVE,"{anon,authenticated}",true,
+public,scheduled_classes,Admins can manage scheduled classes,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,scheduled_classes,Anyone can read scheduled classes,PERMISSIVE,"{anon,authenticated}","(status = ANY (ARRAY['scheduled'::text, 'in_progress'::text]))",
+public,subscription_plans,Anyone can read active subscription plans,PERMISSIVE,{public},(is_active = true),
+public,subscription_plans,Admins can manage subscription plans,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,system_metrics,Admins can manage system metrics,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,transactions,Authorized roles can insert transactions,PERMISSIVE,{authenticated},,check_user_roles()
+public,transactions,Authorized roles can delete transactions,PERMISSIVE,{authenticated},check_user_roles(),
+public,transactions,Authorized roles can update transactions,PERMISSIVE,{authenticated},check_user_roles(),check_user_roles()
+public,transactions,Admins can read all transactions,PERMISSIVE,{authenticated},check_is_admin(),
+public,transactions,Authorized roles can view transactions,PERMISSIVE,{authenticated},check_user_roles(),
+public,transactions,Admins can manage transactions,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,transactions,Users can read their own transactions,PERMISSIVE,{authenticated},(auth.uid() = user_id),
+public,user_activity,Users can read their own activity,PERMISSIVE,{authenticated},(auth.uid() = user_id),
+public,user_activity,System can insert activity,PERMISSIVE,"{anon,authenticated}",,true
+public,user_activity,Admins can read all activity,PERMISSIVE,{authenticated},check_is_admin(),
+public,user_packages,Users can view their own packages,PERMISSIVE,{authenticated},(auth.uid() = user_id),
+public,user_packages,Users can update their own packages,PERMISSIVE,{authenticated},(auth.uid() = user_id),
+public,user_packages,Admins can manage all user packages,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,user_packages,System can insert user packages,PERMISSIVE,{authenticated},,(auth.uid() = user_id)
+public,user_preferences,Users can manage their own preferences,PERMISSIVE,{authenticated},(auth.uid() = user_id),(auth.uid() = user_id)
+public,user_roles,Admins view all roles,PERMISSIVE,{public},"(EXISTS ( SELECT 1
+   FROM profiles
+  WHERE ((profiles.user_id = auth.uid()) AND (profiles.role = ANY (ARRAY['admin'::text, 'super_admin'::text])) AND (profiles.is_active = true))))",
+public,user_roles,Users view own roles,PERMISSIVE,{public},(user_id = auth.uid()),
+public,user_roles,Service role full access,PERMISSIVE,{public},true,true
+public,user_subscriptions,Users can read their own subscriptions,PERMISSIVE,{authenticated},(auth.uid() = user_id),
+public,user_subscriptions,Admins can manage subscriptions,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,user_subscriptions,Admins can read all subscriptions,PERMISSIVE,{authenticated},check_is_admin(),
+public,waitlist,Admins can manage all waitlist entries,PERMISSIVE,{authenticated},check_is_admin(),check_is_admin()
+public,waitlist,Users can view their own waitlist entries,PERMISSIVE,{authenticated},(auth.uid() = user_id),
+public,waitlist,Users can manage their own waitlist entries,PERMISSIVE,{authenticated},(auth.uid() = user_id),(auth.uid() = user_id)
+public,yoga_queries,Anyone can create yoga queries,PERMISSIVE,"{anon,authenticated}",,true
+public,yoga_queries,Users can view their own queries,PERMISSIVE,{authenticated},(email = auth.email()),
+public,yoga_queries,Admins can manage all queries,PERMISSIVE,{authenticated},is_admin(),is_admin()
+public,yoga_queries,Admins can view all queries,PERMISSIVE,{authenticated},is_admin(),
+storage,objects,llow all users to view avatars 1oj01fe_0,PERMISSIVE,{public},(bucket_id = 'avatars'::text),
+storage,objects,Allow authenticated users to upload their avatar 1oj01fe_1,PERMISSIVE,{authenticated},(bucket_id = 'avatars'::text),
+storage,objects,Allow authenticated users to upload their avatar 1oj01fe_0,PERMISSIVE,{authenticated},,(bucket_id = 'avatars'::text)
+storage,objects,Allow auth users to upload 1oj01fe_0,PERMISSIVE,{authenticated},,((bucket_id = 'avatars'::text) AND (owner = ( SELECT auth.uid() AS uid)))

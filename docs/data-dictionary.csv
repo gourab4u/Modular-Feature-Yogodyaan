@@ -1,0 +1,671 @@
+table_schema,table_name,column_name,ordinal_position,data_type,is_nullable,column_default
+public,admin_assignment_roster_v,assignment_id,1,uuid,YES,
+public,admin_assignment_roster_v,booking_id,2,text,YES,
+public,admin_assignment_roster_v,member_id,3,uuid,YES,
+public,admin_assignment_roster_v,full_name,4,text,YES,
+public,admin_assignment_roster_v,email,5,text,YES,
+public,admin_assignment_roster_v,status,6,USER-DEFINED,YES,
+public,admin_assignment_roster_v,marked_at,7,timestamp with time zone,YES,
+public,admin_assignment_roster_v,marked_by,8,uuid,YES,
+public,admin_class_overview_v,assignment_id,1,uuid,YES,
+public,admin_class_overview_v,instructor_id,2,uuid,YES,
+public,admin_class_overview_v,date,3,date,YES,
+public,admin_class_overview_v,start_time,4,time without time zone,YES,
+public,admin_class_overview_v,end_time,5,time without time zone,YES,
+public,admin_class_overview_v,class_status,6,text,YES,
+public,admin_class_overview_v,payment_status,7,USER-DEFINED,YES,
+public,admin_class_overview_v,final_payment_amount,8,numeric,YES,
+public,admin_class_overview_v,class_type_name,9,text,YES,
+public,admin_class_overview_v,class_type_description,10,text,YES,
+public,admin_class_overview_v,class_type_difficulty,11,text,YES,
+public,admin_class_overview_v,class_type_duration,12,integer,YES,
+public,admin_class_overview_v,schedule_type,13,text,YES,
+public,admin_class_overview_v,timezone,14,text,YES,
+public,admin_class_overview_v,attended_count,15,bigint,YES,
+public,admin_class_overview_v,no_show_count,16,bigint,YES,
+public,admin_class_overview_v,absent_count,17,bigint,YES,
+public,admin_class_overview_v,avg_rating,18,numeric,YES,
+public,admin_class_overview_v,ratings_submitted,19,bigint,YES,
+public,admin_users,id,1,uuid,NO,gen_random_uuid()
+public,admin_users,email,2,text,NO,
+public,admin_users,role,3,text,NO,'admin'::text
+public,admin_users,created_at,4,timestamp with time zone,YES,now()
+public,admin_users,updated_at,5,timestamp with time zone,YES,now()
+public,article_moderation_logs,id,1,uuid,NO,gen_random_uuid()
+public,article_moderation_logs,article_id,2,uuid,YES,
+public,article_moderation_logs,action,3,character varying,NO,
+public,article_moderation_logs,moderated_by,4,uuid,YES,
+public,article_moderation_logs,moderated_at,5,timestamp with time zone,YES,now()
+public,article_moderation_logs,comment,6,text,YES,
+public,article_views,id,1,uuid,NO,gen_random_uuid()
+public,article_views,article_id,2,uuid,NO,
+public,article_views,fingerprint,3,text,NO,
+public,article_views,viewed_at,4,timestamp with time zone,NO,now()
+public,articles,id,1,uuid,NO,gen_random_uuid()
+public,articles,title,2,text,NO,
+public,articles,content,3,text,NO,
+public,articles,preview_text,4,text,NO,
+public,articles,image_url,5,text,YES,
+public,articles,video_url,6,text,YES,
+public,articles,category,7,text,NO,'general'::text
+public,articles,tags,8,ARRAY,YES,'{}'::text[]
+public,articles,status,9,text,NO,'draft'::text
+public,articles,view_count,10,integer,NO,0
+public,articles,created_at,11,timestamp with time zone,NO,now()
+public,articles,updated_at,12,timestamp with time zone,NO,now()
+public,articles,published_at,13,timestamp with time zone,YES,
+public,articles,author_id,14,uuid,YES,
+public,articles,moderated_at,15,timestamp with time zone,YES,
+public,articles,moderated_by,16,uuid,YES,
+public,articles,moderation_status,17,text,YES,
+public,assignment_bookings,id,1,uuid,NO,gen_random_uuid()
+public,assignment_bookings,assignment_id,2,uuid,NO,
+public,assignment_bookings,booking_id,3,text,NO,
+public,assignment_bookings,created_at,4,timestamp with time zone,YES,now()
+public,assignment_bookings_view_roster,assignment_id,1,uuid,YES,
+public,assignment_bookings_view_roster,booking_id,2,text,YES,
+public,assignment_bookings_view_roster,user_id,3,uuid,YES,
+public,assignment_bookings_view_roster,full_name,4,text,YES,
+public,assignment_bookings_view_roster,email,5,text,YES,
+public,assignment_bookings_view_roster,status,6,USER-DEFINED,YES,
+public,assignment_bookings_view_roster,notes,7,text,YES,
+public,assignment_bookings_view_roster,marked_at,8,timestamp with time zone,YES,
+public,assignments_with_timezone,id,1,uuid,YES,
+public,assignments_with_timezone,scheduled_class_id,2,uuid,YES,
+public,assignments_with_timezone,instructor_id,3,uuid,YES,
+public,assignments_with_timezone,assigned_by,4,uuid,YES,
+public,assignments_with_timezone,payment_amount,5,numeric,YES,
+public,assignments_with_timezone,payment_status,6,USER-DEFINED,YES,
+public,assignments_with_timezone,notes,7,text,YES,
+public,assignments_with_timezone,assigned_at,8,timestamp with time zone,YES,
+public,assignments_with_timezone,created_at,9,timestamp with time zone,YES,
+public,assignments_with_timezone,updated_at,10,timestamp with time zone,YES,
+public,assignments_with_timezone,class_type_id,11,uuid,YES,
+public,assignments_with_timezone,date,12,date,YES,
+public,assignments_with_timezone,start_time,13,time without time zone,YES,
+public,assignments_with_timezone,end_time,14,time without time zone,YES,
+public,assignments_with_timezone,schedule_type,15,text,YES,
+public,assignments_with_timezone,class_status,16,text,YES,
+public,assignments_with_timezone,payment_date,17,date,YES,
+public,assignments_with_timezone,instructor_status,18,text,YES,
+public,assignments_with_timezone,instructor_response_at,19,timestamp with time zone,YES,
+public,assignments_with_timezone,instructor_remarks,20,text,YES,
+public,assignments_with_timezone,rejection_reason,21,text,YES,
+public,assignments_with_timezone,payment_type,22,character varying,YES,
+public,assignments_with_timezone,package_id,23,uuid,YES,
+public,assignments_with_timezone,timezone,24,text,YES,
+public,assignments_with_timezone,created_in_timezone,25,text,YES,
+public,assignments_with_timezone,assignment_method,26,text,YES,
+public,assignments_with_timezone,recurrence_days,27,ARRAY,YES,
+public,assignments_with_timezone,parent_assignment_id,28,uuid,YES,
+public,assignments_with_timezone,start_datetime_utc,29,timestamp with time zone,YES,
+public,assignments_with_timezone,end_datetime_utc,30,timestamp with time zone,YES,
+public,assignments_with_timezone,class_type_name,31,text,YES,
+public,assignments_with_timezone,package_name,32,text,YES,
+public,assignments_with_timezone,package_class_count,33,integer,YES,
+public,assignments_with_timezone,instructor_name,34,text,YES,
+public,badges,id,1,uuid,NO,gen_random_uuid()
+public,badges,name,2,text,NO,
+public,badges,icon_url,3,text,YES,
+public,badges,description,4,text,YES,
+public,blog_posts,id,1,uuid,NO,gen_random_uuid()
+public,blog_posts,title,2,text,NO,
+public,blog_posts,slug,3,text,NO,
+public,blog_posts,excerpt,4,text,YES,
+public,blog_posts,content,5,text,NO,
+public,blog_posts,author_id,6,uuid,YES,
+public,blog_posts,author_name,7,text,NO,'Admin'::text
+public,blog_posts,category,8,text,NO,'Practice'::text
+public,blog_posts,tags,9,ARRAY,YES,'{}'::text[]
+public,blog_posts,image_url,10,text,YES,
+public,blog_posts,featured,11,boolean,YES,false
+public,blog_posts,status,12,USER-DEFINED,YES,'draft'::post_status
+public,blog_posts,read_time,13,text,YES,
+public,blog_posts,meta_description,14,text,YES,
+public,blog_posts,meta_keywords,15,ARRAY,YES,
+public,blog_posts,published_at,16,timestamp with time zone,YES,
+public,blog_posts,created_at,17,timestamp with time zone,YES,now()
+public,blog_posts,updated_at,18,timestamp with time zone,YES,now()
+public,bookings,id,1,uuid,NO,gen_random_uuid()
+public,bookings,user_id,2,uuid,YES,
+public,bookings,class_name,3,text,NO,
+public,bookings,instructor,4,text,NO,
+public,bookings,class_date,5,date,NO,CURRENT_DATE
+public,bookings,class_time,6,text,NO,
+public,bookings,first_name,7,text,NO,
+public,bookings,last_name,8,text,NO,
+public,bookings,email,9,text,NO,
+public,bookings,phone,10,text,NO,
+public,bookings,experience_level,11,text,NO,'beginner'::text
+public,bookings,special_requests,12,text,YES,''::text
+public,bookings,emergency_contact,13,text,YES,
+public,bookings,emergency_phone,14,text,YES,
+public,bookings,status,15,text,NO,'confirmed'::text
+public,bookings,created_at,16,timestamp with time zone,YES,now()
+public,bookings,updated_at,17,timestamp with time zone,YES,now()
+public,bookings,instructor_id,18,uuid,YES,
+public,bookings,booking_type,19,text,NO,'individual'::text
+public,bookings,company_name,20,text,YES,
+public,bookings,job_title,21,text,YES,
+public,bookings,company_size,22,text,YES,
+public,bookings,industry,23,text,YES,
+public,bookings,website,24,text,YES,
+public,bookings,participants_count,25,integer,YES,
+public,bookings,work_location,26,text,YES,
+public,bookings,preferred_days,27,ARRAY,YES,
+public,bookings,preferred_times,28,ARRAY,YES,
+public,bookings,session_frequency,29,text,YES,
+public,bookings,program_duration,30,text,YES,
+public,bookings,budget_range,31,text,YES,
+public,bookings,goals,32,text,YES,
+public,bookings,current_wellness_programs,33,text,YES,
+public,bookings,space_available,34,text,YES,
+public,bookings,equipment_needed,35,boolean,YES,false
+public,bookings,package_type,36,text,YES,
+public,bookings,timezone,37,text,YES,
+public,bookings,country,38,text,YES,
+public,bookings,price,39,numeric,YES,
+public,bookings,currency,40,text,YES,'USD'::text
+public,bookings,payment_status,41,text,YES,'pending'::text
+public,bookings,session_duration,42,integer,YES,
+public,bookings,booking_notes,43,text,YES,
+public,bookings,cancellation_reason,44,text,YES,
+public,bookings,cancelled_at,45,timestamp with time zone,YES,
+public,bookings,class_package_id,46,uuid,YES,
+public,bookings,booking_id,47,text,YES,
+public,business_settings,id,1,uuid,NO,gen_random_uuid()
+public,business_settings,key,2,text,NO,
+public,business_settings,value,3,jsonb,NO,
+public,business_settings,description,4,text,YES,
+public,business_settings,updated_by,5,uuid,YES,
+public,business_settings,created_at,6,timestamp with time zone,YES,now()
+public,business_settings,updated_at,7,timestamp with time zone,YES,now()
+public,class_assignment_financials,id,1,uuid,YES,
+public,class_assignment_financials,instructor_id,2,uuid,YES,
+public,class_assignment_financials,date,3,date,YES,
+public,class_assignment_financials,start_time,4,time without time zone,YES,
+public,class_assignment_financials,end_time,5,time without time zone,YES,
+public,class_assignment_financials,schedule_type,6,text,YES,
+public,class_assignment_financials,class_status,7,text,YES,
+public,class_assignment_financials,payment_status,8,USER-DEFINED,YES,
+public,class_assignment_financials,payment_amount,9,numeric,YES,
+public,class_assignment_financials,override_payment_amount,10,numeric,YES,
+public,class_assignment_financials,final_payment_amount,11,numeric,YES,
+public,class_assignment_templates,id,1,uuid,NO,gen_random_uuid()
+public,class_assignment_templates,name,2,text,NO,
+public,class_assignment_templates,package_id,3,uuid,YES,
+public,class_assignment_templates,class_type_id,4,uuid,YES,
+public,class_assignment_templates,instructor_id,5,uuid,NO,
+public,class_assignment_templates,weekdays,6,ARRAY,NO,
+public,class_assignment_templates,start_time,7,time without time zone,NO,
+public,class_assignment_templates,end_time,8,time without time zone,NO,
+public,class_assignment_templates,timezone,9,text,NO,'Asia/Kolkata'::text
+public,class_assignment_templates,payment_amount,10,numeric,YES,0
+public,class_assignment_templates,payment_type,11,text,YES,'per_class'::text
+public,class_assignment_templates,notes,12,text,YES,
+public,class_assignment_templates,created_by,13,uuid,NO,
+public,class_assignment_templates,created_at,14,timestamp with time zone,YES,now()
+public,class_assignment_templates,updated_at,15,timestamp with time zone,YES,now()
+public,class_assignment_templates,is_active,16,boolean,YES,true
+public,class_assignments,id,1,uuid,NO,gen_random_uuid()
+public,class_assignments,scheduled_class_id,2,uuid,YES,
+public,class_assignments,instructor_id,3,uuid,NO,
+public,class_assignments,assigned_by,4,uuid,YES,
+public,class_assignments,payment_amount,5,numeric,NO,0.00
+public,class_assignments,payment_status,6,USER-DEFINED,YES,'pending'::payment_status
+public,class_assignments,notes,7,text,YES,
+public,class_assignments,assigned_at,8,timestamp with time zone,YES,now()
+public,class_assignments,created_at,9,timestamp with time zone,YES,now()
+public,class_assignments,updated_at,10,timestamp with time zone,YES,now()
+public,class_assignments,class_type_id,11,uuid,YES,
+public,class_assignments,date,12,date,YES,
+public,class_assignments,start_time,13,time without time zone,YES,
+public,class_assignments,end_time,14,time without time zone,YES,
+public,class_assignments,schedule_type,15,text,YES,'weekly'::text
+public,class_assignments,class_status,16,text,YES,'scheduled'::text
+public,class_assignments,payment_date,17,date,YES,
+public,class_assignments,instructor_status,18,text,YES,'pending'::text
+public,class_assignments,instructor_response_at,19,timestamp with time zone,YES,
+public,class_assignments,instructor_remarks,20,text,YES,
+public,class_assignments,rejection_reason,21,text,YES,
+public,class_assignments,payment_type,22,character varying,YES,'per_class'::character varying
+public,class_assignments,package_id,23,uuid,YES,
+public,class_assignments,timezone,24,text,YES,'Asia/Kolkata'::text
+public,class_assignments,created_in_timezone,25,text,YES,'Asia/Kolkata'::text
+public,class_assignments,assignment_method,26,text,YES,'manual'::text
+public,class_assignments,recurrence_days,27,ARRAY,YES,
+public,class_assignments,parent_assignment_id,28,uuid,YES,
+public,class_assignments,booking_type,29,text,YES,'individual'::text
+public,class_assignments,override_payment_amount,30,numeric,YES,
+public,class_assignments,attendance_locked,31,boolean,NO,false
+public,class_assignments,actual_start_time,32,timestamp with time zone,YES,
+public,class_assignments,actual_end_time,33,timestamp with time zone,YES,
+public,class_assignments,rescheduled_to_id,34,uuid,YES,
+public,class_assignments,rescheduled_from_id,35,uuid,YES,
+public,class_assignments,class_package_id,36,uuid,YES,
+public,class_attendance,id,1,uuid,NO,gen_random_uuid()
+public,class_attendance,assignment_id,2,uuid,NO,
+public,class_attendance,member_id,3,uuid,NO,
+public,class_attendance,status,4,USER-DEFINED,NO,
+public,class_attendance,notes,5,text,YES,
+public,class_attendance,marked_by,6,uuid,NO,auth.uid()
+public,class_attendance,marked_at,7,timestamp with time zone,NO,now()
+public,class_attendance,makeup_of_assignment_id,8,uuid,YES,
+public,class_attendance,updated_at,9,timestamp with time zone,NO,now()
+public,class_bookings,id,1,uuid,NO,gen_random_uuid()
+public,class_bookings,user_id,2,uuid,YES,
+public,class_bookings,scheduled_class_id,3,uuid,YES,
+public,class_bookings,profile_id,4,uuid,YES,
+public,class_bookings,first_name,5,text,NO,
+public,class_bookings,last_name,6,text,NO,
+public,class_bookings,email,7,text,NO,
+public,class_bookings,phone,8,text,YES,
+public,class_bookings,emergency_contact,9,text,YES,
+public,class_bookings,emergency_phone,10,text,YES,
+public,class_bookings,special_requests,11,text,YES,''::text
+public,class_bookings,payment_status,12,text,YES,'pending'::text
+public,class_bookings,booking_status,13,text,YES,'confirmed'::text
+public,class_bookings,booking_date,14,timestamp with time zone,YES,now()
+public,class_bookings,cancelled_at,15,timestamp with time zone,YES,
+public,class_bookings,cancellation_reason,16,text,YES,
+public,class_bookings,created_at,17,timestamp with time zone,YES,now()
+public,class_bookings,updated_at,18,timestamp with time zone,YES,now()
+public,class_feedback,id,1,uuid,NO,gen_random_uuid()
+public,class_feedback,booking_id,2,uuid,NO,
+public,class_feedback,user_id,3,uuid,YES,
+public,class_feedback,scheduled_class_id,4,uuid,NO,
+public,class_feedback,instructor_rating,5,integer,YES,
+public,class_feedback,class_rating,6,integer,YES,
+public,class_feedback,difficulty_rating,7,integer,YES,
+public,class_feedback,would_recommend,8,boolean,YES,
+public,class_feedback,feedback_text,9,text,YES,
+public,class_feedback,suggestions,10,text,YES,
+public,class_feedback,created_at,11,timestamp with time zone,YES,now()
+public,class_packages,id,1,uuid,NO,gen_random_uuid()
+public,class_packages,name,2,text,NO,
+public,class_packages,description,3,text,YES,
+public,class_packages,class_count,4,integer,NO,
+public,class_packages,price,5,numeric,NO,
+public,class_packages,validity_days,6,integer,YES,90
+public,class_packages,class_type_restrictions,7,ARRAY,YES,
+public,class_packages,is_active,8,boolean,YES,true
+public,class_packages,created_at,9,timestamp with time zone,YES,now()
+public,class_packages,updated_at,10,timestamp with time zone,YES,now()
+public,class_packages,type,11,text,YES,
+public,class_packages,duration,12,text,YES,
+public,class_packages,course_type,13,text,YES,
+public,class_packages,is_archived,14,boolean,NO,false
+public,class_packages,archived_at,15,timestamp with time zone,YES,
+public,class_ratings,id,1,uuid,NO,gen_random_uuid()
+public,class_ratings,assignment_id,2,uuid,NO,
+public,class_ratings,member_id,3,uuid,NO,
+public,class_ratings,rating,4,smallint,NO,
+public,class_ratings,comment,5,text,YES,
+public,class_ratings,created_at,6,timestamp with time zone,NO,now()
+public,class_ratings,updated_at,7,timestamp with time zone,NO,now()
+public,class_schedules,id,1,uuid,NO,gen_random_uuid()
+public,class_schedules,class_type_id,2,uuid,YES,
+public,class_schedules,instructor_id,3,uuid,YES,
+public,class_schedules,day_of_week,4,integer,NO,
+public,class_schedules,start_time,5,time without time zone,NO,
+public,class_schedules,duration_minutes,6,integer,YES,60
+public,class_schedules,max_participants,7,integer,YES,20
+public,class_schedules,is_active,8,boolean,YES,true
+public,class_schedules,effective_from,9,date,YES,CURRENT_DATE
+public,class_schedules,effective_until,10,date,YES,
+public,class_schedules,created_at,11,timestamp with time zone,YES,now()
+public,class_schedules,updated_at,12,timestamp with time zone,YES,now()
+public,class_schedules,is_recurring,13,boolean,YES,true
+public,class_schedules,schedule_type,14,text,YES,'weekly'::text
+public,class_schedules,location,15,text,YES,
+public,class_schedules,payment_amount,16,numeric,YES,
+public,class_schedules,payment_type,17,character varying,YES,'per_class'::character varying
+public,class_schedules,class_status,18,character varying,YES,'active'::character varying
+public,class_schedules,created_by,19,uuid,YES,
+public,class_schedules,start_date,20,date,YES,
+public,class_schedules,end_date,21,date,YES,
+public,class_schedules,end_time,22,time without time zone,YES,
+public,class_schedules,notes,23,text,YES,
+public,class_types,id,1,uuid,NO,gen_random_uuid()
+public,class_types,name,2,text,NO,
+public,class_types,description,3,text,YES,
+public,class_types,difficulty_level,4,text,YES,'beginner'::text
+public,class_types,price,5,numeric,YES,0.00
+public,class_types,duration_minutes,6,integer,YES,60
+public,class_types,max_participants,7,integer,YES,20
+public,class_types,is_active,8,boolean,YES,true
+public,class_types,created_at,9,timestamp with time zone,YES,now()
+public,class_types,updated_at,10,timestamp with time zone,YES,now()
+public,class_types,is_archived,11,boolean,YES,false
+public,class_types,archived_at,12,timestamp with time zone,YES,
+public,class_types,created_by,13,uuid,NO,auth.uid()
+public,class_types,updated_by,14,uuid,NO,auth.uid()
+public,contact_messages,id,1,uuid,NO,gen_random_uuid()
+public,contact_messages,name,2,text,NO,
+public,contact_messages,email,3,text,NO,
+public,contact_messages,phone,4,text,YES,''::text
+public,contact_messages,subject,5,text,NO,
+public,contact_messages,message,6,text,NO,
+public,contact_messages,status,7,text,NO,'new'::text
+public,contact_messages,created_at,8,timestamp with time zone,YES,now()
+public,contact_messages,user_id,9,uuid,YES,
+public,form_submissions,id,1,uuid,NO,gen_random_uuid()
+public,form_submissions,type,2,USER-DEFINED,NO,
+public,form_submissions,data,3,jsonb,NO,
+public,form_submissions,user_email,4,text,YES,
+public,form_submissions,user_name,5,text,YES,
+public,form_submissions,user_phone,6,text,YES,
+public,form_submissions,status,7,text,YES,'new'::text
+public,form_submissions,notes,8,text,YES,
+public,form_submissions,processed_by,9,uuid,YES,
+public,form_submissions,processed_at,10,timestamp with time zone,YES,
+public,form_submissions,created_at,11,timestamp with time zone,YES,now()
+public,instructor_availability,id,1,uuid,NO,gen_random_uuid()
+public,instructor_availability,instructor_id,2,uuid,NO,
+public,instructor_availability,day_of_week,3,integer,NO,
+public,instructor_availability,start_time,4,time without time zone,NO,
+public,instructor_availability,end_time,5,time without time zone,NO,
+public,instructor_availability,is_available,6,boolean,YES,true
+public,instructor_availability,effective_from,7,date,NO,CURRENT_DATE
+public,instructor_availability,effective_until,8,date,YES,
+public,instructor_availability,created_at,9,timestamp with time zone,YES,now()
+public,instructor_availability,updated_at,10,timestamp with time zone,YES,now()
+public,instructor_rates,id,1,uuid,NO,gen_random_uuid()
+public,instructor_rates,class_type_id,2,uuid,YES,
+public,instructor_rates,schedule_type,3,text,NO,
+public,instructor_rates,rate_amount,4,numeric,NO,
+public,instructor_rates,effective_from,5,date,YES,CURRENT_DATE
+public,instructor_rates,effective_until,6,date,YES,
+public,instructor_rates,is_active,7,boolean,YES,true
+public,instructor_rates,created_by,8,uuid,NO,
+public,instructor_rates,created_at,9,timestamp with time zone,YES,now()
+public,instructor_rates,updated_at,10,timestamp with time zone,YES,now()
+public,instructor_rates,category,11,text,YES,
+public,instructor_rates,rate_amount_usd,12,numeric,YES,
+public,instructor_rates,package_id,13,uuid,YES,
+public,instructor_ratings,id,1,uuid,NO,gen_random_uuid()
+public,instructor_ratings,instructor_id,2,uuid,YES,
+public,instructor_ratings,student_id,3,uuid,YES,
+public,instructor_ratings,booking_id,4,uuid,YES,
+public,instructor_ratings,rating,5,integer,YES,
+public,instructor_ratings,review,6,text,YES,
+public,instructor_ratings,created_at,7,timestamp with time zone,YES,now()
+public,instructor_upcoming_classes_v,assignment_id,1,uuid,YES,
+public,instructor_upcoming_classes_v,instructor_id,2,uuid,YES,
+public,instructor_upcoming_classes_v,date,3,date,YES,
+public,instructor_upcoming_classes_v,start_time,4,time without time zone,YES,
+public,instructor_upcoming_classes_v,end_time,5,time without time zone,YES,
+public,instructor_upcoming_classes_v,schedule_type,6,text,YES,
+public,instructor_upcoming_classes_v,class_status,7,text,YES,
+public,instructor_upcoming_classes_v,payment_status,8,USER-DEFINED,YES,
+public,instructor_upcoming_classes_v,payment_amount,9,numeric,YES,
+public,instructor_upcoming_classes_v,override_payment_amount,10,numeric,YES,
+public,instructor_upcoming_classes_v,final_payment_amount,11,numeric,YES,
+public,instructor_upcoming_classes_v,timezone,12,text,YES,
+public,instructor_upcoming_classes_v,attendance_locked,13,boolean,YES,
+public,instructor_upcoming_classes_v,present_count,14,bigint,YES,
+public,instructor_upcoming_classes_v,no_show_count,15,bigint,YES,
+public,instructor_upcoming_classes_v,avg_rating,16,numeric,YES,
+public,instructor_upcoming_classes_v,rating_count,17,bigint,YES,
+public,manual_class_selections,id,1,uuid,NO,gen_random_uuid()
+public,manual_class_selections,assignment_batch_id,2,uuid,NO,
+public,manual_class_selections,date,3,date,NO,
+public,manual_class_selections,start_time,4,time without time zone,NO,
+public,manual_class_selections,end_time,5,time without time zone,NO,
+public,manual_class_selections,timezone,6,text,NO,'Asia/Kolkata'::text
+public,manual_class_selections,package_id,7,uuid,YES,
+public,manual_class_selections,class_type_id,8,uuid,YES,
+public,manual_class_selections,instructor_id,9,uuid,NO,
+public,manual_class_selections,payment_amount,10,numeric,YES,0
+public,manual_class_selections,notes,11,text,YES,
+public,manual_class_selections,created_by,12,uuid,NO,
+public,manual_class_selections,created_at,13,timestamp with time zone,YES,now()
+public,newsletter_send_logs,id,1,uuid,NO,gen_random_uuid()
+public,newsletter_send_logs,newsletter_id,2,uuid,NO,
+public,newsletter_send_logs,total_recipients,3,integer,NO,0
+public,newsletter_send_logs,sent_count,4,integer,NO,0
+public,newsletter_send_logs,failed_count,5,integer,NO,0
+public,newsletter_send_logs,errors,6,jsonb,NO,'[]'::jsonb
+public,newsletter_send_logs,sent_at,7,timestamp with time zone,NO,now()
+public,newsletter_subscribers,id,1,uuid,NO,gen_random_uuid()
+public,newsletter_subscribers,email,2,text,NO,
+public,newsletter_subscribers,name,3,text,YES,
+public,newsletter_subscribers,subscribed_at,4,timestamp with time zone,YES,now()
+public,newsletter_subscribers,unsubscribed_at,5,timestamp with time zone,YES,
+public,newsletter_subscribers,status,6,text,YES,'active'::text
+public,newsletter_subscriptions,id,1,uuid,NO,gen_random_uuid()
+public,newsletter_subscriptions,user_id,2,uuid,YES,
+public,newsletter_subscriptions,email,3,text,NO,
+public,newsletter_subscriptions,subscribed,4,boolean,YES,true
+public,newsletter_subscriptions,subscribed_at,5,timestamp with time zone,YES,now()
+public,newsletter_subscriptions,unsubscribed_at,6,timestamp with time zone,YES,
+public,newsletters,id,1,uuid,NO,gen_random_uuid()
+public,newsletters,title,2,text,NO,
+public,newsletters,content,3,text,NO,
+public,newsletters,subject,4,text,NO,
+public,newsletters,status,5,text,NO,'draft'::text
+public,newsletters,sent_at,6,timestamp with time zone,YES,
+public,newsletters,created_by,7,uuid,YES,
+public,newsletters,created_at,8,timestamp with time zone,YES,now()
+public,newsletters,updated_at,9,timestamp with time zone,YES,now()
+public,newsletters,customizations,10,jsonb,NO,'{}'::jsonb
+public,newsletters,template,11,text,YES,
+public,newsletters,template_type,12,text,YES,
+public,newsletters,sent_count,13,integer,NO,0
+public,newsletters,failed_count,14,integer,NO,0
+public,newsletters,error_message,15,text,YES,
+public,notifications,id,1,uuid,NO,gen_random_uuid()
+public,notifications,user_id,2,uuid,NO,
+public,notifications,type,3,text,NO,
+public,notifications,title,4,text,NO,
+public,notifications,message,5,text,NO,
+public,notifications,data,6,jsonb,YES,'{}'::jsonb
+public,notifications,read,7,boolean,YES,false
+public,notifications,created_at,8,timestamp with time zone,YES,now()
+public,notifications,updated_at,9,timestamp with time zone,YES,now()
+public,payment_methods,id,1,uuid,NO,gen_random_uuid()
+public,payment_methods,user_id,2,uuid,NO,
+public,payment_methods,stripe_payment_method_id,3,text,NO,
+public,payment_methods,type,4,text,NO,
+public,payment_methods,last_four,5,text,YES,
+public,payment_methods,brand,6,text,YES,
+public,payment_methods,exp_month,7,integer,YES,
+public,payment_methods,exp_year,8,integer,YES,
+public,payment_methods,is_default,9,boolean,YES,false
+public,payment_methods,created_at,10,timestamp with time zone,YES,now()
+public,profiles,id,1,uuid,NO,gen_random_uuid()
+public,profiles,user_id,2,uuid,NO,
+public,profiles,full_name,3,text,YES,
+public,profiles,email,4,text,YES,
+public,profiles,phone,5,text,YES,
+public,profiles,bio,6,text,YES,
+public,profiles,role,7,text,YES,'user'::text
+public,profiles,created_at,8,timestamp with time zone,YES,now()
+public,profiles,updated_at,9,timestamp with time zone,YES,now()
+public,profiles,specialties,10,ARRAY,YES,
+public,profiles,experience_years,11,integer,YES,0
+public,profiles,certification,12,text,YES,
+public,profiles,avatar_url,13,text,YES,
+public,profiles,is_active,14,boolean,YES,true
+public,profiles,badges,15,jsonb,YES,
+public,profiles,address,16,text,YES,
+public,profiles,location,17,text,YES,
+public,profiles,certifications,18,ARRAY,YES,
+public,profiles,languages,19,ARRAY,YES,ARRAY['English'::text]
+public,profiles,teaching_philosophy,20,text,YES,
+public,profiles,achievements,21,ARRAY,YES,
+public,profiles,social_media,22,jsonb,YES,'{}'::jsonb
+public,profiles,hourly_rate,23,numeric,YES,
+public,profiles,years_of_experience,24,integer,YES,
+public,profiles,education,25,ARRAY,YES,
+public,profiles,website_url,26,text,YES,
+public,profiles,instagram_handle,27,text,YES,
+public,profiles,facebook_profile,28,text,YES,
+public,profiles,linkedin_profile,29,text,YES,
+public,profiles,youtube_channel,30,text,YES,
+public,profiles,availability_schedule,31,jsonb,YES,'{}'::jsonb
+public,profiles,preferred_contact_method,32,text,YES,'email'::text
+public,profiles,emergency_contact,33,jsonb,YES,'{}'::jsonb
+public,profiles,date_of_birth,34,date,YES,
+public,profiles,gender,35,text,YES,
+public,profiles,nationality,36,text,YES,
+public,profiles,time_zone,37,text,YES,'UTC'::text
+public,profiles,profile_visibility,38,text,YES,'public'::text
+public,profiles,profile_completed,39,boolean,YES,false
+public,profiles,last_active,40,timestamp with time zone,YES,now()
+public,profiles,verification_status,41,text,YES,'pending'::text
+public,ratings,id,1,uuid,NO,gen_random_uuid()
+public,ratings,article_id,2,uuid,NO,
+public,ratings,rating,3,integer,NO,
+public,ratings,fingerprint,4,text,NO,
+public,ratings,created_at,5,timestamp with time zone,NO,now()
+public,referrals,id,1,uuid,NO,gen_random_uuid()
+public,referrals,referrer_id,2,uuid,NO,
+public,referrals,referee_email,3,text,NO,
+public,referrals,referee_id,4,uuid,YES,
+public,referrals,referral_code,5,text,NO,
+public,referrals,status,6,text,YES,'pending'::text
+public,referrals,reward_amount,7,numeric,YES,
+public,referrals,reward_granted,8,boolean,YES,false
+public,referrals,expires_at,9,timestamp with time zone,YES,
+public,referrals,completed_at,10,timestamp with time zone,YES,
+public,referrals,created_at,11,timestamp with time zone,YES,now()
+public,role_modules,id,1,bigint,NO,
+public,role_modules,role,2,text,NO,
+public,role_modules,module_id,3,text,NO,
+public,role_modules,enabled,4,boolean,NO,true
+public,roles,id,1,uuid,NO,gen_random_uuid()
+public,roles,name,2,text,NO,
+public,roles,description,3,text,YES,
+public,roles,created_at,4,timestamp with time zone,YES,now()
+public,roles,updated_at,5,timestamp with time zone,YES,now()
+public,scheduled_classes,id,1,uuid,NO,gen_random_uuid()
+public,scheduled_classes,class_type_id,2,uuid,NO,
+public,scheduled_classes,instructor_id,3,uuid,NO,
+public,scheduled_classes,start_time,4,timestamp with time zone,NO,
+public,scheduled_classes,end_time,5,timestamp with time zone,NO,
+public,scheduled_classes,max_participants,6,integer,NO,
+public,scheduled_classes,current_participants,7,integer,YES,0
+public,scheduled_classes,status,8,text,YES,'scheduled'::text
+public,scheduled_classes,meeting_link,9,text,YES,
+public,scheduled_classes,notes,10,text,YES,
+public,scheduled_classes,created_at,11,timestamp with time zone,YES,now()
+public,scheduled_classes,updated_at,12,timestamp with time zone,YES,now()
+public,subscription_plans,id,1,uuid,NO,gen_random_uuid()
+public,subscription_plans,name,2,text,NO,
+public,subscription_plans,description,3,text,YES,
+public,subscription_plans,price,4,numeric,NO,
+public,subscription_plans,billing_interval,5,text,YES,'monthly'::text
+public,subscription_plans,features,6,jsonb,YES,'[]'::jsonb
+public,subscription_plans,is_active,7,boolean,YES,true
+public,subscription_plans,created_at,8,timestamp with time zone,YES,now()
+public,subscription_plans,updated_at,9,timestamp with time zone,YES,now()
+public,system_metrics,id,1,uuid,NO,gen_random_uuid()
+public,system_metrics,metric_name,2,text,NO,
+public,system_metrics,metric_value,3,numeric,NO,
+public,system_metrics,metric_type,4,text,NO,
+public,system_metrics,period_start,5,timestamp with time zone,NO,
+public,system_metrics,period_end,6,timestamp with time zone,NO,
+public,system_metrics,metadata,7,jsonb,YES,'{}'::jsonb
+public,system_metrics,created_at,8,timestamp with time zone,YES,now()
+public,transactions,id,1,uuid,NO,gen_random_uuid()
+public,transactions,user_id,2,uuid,YES,
+public,transactions,subscription_id,3,uuid,YES,
+public,transactions,amount,4,numeric,NO,
+public,transactions,currency,5,text,YES,'USD'::text
+public,transactions,status,6,text,YES,'pending'::text
+public,transactions,payment_method,7,text,YES,
+public,transactions,stripe_payment_intent_id,8,text,YES,
+public,transactions,description,9,text,YES,
+public,transactions,created_at,10,timestamp with time zone,YES,now()
+public,transactions,updated_at,11,timestamp with time zone,YES,now()
+public,transactions,billing_plan_type,12,text,YES,'one_time'::text
+public,transactions,billing_period_month,13,date,YES,
+public,transactions,category,14,text,YES,
+public,transactions_with_user,id,1,uuid,YES,
+public,transactions_with_user,user_id,2,uuid,YES,
+public,transactions_with_user,subscription_id,3,uuid,YES,
+public,transactions_with_user,amount,4,numeric,YES,
+public,transactions_with_user,currency,5,text,YES,
+public,transactions_with_user,status,6,text,YES,
+public,transactions_with_user,payment_method,7,text,YES,
+public,transactions_with_user,stripe_payment_intent_id,8,text,YES,
+public,transactions_with_user,description,9,text,YES,
+public,transactions_with_user,created_at,10,timestamp with time zone,YES,
+public,transactions_with_user,updated_at,11,timestamp with time zone,YES,
+public,transactions_with_user,billing_plan_type,12,text,YES,
+public,transactions_with_user,billing_period_month,13,date,YES,
+public,transactions_with_user,category,14,text,YES,
+public,transactions_with_user,user_email,15,character varying,YES,
+public,transactions_with_user,user_full_name,16,text,YES,
+public,user_activity,id,1,uuid,NO,gen_random_uuid()
+public,user_activity,user_id,2,uuid,YES,
+public,user_activity,activity_type,3,text,NO,
+public,user_activity,entity_type,4,text,YES,
+public,user_activity,entity_id,5,uuid,YES,
+public,user_activity,metadata,6,jsonb,YES,'{}'::jsonb
+public,user_activity,ip_address,7,inet,YES,
+public,user_activity,user_agent,8,text,YES,
+public,user_activity,created_at,9,timestamp with time zone,YES,now()
+public,user_engagement_metrics,user_id,1,uuid,YES,
+public,user_engagement_metrics,email,2,text,YES,
+public,user_engagement_metrics,full_name,3,text,YES,
+public,user_engagement_metrics,total_bookings,4,bigint,YES,
+public,user_engagement_metrics,attended_classes,5,bigint,YES,
+public,user_engagement_metrics,articles_viewed,6,bigint,YES,
+public,user_engagement_metrics,last_activity,7,timestamp with time zone,YES,
+public,user_engagement_metrics,engagement_status,8,text,YES,
+public,user_packages,id,1,uuid,NO,gen_random_uuid()
+public,user_packages,user_id,2,uuid,NO,
+public,user_packages,package_id,3,uuid,NO,
+public,user_packages,classes_remaining,4,integer,NO,
+public,user_packages,purchased_at,5,timestamp with time zone,YES,now()
+public,user_packages,expires_at,6,timestamp with time zone,NO,
+public,user_packages,is_active,7,boolean,YES,true
+public,user_packages,created_at,8,timestamp with time zone,YES,now()
+public,user_packages,updated_at,9,timestamp with time zone,YES,now()
+public,user_preferences,id,1,uuid,NO,gen_random_uuid()
+public,user_preferences,user_id,2,uuid,NO,
+public,user_preferences,email_notifications,3,boolean,YES,true
+public,user_preferences,sms_notifications,4,boolean,YES,false
+public,user_preferences,reminder_time_minutes,5,integer,YES,60
+public,user_preferences,preferred_class_types,6,ARRAY,YES,'{}'::uuid[]
+public,user_preferences,preferred_instructors,7,ARRAY,YES,'{}'::uuid[]
+public,user_preferences,preferred_times,8,jsonb,YES,'{}'::jsonb
+public,user_preferences,timezone,9,text,YES,'UTC'::text
+public,user_preferences,language,10,text,YES,'en'::text
+public,user_preferences,created_at,11,timestamp with time zone,YES,now()
+public,user_preferences,updated_at,12,timestamp with time zone,YES,now()
+public,user_roles,user_id,1,uuid,NO,
+public,user_roles,role_id,2,uuid,NO,
+public,user_roles,assigned_by,3,uuid,YES,
+public,user_roles,assigned_at,4,timestamp with time zone,YES,now()
+public,user_subscriptions,id,1,uuid,NO,gen_random_uuid()
+public,user_subscriptions,user_id,2,uuid,YES,
+public,user_subscriptions,plan_id,3,uuid,YES,
+public,user_subscriptions,status,4,text,YES,'active'::text
+public,user_subscriptions,started_at,5,timestamp with time zone,YES,now()
+public,user_subscriptions,expires_at,6,timestamp with time zone,YES,
+public,user_subscriptions,cancelled_at,7,timestamp with time zone,YES,
+public,user_subscriptions,created_at,8,timestamp with time zone,YES,now()
+public,user_subscriptions,updated_at,9,timestamp with time zone,YES,now()
+public,waitlist,id,1,uuid,NO,gen_random_uuid()
+public,waitlist,user_id,2,uuid,NO,
+public,waitlist,scheduled_class_id,3,uuid,NO,
+public,waitlist,position,4,integer,NO,
+public,waitlist,email,5,text,NO,
+public,waitlist,phone,6,text,YES,
+public,waitlist,notification_sent,7,boolean,YES,false
+public,waitlist,expires_at,8,timestamp with time zone,YES,
+public,waitlist,created_at,9,timestamp with time zone,YES,now()
+public,yoga_queries,id,1,uuid,NO,gen_random_uuid()
+public,yoga_queries,name,2,text,NO,
+public,yoga_queries,email,3,text,NO,
+public,yoga_queries,subject,4,text,NO,
+public,yoga_queries,category,5,text,NO,'general'::text
+public,yoga_queries,message,6,text,NO,
+public,yoga_queries,experience_level,7,text,NO,'beginner'::text
+public,yoga_queries,status,8,text,NO,'pending'::text
+public,yoga_queries,response,9,text,YES,''::text
+public,yoga_queries,responded_at,10,timestamp with time zone,YES,
+public,yoga_queries,created_at,11,timestamp with time zone,YES,now()
