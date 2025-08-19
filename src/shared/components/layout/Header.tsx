@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../../features/auth/contexts/AuthContext';
 import { NotificationDropdown } from '../../../features/notifications/components/NotificationDropdown';
+import { useTheme } from '../../contexts/ThemeContext';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import logoLight from '/images/Brand-orange.png';
 import logoImage from '/images/Brand.png';
 
 export function Header() {
@@ -13,6 +15,7 @@ export function Header() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { isDark } = useTheme();
 
 
   const navigation = [
@@ -53,7 +56,7 @@ export function Header() {
           {/* Logo */}
           <Link to="/" className="flex items-center">
             <img
-              src={logoImage}
+              src={isDark ? logoImage : logoLight}
               alt="Yogodyaan Logo"
               className="h-16 w-16 object-contain rounded-full"
             />
