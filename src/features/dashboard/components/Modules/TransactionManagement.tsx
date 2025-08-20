@@ -707,9 +707,23 @@ const TransactionManagement = () => {
         const taxAmount = tx.amount * (invoiceTaxRate / 100);
         const grandTotal = tx.amount + taxAmount;
 
-        const totalBoxHeight = 110;
+        // Build totals array conditionally (omit GST line if 0%)
+        const totals: [string, string][] = [
+          ['Subtotal:', formatCurrency(tx.amount, tx.currency, true)],
+        ];
+        if (invoiceTaxRate > 0) {
+          totals.push([`GST (${invoiceTaxRate.toFixed(2)}%):`, formatCurrency(taxAmount, tx.currency, true)]);
+        }
+        totals.push(['Plan Type:', humanPlanType(tx.billing_plan_type)]);
+        if (tx.billing_plan_type === 'monthly' && tx.billing_period_month) {
+          totals.push(['Billing Month:', formatBillingMonth(tx.billing_period_month)]);
+        }
+        totals.push(['TOTAL:', formatCurrency(grandTotal, tx.currency, true)]);
+
+        // Dynamic box height based on number of rows (18 line height + 30 padding)
         const totalBoxWidth = 240;
         const totalBoxX = width - (totalBoxWidth + 40);
+        const totalBoxHeight = totals.length * 18 + 30;
         page.drawRectangle({
           x: totalBoxX,
           y: currentY - totalBoxHeight,
@@ -717,16 +731,6 @@ const TransactionManagement = () => {
           height: totalBoxHeight,
           color: lightGray
         });
-
-        const totals: [string, string][] = [
-          ['Subtotal:', formatCurrency(tx.amount, tx.currency, true)],
-          [`GST (${invoiceTaxRate.toFixed(2)}%):`, formatCurrency(taxAmount, tx.currency, true)],
-          ['Plan Type:', humanPlanType(tx.billing_plan_type)],
-        ];
-        if (tx.billing_plan_type === 'monthly' && tx.billing_period_month) {
-          totals.push(['Billing Month:', formatBillingMonth(tx.billing_period_month)]);
-        }
-        totals.push(['TOTAL:', formatCurrency(grandTotal, tx.currency, true)]);
 
         totals.forEach(([label, value], idx) => {
           const isTotal = label === 'TOTAL:';

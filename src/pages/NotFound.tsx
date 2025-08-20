@@ -41,7 +41,7 @@ export function NotFound() {
             <Link to="/book-class" className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300">
               Book Class
             </Link>
-            <Link to="/yoga-query" className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300">
+            <Link to="/contact" className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300">
               Ask Question
             </Link>
             <Link to="/contact" className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300">

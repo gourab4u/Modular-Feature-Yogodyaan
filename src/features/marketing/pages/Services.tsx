@@ -194,7 +194,11 @@ export function Services() {
                 <div className={`${index % 2 === 1 ? 'lg:col-start-1' : ''}`}>
                   <div className="relative">
                     <img
-                      src={`https://images.pexels.com/photos/${index === 0 ? '3822622' : index === 1 ? '3823495' : '3823488'}/pexels-photo-${index === 0 ? '3822622' : index === 1 ? '3823495' : '3823488'}.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop`}
+                      src={
+                        service.title === 'Group Classes'
+                          ? '/images/PrivateClass.png'
+                          : `https://images.pexels.com/photos/${index === 0 ? '3822622' : index === 1 ? '3823495' : '3823488'}/pexels-photo-${index === 0 ? '3822622' : index === 1 ? '3823495' : '3823488'}.jpeg?auto=compress&cs=tinysrgb&w=600&h=400&fit=crop`
+                      }
                       alt={service.title}
                       className="rounded-2xl shadow-lg"
                     />

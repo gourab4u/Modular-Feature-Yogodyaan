@@ -267,8 +267,11 @@ export function NewsletterCreation({ onBack, editingNewsletter }: NewsletterCrea
           return b.content
             ? `<img src="${b.content}" style="max-width:100%;display:block;border:none;outline:none;"/>`
             : '<div style="color:#aaa">[Image]</div>'
-        if (b.type === 'button')
-          return `<a href="#" style="background:#3B82F6;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">${b.content}</a>`
+        if (b.type === 'button') {
+          // Prefer an explicit URL provided on the button block; fall back to site root
+          const btnUrl = (b.styles && b.styles.url) || window.location.origin
+          return `<a href="${btnUrl}" style="background:#3B82F6;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">${b.content}</a>`
+        }
         if (b.type === 'divider') return '<hr style="margin:16px 0;border:none;border-top:1px solid #e5e7eb"/>'
         if (b.type === 'hero') {
           const c = b.content || {}
@@ -310,13 +313,17 @@ export function NewsletterCreation({ onBack, editingNewsletter }: NewsletterCrea
     // Derive CTA from hero or first button block
     const hero = blockList.find(b => b.type === 'hero') as any
     let ctaHtml = ''
+    const siteRoot = window.location.origin
     if (hero?.content?.buttonText) {
       const t = hero.content
-      ctaHtml = `<a href="${t.buttonUrl || '#'}" style="background:${data.customizations.primaryColor};color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">${t.buttonText}</a>`
+      const btnUrl = t.buttonUrl || siteRoot
+      ctaHtml = `<a href="${btnUrl}" style="background:${data.customizations.primaryColor};color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">${t.buttonText}</a>`
     } else {
       const btnBlock = blockList.find(b => b.type === 'button')
       if (btnBlock?.content) {
-        ctaHtml = `<a href="#" style="background:${data.customizations.primaryColor};color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">${btnBlock.content}</a>`
+        // prefer explicit url in block.styles.url, otherwise fallback to site root
+        const btnUrl = (btnBlock.styles && btnBlock.styles.url) || siteRoot
+        ctaHtml = `<a href="${btnUrl}" style="background:${data.customizations.primaryColor};color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;display:inline-block">${btnBlock.content}</a>`
       }
     }
 
@@ -541,7 +548,7 @@ export function NewsletterCreation({ onBack, editingNewsletter }: NewsletterCrea
       }
       setBlocks(prev => [
         ...prev,
-        { id, type, content, styles: {}, position: prev.length }
+        { id, type, content, styles: type === 'button' ? { url: '' } : {}, position: prev.length }
       ])
     }
     const onDragOver = (e) => e.preventDefault()
@@ -568,6 +575,10 @@ export function NewsletterCreation({ onBack, editingNewsletter }: NewsletterCrea
     }
     const updateHeroField = (id, key, value) => {
       setBlocks(prev => prev.map(b => b.id === id ? { ...b, content: { ...b.content, [key]: value } } : b))
+    }
+    // Update arbitrary style properties for a block (e.g., button URL)
+    const updateBlockStyle = (id, key, value) => {
+      setBlocks(prev => prev.map(b => b.id === id ? { ...b, styles: { ...(b.styles || {}), [key]: value } } : b))
     }
 
     return (
@@ -660,13 +671,22 @@ export function NewsletterCreation({ onBack, editingNewsletter }: NewsletterCrea
                       />
                     )}
                     {block.type === 'button' && (
-                      <input
-                        type="text"
-                        className="w-full border rounded px-2 py-1"
-                        value={block.content}
-                        onChange={e => updateBlockContent(block.id, e.target.value)}
-                        placeholder="Button text..."
-                      />
+                      <>
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-1 mb-2"
+                          value={block.content}
+                          onChange={e => updateBlockContent(block.id, e.target.value)}
+                          placeholder="Button text..."
+                        />
+                        <input
+                          type="text"
+                          className="w-full border rounded px-2 py-1"
+                          value={(block.styles && block.styles.url) || ''}
+                          onChange={e => updateBlockStyle(block.id, 'url', e.target.value)}
+                          placeholder="Button URL (https://...)"
+                        />
+                      </>
                     )}
                     {block.type === 'divider' && (
                       <div className="w-full border-t border-gray-300 my-2" />
