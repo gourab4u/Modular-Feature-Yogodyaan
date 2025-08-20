@@ -58,6 +58,7 @@ const TransactionManagement = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [manualUserNames, setManualUserNames] = useState<Record<string, { user_name: string; userEmail?: string }>>({});
 
   useEffect(() => {
     const loadBusinessSettings = async () => {
@@ -98,13 +99,60 @@ const TransactionManagement = () => {
         .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
-      const rows = (data || []).map((r: any) => ({
-        ...r,
-        user_name: r.user_full_name || r.user_email || 'Unknown',
-        type: r.amount >= 0 ? 'income' : 'expense',
-        category: r.category || 'class_booking'
-      }));
-      setTransactions(rows);
+
+      // Use functional state update to access latest prev (avoids stale closure causing 'Unknown')
+      setTransactions(prev => {
+        const rows = (data || []).map((r: any) => {
+          const existing = prev.find(t => t.id === r.id);
+          const manual = manualUserNames[r.id];
+          return {
+            ...r,
+            user_name: r.user_full_name
+              || r.user_email
+              || existing?.user_name
+              || manual?.user_name
+              || manual?.userEmail
+              || existing?.userEmail
+              || 'Unknown',
+            type: r.amount >= 0 ? 'income' : 'expense',
+            category: r.category || 'class_booking'
+          };
+        });
+        return rows;
+      });
+
+      // Second-pass resolution: fetch profile names for rows still showing 'Unknown'
+      const unresolvedIds = (data || [])
+        .filter(r =>
+          (!r.user_full_name && !r.user_email) &&
+          r.user_id
+        )
+        .map(r => r.user_id);
+
+      if (unresolvedIds.length) {
+        try {
+          const { data: profilesData, error: profilesErr } = await supabase
+            .from('profiles')
+            .select('id,full_name,email')
+            .in('id', unresolvedIds);
+
+          if (!profilesErr && profilesData?.length) {
+            const profileMap = new Map<string, any>(profilesData.map(p => [p.id, p]));
+            setTransactions(prev =>
+              prev.map(t => {
+                if ((t.user_name === 'Unknown' || !t.user_name) && t.user_id && profileMap.has(t.user_id)) {
+                  const prof = profileMap.get(t.user_id);
+                  return {
+                    ...t,
+                    user_name: prof.full_name || prof.email || t.user_name
+                  };
+                }
+                return t;
+              })
+            );
+          }
+        } catch {/* ignore profile resolution errors */ }
+      }
     } catch (e: any) {
       console.error('Failed to load transactions', e);
       setLoadError(e.message || 'Failed to load');
@@ -112,6 +160,41 @@ const TransactionManagement = () => {
       setLoading(false);
     }
   };
+
+  // Hydrate manualUserNames from localStorage before initial fetch (if available)
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem('manualUserNames');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            setManualUserNames(parsed);
+            // Re-fetch to apply hydrated names
+            fetchTransactions();
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to hydrate manualUserNames', e);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist manualUserNames to localStorage whenever they change
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        if (Object.keys(manualUserNames).length) {
+          localStorage.setItem('manualUserNames', JSON.stringify(manualUserNames));
+        } else {
+          localStorage.removeItem('manualUserNames');
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to persist manualUserNames', e);
+    }
+  }, [manualUserNames]);
 
   useEffect(() => {
     fetchTransactions();
@@ -264,7 +347,10 @@ const TransactionManagement = () => {
 
       const { data: inserted, error: dbErr } = await supabase.functions.invoke('record-transaction', {
         body: {
+          // Prefer explicit user_id when available; otherwise provide email so the edge function
+          // can resolve it to the correct user PK.
           user_id: null,
+          user_email: newTx.userEmail || null,
           subscription_id: null,
           amount: tx.amount,
           currency: tx.currency,
@@ -272,9 +358,11 @@ const TransactionManagement = () => {
           payment_method: tx.payment_method,
           stripe_payment_intent_id: null,
           description: tx.description,
-          // After DB & function updated you may pass:
-          // billing_plan_type: tx.billing_plan_type,
-          // billing_period_month: tx.billing_period_month
+          // Include billing metadata so invoices and DB rows carry the same plan info
+          billing_plan_type: tx.billing_plan_type,
+          billing_period_month: tx.billing_plan_type === 'monthly' && tx.billing_period_month
+            ? tx.billing_period_month
+            : null
         },
         headers: jwt ? { Authorization: `Bearer ${jwt}` } : undefined
       });
@@ -287,6 +375,11 @@ const TransactionManagement = () => {
         tx.updated_at = inserted.updated_at || tx.updated_at;
       }
 
+      // Persist manual name for future fetch cycles
+      setManualUserNames(prev => ({
+        ...prev,
+        [tx.id]: { user_name: tx.user_name, userEmail: newTx.userEmail }
+      }));
       setTransactions(prev => [tx, ...prev]);
 
       const generateInvoicePdfBase64 = async () => {
