@@ -55,14 +55,36 @@ export default function Unsubscribe() {
                 return
             }
 
-            // Attempt to update subscriber status
-            const { error } = await supabase
-                .from('newsletter_subscribers')
-                .update({ status: 'unsubscribed', updated_at: new Date().toISOString() })
-                .eq('id', parsed.id)
+            // Attempt to update subscriber status (try with updated_at, fall back if column missing)
+            let updateError: any = null
+            try {
+                const { error } = await supabase
+                    .from('newsletter_subscribers')
+                    .update({ status: 'unsubscribed', updated_at: new Date().toISOString() })
+                    .eq('id', parsed.id)
 
-            if (error) {
-                console.error('Unsubscribe update failed:', error)
+                updateError = error
+
+                // If schema is missing updated_at column, retry without it
+                if (updateError && /updated_at/i.test(String((updateError as any).message || updateError))) {
+                    const { error: retryError } = await supabase
+                        .from('newsletter_subscribers')
+                        .update({ status: 'unsubscribed' })
+                        .eq('id', parsed.id)
+                    updateError = retryError
+                }
+            } catch (e) {
+                updateError = e
+            }
+
+            if (updateError) {
+                // Log detailed supabase error for debugging (stringify to capture nested props)
+                console.error('Unsubscribe update failed:', updateError)
+                try {
+                    console.error('Unsubscribe error (stringified):', JSON.stringify(updateError))
+                } catch (_) {
+                    // ignore stringify errors
+                }
                 setState('error')
                 setMessage('We could not process your unsubscribe at the moment. Please try again later.')
                 return
