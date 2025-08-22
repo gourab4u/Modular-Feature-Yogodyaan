@@ -3,12 +3,10 @@ import { Building, Globe, Quote, Star, User } from 'lucide-react'
 export function Testimonials() {
   const testimonials = [
     {
-      name: "Sarah Johnson",
-      position: "Marketing Director",
-      company: "TechCorp Inc.",
-      location: "New York, USA",
+      name: "Kasturi Ray",
+      location: "Kolkata, India",
       content: "Joining Yogodyaan has been a life changing experience since the past six months. Yog, meditation and individual attendtion by Bratati is giving new way of holistic well being. Thank You 🙏",
-      image: "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+      image: "/images/testimonial_Kasturi_Ray.jpg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
       rating: 5,
       type: "1-on-1"
     },

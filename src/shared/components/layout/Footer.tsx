@@ -1,4 +1,4 @@
-import { Facebook, Instagram, Mail, MapPin, Phone, Twitter } from 'lucide-react'
+import { Facebook, Instagram, Mail, MapPin, Phone, Youtube } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { NewsletterSignup } from '../../../features/marketing/components/NewsletterSignup'
 import { useSettings } from '../../contexts/SettingsContext'
@@ -44,17 +44,17 @@ export function Footer() {
               {social.facebook ? (
                 <a href={social.facebook} className="text-gray-400 hover:text-emerald-400 transition-colors"><Facebook size={20} /></a>
               ) : (
-                <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors"><Facebook size={20} /></a>
+                <a href="https://www.facebook.com/yogodyaan" className="text-gray-400 hover:text-emerald-400 transition-colors"><Facebook size={20} /></a>
               )}
               {social.instagram ? (
                 <a href={social.instagram} className="text-gray-400 hover:text-emerald-400 transition-colors"><Instagram size={20} /></a>
               ) : (
                 <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors"><Instagram size={20} /></a>
               )}
-              {social.twitter ? (
-                <a href={social.twitter} className="text-gray-400 hover:text-emerald-400 transition-colors"><Twitter size={20} /></a>
+              {social.youtube ? (
+                <a href={social.youtube} className="text-gray-400 hover:text-emerald-400 transition-colors"><Youtube size={20} /></a>
               ) : (
-                <a href="#" className="text-gray-400 hover:text-emerald-400 transition-colors"><Twitter size={20} /></a>
+                <a href="https://www.youtube.com/@yogodyaan1628" className="text-gray-400 hover:text-emerald-400 transition-colors"><Youtube size={20} /></a>
               )}
             </div>
           </div>

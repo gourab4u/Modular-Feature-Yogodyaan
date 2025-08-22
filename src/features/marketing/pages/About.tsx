@@ -29,25 +29,25 @@ export function About() {
       name: "Bratati Batabyal",
       title: "Founder & Lead Instructor",
       experience: "5+ years",
-      specialization: "Hatha & Vinyasa Yoga",
+      specialization: "Traditional Yoga & Meditation",
       image: "/images/pp_Bratati.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
-      bio: "Bratati founded Yogodyaan with a vision to make authentic yoga accessible to everyone. Trained in India and certified in multiple yoga styles."
+      bio: "With a deep passion for yoga, Bratati Batabyal guides students in traditional yoga and meditation for over 5 years"
     },
     {
       name: "Amita Agarwal",
       title: "Senior Instructor",
       experience: "6+ years",
-      specialization: "Power Yoga & Meditation",
-      image: "https://images.pexels.com/photos/3822622/pexels-photo-3822622.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
-      bio: "Amita brings a dynamic approach to yoga, combining strength-building poses with mindfulness practices for complete wellness."
+      specialization: "Kids Yoga",
+      image: "/images/Instructor_Amita.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
+      bio: "Passionate about Kids Yoga, Amita inspires little ones to stretch, breathe, and grow with over 6 years of experience"
     },
     {
-      name: "Lisa Chen",
-      title: "Wellness Coach",
+      name: "Swarup Chattopadhaya",
+      title: "Yogic Therapist",
       experience: "8+ years",
-      specialization: "Restorative Yoga & Breathwork",
-      image: "https://images.pexels.com/photos/3823495/pexels-photo-3823495.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
-      bio: "Lisa specializes in gentle, healing practices that help students find deep relaxation and stress relief through yoga."
+      specialization: "Yogic Therapy cum Physiotherapy",
+      image: "/images/Instructor_Swarup.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
+      bio: "With 8+ years of expertise, Swarup blends yogic therapy and physiotherapy to heal, strengthen, and restore balance."
     }
   ]
 

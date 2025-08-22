@@ -96,7 +96,16 @@ export default function BusinessSettings() {
     } else {
       const mapped: any = {}
       data.forEach((row) => {
-        mapped[row.key] = row.value
+        let v = row.value
+        // If the DB returned a JSON string, try to parse it to restore objects/arrays
+        if (typeof v === 'string') {
+          try {
+            v = JSON.parse(v)
+          } catch (e) {
+            // leave as string
+          }
+        }
+        mapped[row.key] = v
       })
       setSettings(mapped)
     }
@@ -115,25 +124,26 @@ export default function BusinessSettings() {
 
   async function saveSettings() {
     setSaving(true)
-    for (const key of Object.keys(settings)) {
+    try {
+      // Batch upsert all settings in a single request
+      const payload = Object.keys(settings).map((key) => ({ key, value: settings[key] }))
       const { error } = await supabase
         .from('business_settings')
-        .upsert({
-          key,
-          value: settings[key],
-        }, { onConflict: 'key' })
+        .upsert(payload, { onConflict: 'key' })
       if (error) {
-        console.error(`Error saving ${key}:`, error)
+        console.error('Error saving settings:', error)
+        alert('Error saving settings: ' + error.message)
+      } else {
+        // refresh global settings so consumers update immediately
+        try { await refresh?.() } catch (e) { /* ignore */ }
+        alert('Settings saved!')
       }
+    } catch (e: any) {
+      console.error('Unexpected save error', e)
+      alert('Unexpected error saving settings: ' + (e?.message || e))
+    } finally {
+      setSaving(false)
     }
-    // refresh global settings so consumers update immediately
-    try {
-      await refresh?.()
-    } catch (e) {
-      // ignore
-    }
-    setSaving(false)
-    alert('Settings saved!')
   }
 
   if (loading) return <div>Loading...</div>
@@ -207,6 +217,11 @@ export default function BusinessSettings() {
 
       {/* Social Links */}
       <Section title="Social Links">
+        <TextInput
+          label="Facebook"
+          value={settings.social_links?.facebook || ''}
+          onChange={(e) => handleNestedChange('social_links', 'facebook', e.target.value)}
+        />
         <TextInput
           label="YouTube"
           value={settings.social_links?.youtube || ''}

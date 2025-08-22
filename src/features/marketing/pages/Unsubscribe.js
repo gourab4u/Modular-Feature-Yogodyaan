@@ -21,7 +21,15 @@ function decodeToken(token) {
 export default function Unsubscribe() {
     const [state, setState] = useState('idle');
     const [message, setMessage] = useState('');
-    const token = useMemo(() => new URLSearchParams(window.location.search).get('token') || '', []);
+    const token = useMemo(() => {
+        const raw = new URLSearchParams(window.location.search).get('token') || '';
+        try {
+            return decodeURIComponent(raw);
+        }
+        catch {
+            return raw;
+        }
+    }, []);
     useEffect(() => {
         async function run() {
             if (!token) {
@@ -43,13 +51,35 @@ export default function Unsubscribe() {
                 setMessage('This unsubscribe link has expired.');
                 return;
             }
-            // Attempt to update subscriber status
-            const { error } = await supabase
-                .from('newsletter_subscribers')
-                .update({ status: 'unsubscribed', updated_at: new Date().toISOString() })
-                .eq('id', parsed.id);
-            if (error) {
-                console.error('Unsubscribe update failed:', error);
+            // Attempt to update subscriber status (try with updated_at, fall back if column missing)
+            let updateError = null;
+            try {
+                const { error } = await supabase
+                    .from('newsletter_subscribers')
+                    .update({ status: 'unsubscribed', updated_at: new Date().toISOString() })
+                    .eq('id', parsed.id);
+                updateError = error;
+                // If schema is missing updated_at column, retry without it
+                if (updateError && /updated_at/i.test(String(updateError.message || updateError))) {
+                    const { error: retryError } = await supabase
+                        .from('newsletter_subscribers')
+                        .update({ status: 'unsubscribed' })
+                        .eq('id', parsed.id);
+                    updateError = retryError;
+                }
+            }
+            catch (e) {
+                updateError = e;
+            }
+            if (updateError) {
+                // Log detailed supabase error for debugging (stringify to capture nested props)
+                console.error('Unsubscribe update failed:', updateError);
+                try {
+                    console.error('Unsubscribe error (stringified):', JSON.stringify(updateError));
+                }
+                catch (_) {
+                    // ignore stringify errors
+                }
                 setState('error');
                 setMessage('We could not process your unsubscribe at the moment. Please try again later.');
                 return;
