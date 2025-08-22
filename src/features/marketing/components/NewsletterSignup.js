@@ -22,18 +22,63 @@ export function NewsletterSignup({ className = '', showTitle = true }) {
         setLoading(true);
         setError('');
         try {
+            const emailTrim = email.trim();
+            // Check existing subscriber
+            const { data: existing, error: fetchError } = await supabase
+                .from('newsletter_subscribers')
+                .select('id, status')
+                .eq('email', emailTrim)
+                .limit(1)
+                .maybeSingle();
+
+            if (fetchError) {
+                throw fetchError;
+            }
+
+            if (existing) {
+                if (existing.status === 'active') {
+                    setError('This email is already subscribed to our newsletter');
+                    return;
+                }
+
+                // Reactivate previously unsubscribed user
+                const { error: reactError } = await supabase
+                    .from('newsletter_subscribers')
+                    .update({
+                        status: 'active',
+                        name: name.trim() || null,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', existing.id);
+
+                if (reactError) throw reactError;
+
+                setSubscribed(true);
+                setEmail('');
+                setName('');
+                return;
+            }
+
+            // Not existing: insert new subscriber
             const { error: submitError } = await supabase
                 .from('newsletter_subscribers')
-                .upsert([{
-                    email: email.trim(),
+                .insert([{
+                    email: emailTrim,
                     name: name.trim() || null,
                     status: 'active',
                     updated_at: new Date().toISOString()
-                }], { onConflict: 'email' });
+                }]);
+
             if (submitError) {
-                console.error('Newsletter signup error:', submitError);
-                throw submitError;
+                // Unique constraint or conflict -> treat as already subscribed
+                if (submitError.code === '23505' || (submitError === null || submitError === void 0 ? void 0 : submitError.status) === 409) {
+                    setError('This email is already subscribed to our newsletter');
+                } else {
+                    throw submitError;
+                }
+                return;
             }
+
             setSubscribed(true);
             setEmail('');
             setName('');
