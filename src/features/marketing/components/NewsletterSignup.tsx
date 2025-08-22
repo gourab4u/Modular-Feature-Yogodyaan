@@ -34,19 +34,16 @@ export function NewsletterSignup({ className = '', showTitle = true }: Newslette
     try {
       const { error: submitError } = await supabase
         .from('newsletter_subscribers')
-        .insert([{
+        .upsert([{
           email: email.trim(),
           name: name.trim() || null,
-          status: 'active'
-        }])
+          status: 'active',
+          updated_at: new Date().toISOString()
+        }], { onConflict: 'email' })
 
       if (submitError) {
-        if (submitError.code === '23505') { // Unique constraint violation
-          setError('This email is already subscribed to our newsletter')
-        } else {
-          throw submitError
-        }
-        return
+        console.error('Newsletter signup error:', submitError)
+        throw submitError
       }
 
       setSubscribed(true)
