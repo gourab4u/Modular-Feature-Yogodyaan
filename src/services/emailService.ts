@@ -171,7 +171,7 @@ export class EmailService {
       const results = await Promise.allSettled(
         subscribers.map(async (subscriber) => {
           // Build personalized unsubscribe URL for each subscriber
-          const unsubscribeUrl = `${baseUrl}/unsubscribe?token=${await this.generateUnsubscribeToken(subscriber.id)}`
+          const unsubscribeUrl = `${baseUrl}/unsubscribe?token=${encodeURIComponent(await this.generateUnsubscribeToken(subscriber.id))}`
 
           // Render template per subscriber with unsubscribeUrl populated
           const html = renderEmailTemplate(emailData.templateId, {

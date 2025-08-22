@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { Star, Quote, Globe, Building, User } from 'lucide-react';
+import { Building, Globe, Quote, Star, User } from 'lucide-react';
 export function Testimonials() {
     const testimonials = [
         {
@@ -7,10 +7,10 @@ export function Testimonials() {
             position: "Marketing Director",
             company: "TechCorp Inc.",
             location: "New York, USA",
-            content: "Yogodyaan has completely transformed how our team approaches wellness. The corporate sessions have not only reduced stress levels but also improved our overall productivity and team cohesion. The instructor's ability to adapt sessions for our busy schedules is remarkable.",
+            content: "Joining Yogodyaan has been a life changing experience since the past six months. Yog, meditation and individual attendtion by Bratati is giving new way of holistic well being. Thank You 🙏",
             image: "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
             rating: 5,
-            type: "Corporate"
+            type: "1-on-1"
         },
         {
             name: "Raj Patel",
@@ -64,10 +64,10 @@ export function Testimonials() {
         }
     ];
     const stats = [
-        { number: "500+", label: "Global Students", icon: _jsx(Globe, { className: "w-8 h-8 text-blue-600 dark:text-blue-400" }) },
-        { number: "50+", label: "Corporate Programs", icon: _jsx(Building, { className: "w-8 h-8 text-green-600 dark:text-emerald-400" }) },
+        { number: "1000+", label: "Global Students", icon: _jsx(Globe, { className: "w-8 h-8 text-blue-600 dark:text-blue-400" }) },
+        { number: "5+", label: "Corporate Programs", icon: _jsx(Building, { className: "w-8 h-8 text-green-600 dark:text-emerald-400" }) },
         { number: "98%", label: "Satisfaction Rate", icon: _jsx(Star, { className: "w-8 h-8 text-yellow-500 dark:text-yellow-400" }) },
-        { number: "25+", label: "Countries Served", icon: _jsx(User, { className: "w-8 h-8 text-purple-600 dark:text-purple-400" }) }
+        { number: "7+", label: "Countries Served", icon: _jsx(User, { className: "w-8 h-8 text-purple-600 dark:text-purple-400" }) }
     ];
     const getTypeColor = (type) => {
         switch (type) {

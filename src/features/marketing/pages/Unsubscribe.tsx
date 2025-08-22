@@ -22,7 +22,14 @@ export default function Unsubscribe() {
     const [state, setState] = useState<State>('idle')
     const [message, setMessage] = useState<string>('')
 
-    const token = useMemo(() => new URLSearchParams(window.location.search).get('token') || '', [])
+    const token = useMemo(() => {
+        const raw = new URLSearchParams(window.location.search).get('token') || ''
+        try {
+            return decodeURIComponent(raw)
+        } catch {
+            return raw
+        }
+    }, [])
 
     useEffect(() => {
         async function run() {

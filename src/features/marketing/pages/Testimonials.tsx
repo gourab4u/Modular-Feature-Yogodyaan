@@ -1,4 +1,4 @@
-import { Star, Quote, Globe, Building, User } from 'lucide-react'
+import { Building, Globe, Quote, Star, User } from 'lucide-react'
 
 export function Testimonials() {
   const testimonials = [
@@ -7,10 +7,10 @@ export function Testimonials() {
       position: "Marketing Director",
       company: "TechCorp Inc.",
       location: "New York, USA",
-      content: "Yogodyaan has completely transformed how our team approaches wellness. The corporate sessions have not only reduced stress levels but also improved our overall productivity and team cohesion. The instructor's ability to adapt sessions for our busy schedules is remarkable.",
+      content: "Joining Yogodyaan has been a life changing experience since the past six months. Yog, meditation and individual attendtion by Bratati is giving new way of holistic well being. Thank You 🙏",
       image: "https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
       rating: 5,
-      type: "Corporate"
+      type: "1-on-1"
     },
     {
       name: "Raj Patel",
@@ -65,10 +65,10 @@ export function Testimonials() {
   ]
 
   const stats = [
-    { number: "500+", label: "Global Students", icon: <Globe className="w-8 h-8 text-blue-600 dark:text-blue-400" /> },
-    { number: "50+", label: "Corporate Programs", icon: <Building className="w-8 h-8 text-green-600 dark:text-emerald-400" /> },
+    { number: "1000+", label: "Global Students", icon: <Globe className="w-8 h-8 text-blue-600 dark:text-blue-400" /> },
+    { number: "5+", label: "Corporate Programs", icon: <Building className="w-8 h-8 text-green-600 dark:text-emerald-400" /> },
     { number: "98%", label: "Satisfaction Rate", icon: <Star className="w-8 h-8 text-yellow-500 dark:text-yellow-400" /> },
-    { number: "25+", label: "Countries Served", icon: <User className="w-8 h-8 text-purple-600 dark:text-purple-400" /> }
+    { number: "7+", label: "Countries Served", icon: <User className="w-8 h-8 text-purple-600 dark:text-purple-400" /> }
   ]
 
   const getTypeColor = (type: string) => {
@@ -96,7 +96,7 @@ export function Testimonials() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h1 className="text-5xl font-bold text-gray-900 dark:text-white mb-6">What Our Global Community Says</h1>
           <p className="text-xl text-gray-600 dark:text-slate-300 leading-relaxed">
-            Real stories from professionals around the world who have transformed their lives 
+            Real stories from professionals around the world who have transformed their lives
             with Yogodyaan's personalized wellness programs.
           </p>
         </div>
@@ -128,12 +128,12 @@ export function Testimonials() {
               Discover how professionals from different industries and locations have benefited from our programs
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
               <div key={index} className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 relative">
                 <Quote className="absolute top-4 right-4 w-8 h-8 text-blue-200 dark:text-blue-400" />
-                
+
                 <div className="flex items-center mb-6">
                   <img
                     src={testimonial.image}
@@ -150,7 +150,7 @@ export function Testimonials() {
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex text-yellow-400">
                     {[...Array(testimonial.rating)].map((_, i) => (
@@ -162,7 +162,7 @@ export function Testimonials() {
                     <span>{testimonial.type}</span>
                   </span>
                 </div>
-                
+
                 <p className="text-gray-700 dark:text-slate-300 italic leading-relaxed">"{testimonial.content}"</p>
               </div>
             ))}
@@ -179,7 +179,7 @@ export function Testimonials() {
               Hear directly from our students about their transformation journey
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[1, 2, 3].map((index) => (
               <div key={index} className="bg-gray-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-2xl aspect-video flex items-center justify-center hover:bg-gray-200 dark:hover:bg-slate-600 transition-all duration-300 cursor-pointer">
@@ -203,7 +203,7 @@ export function Testimonials() {
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
           <h2 className="text-4xl font-bold mb-6">Ready to Write Your Success Story?</h2>
           <p className="text-xl mb-8 text-blue-100">
-            Join our global community of professionals who have transformed their lives through yoga. 
+            Join our global community of professionals who have transformed their lives through yoga.
             Your wellness journey starts with a single session.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
