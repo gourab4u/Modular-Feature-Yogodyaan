@@ -27,27 +27,48 @@ export function About() {
   const instructors = [
     {
       name: "Bratati Batabyal",
-      title: "Founder & Lead Instructor",
+      title: "Founder, Certified Yoga Therapist and Yoga Consultant",
+      certifications: ["YIC", "YCB", "ADYT"],
       experience: "5+ years",
       specialization: "Traditional Yoga & Meditation",
       image: "/images/pp_Bratati.jpeg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
-      bio: "With a deep passion for yoga, Bratati Batabyal guides students in traditional yoga and meditation for over 5 years"
+      bio: "With a deep passion for yoga, Bratati guides students in traditional yoga and meditation, helping them develop a steady and mindful practice."
     },
     {
-      name: "Amita Agarwal",
-      title: "Senior Instructor",
-      experience: "6+ years",
-      specialization: "Kids Yoga",
-      image: "/images/Instructor_Amita.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
-      bio: "Passionate about Kids Yoga, Amita inspires little ones to stretch, breathe, and grow with over 6 years of experience"
+      name: "Kasturi Roy Bardhan",
+      title: "Certified Yoga Instructor",
+      certifications: ["TTC - Mysore Ashtanga"],
+      experience: "5+ years",
+      specialization: "Ashtanga Vinyasa Yoga",
+      image: "/images/Instructor_Kasturi.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
+      bio: "Kasturi empowers students through dynamic Ashtanga Vinyasa practice, focusing on breath-led movement and alignment."
+    },
+    {
+      name: "Payel Paul",
+      title: "Certified Yoga Instructor",
+      certifications: ["YIC"],
+      experience: "4+ years",
+      specialization: "General Yoga, Zumba",
+      image: "/images/Instructor_Payel.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
+      bio: "Passionate and dynamic, Payel blends yoga and movement to create energetic, inclusive classes for all levels."
     },
     {
       name: "Swarup Chattopadhaya",
       title: "Yogic Therapist",
+      certifications: [],
       experience: "8+ years",
-      specialization: "Yogic Therapy cum Physiotherapy",
+      specialization: "Yogic Therapy & Physiotherapy",
       image: "/images/Instructor_Swarup.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
-      bio: "With 8+ years of expertise, Swarup blends yogic therapy and physiotherapy to heal, strengthen, and restore balance."
+      bio: "Swarup blends therapeutic yoga and physiotherapy to help students recover, strengthen, and find balance."
+    },
+    {
+      name: "Amita Agarwal",
+      title: "Certified Yoga Instructor",
+      certifications: ["ADY", "ADYT"],
+      experience: "6+ years",
+      specialization: "Kids Yoga",
+      image: "/images/Instructor_Amita.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
+      bio: "Amita inspires children with playful, safe yoga practices that build confidence and coordination."
     }
   ]
 
@@ -130,18 +151,46 @@ export function About() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {instructors.map((instructor, index) => (
-              <div key={index} className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-6 text-center shadow-lg hover:shadow-xl transition-all duration-300">
+              <div
+                key={index}
+                className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-6 text-center shadow-sm hover:shadow-md transition-shadow duration-200"
+              >
                 <img
                   src={instructor.image}
                   alt={instructor.name}
-                  className="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-slate-600"
+                  className="w-32 h-32 rounded-full mx-auto mb-4 object-cover ring-2 ring-slate-200 dark:ring-slate-700"
                 />
+
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-1">{instructor.name}</h3>
+
                 <p className="text-emerald-500 dark:text-emerald-400 font-medium mb-2">{instructor.title}</p>
-                <div className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-                  <p><span className="text-orange-500 dark:text-orange-400 font-semibold">{instructor.experience}</span> • <span className="text-blue-500 dark:text-blue-400 font-semibold">{instructor.specialization}</span></p>
+
+                <div className="text-sm text-gray-600 dark:text-slate-400 mb-3">
+                  <p>
+                    <span className="text-orange-500 dark:text-orange-400 font-semibold">{instructor.experience}</span>
+                    <span className="mx-2 text-gray-300">•</span>
+                    <span className="text-blue-500 dark:text-blue-400 font-semibold">{instructor.specialization}</span>
+                  </p>
                 </div>
+
                 <p className="text-gray-700 dark:text-white">{instructor.bio}</p>
+
+                {/* Certifications (optional) - rendered only when provided */}
+                {instructor.certifications && instructor.certifications.length > 0 && (
+                  <div className="mt-4 text-left">
+                    <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-2">Certifications</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {instructor.certifications.map((c, i) => (
+                        <span
+                          key={i}
+                          className="inline-flex items-center px-2 py-1 rounded-full bg-gray-100 dark:bg-slate-700 text-xs text-gray-800 dark:text-gray-200"
+                        >
+                          {c}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -165,7 +214,7 @@ export function About() {
               <div className="text-gray-600 dark:text-slate-300">Years of Experience</div>
             </div>
             <div>
-              <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">3+</div>
+              <div className="text-4xl font-bold mb-2 text-gray-900 dark:text-white">5+</div>
               <div className="text-gray-600 dark:text-slate-300">Certified Instructors</div>
             </div>
           </div>
