@@ -67,6 +67,7 @@ export function Footer() {
               <li><Link to="/book-class" className="text-gray-300 hover:text-emerald-400 transition-colors">Book Class</Link></li>
               <li><Link to="/learning" className="text-gray-300 hover:text-emerald-400 transition-colors">Learning Center</Link></li>
               <li><Link to="/contact" className="text-gray-300 hover:text-emerald-400 transition-colors">Contact</Link></li>
+              <li><Link to="/privacy" className="text-gray-300 hover:text-emerald-400 transition-colors">Privacy Policy</Link></li>
               <li><Link to="/testimonials" className="text-gray-300 hover:text-emerald-400 transition-colors">Testimonials</Link></li>
             </ul>
           </div>
@@ -102,7 +103,12 @@ export function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center">
-          <p className="text-gray-400">© {new Date().getFullYear()} {brandName}. All rights reserved. {legal.disclaimer ? '' : 'Made with ❤️ for your wellness journey.'}</p>
+          <p className="text-gray-400">
+            © {new Date().getFullYear()} {brandName}. All rights reserved.
+            {' '}
+            <Link to="/privacy" className="text-gray-300 hover:text-emerald-400 underline ml-2">Privacy Policy</Link>
+            {legal.disclaimer ? '' : ' Made with ❤️ for your wellness journey.'}
+          </p>
         </div>
       </div>
     </footer >

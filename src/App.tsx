@@ -25,6 +25,7 @@ import { About } from './features/marketing/pages/About';
 import { Achievements } from './features/marketing/pages/Achievements';
 import { Contact } from './features/marketing/pages/Contact';
 import { Home } from './features/marketing/pages/Home';
+import { Privacy } from './features/marketing/pages/Privacy';
 import { Services } from './features/marketing/pages/Services';
 import { Testimonials } from './features/marketing/pages/Testimonials';
 import Unsubscribe from './features/marketing/pages/Unsubscribe';
@@ -109,6 +110,7 @@ function AppRoutes() {
               <Route path="/services" element={<Services />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/testimonials" element={<Testimonials />} />
+              <Route path="/privacy" element={<Privacy />} />
               <Route path="/book-class" element={<BookClass />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/learning" element={<Learning />} />

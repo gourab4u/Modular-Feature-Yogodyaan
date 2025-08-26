@@ -11,12 +11,10 @@ export function Testimonials() {
             type: "1-on-1"
         },
         {
-            name: "Raj Patel",
-            position: "Software Engineer",
-            company: "StartupXYZ",
-            location: "Mumbai, India",
-            content: "The personalized coaching sessions fit perfectly into my busy schedule. Working across different time zones has never been easier. I've never felt more balanced and focused in my career. The flexibility and personal attention are unmatched.",
-            image: "https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
+            name: "Rina",
+            location: "Auckland, New Zealand",
+            content: "I was visiting my niece in India and joined her in session with Bratati. Hearing the correct pronunciation of the Asanas, experiencing the working of an online class inspired me to revive my yoga practice. I feel fortunate to learn yoga with Bratati’s guidance and instructions. Her attention to posture, gradually build strength and balance helps me improve wellbeing. Her pleasant and kind, yet encouraging approach goes a long way in sustaining my commitment to yoga.  The  added tips on poses are gentle reminders to make it practical and doable in the daily routine.",
+            image: "/images/Testimonial_Rina.jpg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
             rating: 5,
             type: "1-on-1"
         },
