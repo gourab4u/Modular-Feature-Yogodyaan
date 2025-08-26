@@ -186,9 +186,8 @@ export function Privacy(): JSX.Element {
                                 </ul>
                             </section>
 
-                            <div className="mt-8 flex justify-between items-center">
+                            <div className="mt-8 flex justify-end items-center">
                                 <a href="#top" className="text-sm text-gray-600 dark:text-slate-300 hover:underline">Back to top</a>
-                                <RouterLink to="/services" className="inline-block px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm">Book a Class</RouterLink>
                             </div>
                         </article>
                     </div>

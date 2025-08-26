@@ -68,6 +68,7 @@ export function Footer() {
               <li><Link to="/learning" className="text-gray-300 hover:text-emerald-400 transition-colors">Learning Center</Link></li>
               <li><Link to="/contact" className="text-gray-300 hover:text-emerald-400 transition-colors">Contact</Link></li>
               <li><Link to="/privacy" className="text-gray-300 hover:text-emerald-400 transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="text-gray-300 hover:text-emerald-400 transition-colors">Terms of Service</Link></li>
               <li><Link to="/testimonials" className="text-gray-300 hover:text-emerald-400 transition-colors">Testimonials</Link></li>
             </ul>
           </div>
@@ -107,6 +108,8 @@ export function Footer() {
             © {new Date().getFullYear()} {brandName}. All rights reserved.
             {' '}
             <Link to="/privacy" className="text-gray-300 hover:text-emerald-400 underline ml-2">Privacy Policy</Link>
+            {' '}
+            <Link to="/terms" className="text-gray-300 hover:text-emerald-400 underline ml-2">Terms of Service</Link>
             {legal.disclaimer ? '' : ' Made with ❤️ for your wellness journey.'}
           </p>
         </div>
