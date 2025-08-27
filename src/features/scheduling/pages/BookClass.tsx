@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Clock, Search, Users } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { supabase } from '../../../shared/lib/supabase'
+import { COMMON_TIMEZONES, getUserTimezone } from '../../../shared/utils/timezoneUtils'
 import { useAuth } from '../../auth/contexts/AuthContext'
 
 interface ClassPackage {
@@ -40,7 +41,8 @@ export function BookClass() {
     country: '',
     classType: '',
     groupSize: '',
-    message: ''
+    message: '',
+    timezone: getUserTimezone()
   })
 
   const timeSlots = [
@@ -169,6 +171,7 @@ export function BookClass() {
         first_name: formData.fullName.split(' ')[0] || '',
         last_name: formData.fullName.split(' ').slice(1).join(' ') || '',
         email: formData.email,
+        timezone: formData.timezone,
         phone: '', // We'll add this field if needed
         experience_level: 'beginner',
         special_requests: formData.message,
@@ -197,7 +200,8 @@ export function BookClass() {
         country: '',
         classType: '',
         groupSize: '',
-        message: ''
+        message: '',
+        timezone: getUserTimezone()
       })
       setSelectedDate('')
       setSelectedTime('')
@@ -598,6 +602,28 @@ export function BookClass() {
                   )}
 
                   {errors.classType && <p className="text-red-500 text-sm mt-1">{errors.classType}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="timezone" className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
+                    Timezone *
+                  </label>
+                  <select
+                    id="timezone"
+                    name="timezone"
+                    value={formData.timezone}
+                    onChange={handleInputChange}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.timezone ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                      }`}
+                  >
+                    <option value="">Select your timezone</option>
+                    {COMMON_TIMEZONES.map((tz) => (
+                      <option key={tz.value} value={tz.value}>
+                        {tz.label}{tz.offset ? ` (${tz.offset})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.timezone && <p className="text-red-500 text-sm mt-1">{errors.timezone}</p>}
                 </div>
 
                 <div>

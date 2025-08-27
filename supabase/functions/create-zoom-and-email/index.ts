@@ -6,6 +6,7 @@
 
 import { serve } from "https://deno.land/std@0.211.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.28.0?bundle";
+import { DateTime } from "https://esm.sh/luxon@3.4.0?bundle";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -58,6 +59,17 @@ async function getZoomAccessToken(): Promise<{ accessToken: string; apiUrl: stri
 
     await supabase.from("zoom_tokens").upsert({ id: "server_token", access_token: accessToken, expires_at: expiresAt, api_url: apiUrl }, { onConflict: "id" });
     return { accessToken, apiUrl };
+}
+
+// parse offsets like "UTC+5:30" -> minutes (330). returns null if invalid
+function parseUtcOffsetToMinutes(offsetStr?: string | null): number | null {
+    if (!offsetStr) return null;
+    const m = String(offsetStr).trim().match(/^UTC([+-])(\d{1,2})(?::?(\d{2}))?$/i);
+    if (!m) return null;
+    const sign = m[1] === '-' ? -1 : 1;
+    const hours = parseInt(m[2], 10) || 0;
+    const mins = parseInt(m[3] || '0', 10) || 0;
+    return sign * (hours * 60 + mins);
 }
 
 async function sendResendEmail(to: string | string[], subject: string, html: string, bcc?: string[]) {
@@ -125,7 +137,7 @@ serve(async (req) => {
         // 1) fetch class assignment (include zoom_meeting for idempotency)
         const { data: cls, error: clsErr } = await supabase
             .from("class_assignments")
-            .select("id, date, start_time, end_time, timezone, class_type_id, instructor_id, zoom_meeting")
+            .select("id, assignment_code, date, start_time, end_time, timezone, class_type_id, instructor_id, zoom_meeting")
             .eq("id", classId)
             .single();
         if (clsErr || !cls) return new Response(JSON.stringify({ error: clsErr?.message || "class_assignment not found" }), { status: 404 });
@@ -179,27 +191,68 @@ serve(async (req) => {
             }
         }
 
-        // 4) attendees (bookings -> profiles)
-        const { data: bookings } = await supabase.from("class_bookings").select("user_id").eq("class_assignment_id", classId);
-        const userIds = Array.isArray(bookings) ? bookings.map((b: any) => b.user_id).filter(Boolean) : [];
+        // 4) attendees (assignment_bookings -> bookings -> profiles)
+        // First collect booking_ids from assignment_bookings, then fetch bookings to get user_ids
+        const { data: assignmentBookings } = await supabase.from("assignment_bookings").select("booking_id").eq("assignment_id", classId);
+        const bookingIds = Array.isArray(assignmentBookings) ? assignmentBookings.map((b: any) => b.booking_id).filter(Boolean) : [];
+        let userIds: string[] = [];
+        if (bookingIds.length) {
+            try {
+                // include timezone from bookings (user timezone saved as 'UTC+hh:mm')
+                const { data: bookingsRows } = await supabase.from("bookings").select("booking_id, user_id, timezone").in("booking_id", bookingIds);
+                userIds = Array.isArray(bookingsRows) ? bookingsRows.map((r: any) => r.user_id).filter(Boolean) : [];
+                // build map of user_id -> booking timezone
+                var bookingTimezoneByUser: Record<string, string> = {};
+                if (Array.isArray(bookingsRows)) {
+                    for (const br of bookingsRows) {
+                        if (br?.user_id) bookingTimezoneByUser[br.user_id] = br.timezone || bookingTimezoneByUser[br.user_id];
+                    }
+                }
+            } catch (e) {
+                userIds = [];
+            }
+        }
+
         let attendees: Array<{ id: string; user_id?: string; email?: string; full_name?: string }> = [];
         if (userIds.length) {
             // first try matching profiles.user_id (common FK to auth.users.id)
             try {
                 const { data: profilesByUser } = await supabase.from("profiles").select("id, user_id, email, full_name").in("user_id", userIds);
-                if (Array.isArray(profilesByUser) && profilesByUser.length) attendees = profilesByUser as any;
+                let profilesList: any[] = [];
+                if (Array.isArray(profilesByUser) && profilesByUser.length) profilesList = profilesByUser as any;
                 else {
                     const { data: profilesById } = await supabase.from("profiles").select("id, user_id, email, full_name").in("id", userIds);
-                    attendees = profilesById || [];
+                    profilesList = profilesById || [];
                 }
+                // attach booking timezone to each profile (if available)
+                attendees = (profilesList || []).map((p: any) => ({ ...p, booking_timezone: (typeof bookingTimezoneByUser !== 'undefined' ? bookingTimezoneByUser[p.user_id || p.id] : null) }));
             } catch (e) {
                 attendees = [];
             }
         }
 
-        // 5) build start ISO (basic — verify timezone handling as needed)
+        // 5) build start ISO (timezone-aware using Luxon)
         let startIso = new Date().toISOString();
-        if (cls.date && cls.start_time) startIso = new Date(`${cls.date}T${cls.start_time}`).toISOString();
+        let classDisplay = '';
+        try {
+            if (cls.date && cls.start_time) {
+                const classZone = cls.timezone || 'UTC';
+                const classDt = DateTime.fromISO(`${cls.date}T${cls.start_time}`, { zone: classZone });
+                if (classDt.isValid) {
+                    startIso = classDt.toISO(); // includes offset
+                    classDisplay = classDt.toLocaleString(DateTime.DATETIME_FULL);
+                } else {
+                    // fallback
+                    startIso = new Date(`${cls.date}T${cls.start_time}`).toISOString();
+                    classDisplay = `${cls.date} ${cls.start_time} (${cls.timezone || 'UTC'})`;
+                }
+            } else {
+                classDisplay = 'scheduled time';
+            }
+        } catch (e) {
+            startIso = new Date().toISOString();
+            classDisplay = `${cls.date || ''} ${cls.start_time || ''} (${cls.timezone || 'UTC'})`;
+        }
 
         // Diagnostic logs: surface fetched records so we can see why emails may not be sent
         try { console.log('Debug: class_assignment:', JSON.stringify(cls)); } catch (e) { }
@@ -272,13 +325,35 @@ serve(async (req) => {
                 const toList = [a.email].filter(Boolean) as string[];
                 if (instructor?.email && !toList.includes(instructor.email)) toList.push(instructor.email);
                 const bccList = ADMIN_EMAILS.length ? ADMIN_EMAILS : undefined;
+                // compute attendee local time.
+                // Prefer IANA tznames stored in booking_timezone (e.g. 'Asia/Kolkata').
+                // Fallback: accept legacy offsets like 'UTC+5:30'.
+                let attendeeLocalDisplay: string | null = null;
+                try {
+                    const bookingTz = (a as any).booking_timezone;
+                    if (bookingTz) {
+                        if (/^UTC[+-]/i.test(String(bookingTz))) {
+                            const offMin = parseUtcOffsetToMinutes(String(bookingTz));
+                            if (offMin !== null) {
+                                const attendeeLocal = DateTime.fromISO(startIso, { zone: 'utc' }).plus({ minutes: offMin });
+                                if (attendeeLocal.isValid) attendeeLocalDisplay = attendeeLocal.toLocaleString(DateTime.DATETIME_FULL);
+                            }
+                        } else {
+                            // assume IANA zone
+                            const attendeeLocal = DateTime.fromISO(startIso).setZone(String(bookingTz));
+                            if (attendeeLocal.isValid) attendeeLocalDisplay = attendeeLocal.toLocaleString(DateTime.DATETIME_FULL);
+                        }
+                    }
+                } catch (e) { attendeeLocalDisplay = null; }
+
                 const bodyHtml = `
                                         <div style="font-family:Arial,Helvetica,sans-serif;color:#111">
                                             <p>Hi ${a.full_name || 'Student'},</p>
-                                            <p>Your class is scheduled at <strong>${cls.date || ''} ${cls.start_time || ''} (${cls.timezone || 'UTC'})</strong>.</p>
+                                            <p>Your class is scheduled at <strong>${classDisplay}</strong>.</p>
+                                            ${attendeeLocalDisplay ? `<p>Your local time: <strong>${attendeeLocalDisplay}</strong></p>` : ''}
                                             <p><a href="${zoomData.join_url}">Join Zoom</a></p>
                                             <h4>Class Details</h4>
-                                            <p>Assignment ID: ${cls.id}</p>
+                                            <p>Assignment code: ${cls.assignment_code || cls.id}</p>
                                             <p>Instructor: ${instructor?.full_name || 'TBD'} (${instructor?.email || 'TBD'})</p>
                                             <p>Topic: ${ct?.name || 'Class'}</p>
                                         </div>
@@ -293,10 +368,10 @@ serve(async (req) => {
             const hostHtml = `
                                 <div style="font-family:Arial,Helvetica,sans-serif;color:#111">
                                     <p>Hi ${instructor.full_name || 'Instructor'},</p>
-                                    <p>Your class is scheduled at <strong>${cls.date || ''} ${cls.start_time || ''} (${cls.timezone || 'UTC'})</strong>.</p>
+                                    <p>Your class is scheduled at <strong>${classDisplay}</strong>.</p>
                                     <p><a href="${zoomData.start_url}">Start Class (Host)</a></p>
                                     <h4>Class Details</h4>
-                                    <p>Assignment ID: ${cls.id}</p>
+                                    <p>Assignment code: ${cls.assignment_code || cls.id}</p>
                                     <p>Topic: ${ct?.name || 'Class'}</p>
                                 </div>
                         `;
@@ -306,7 +381,7 @@ serve(async (req) => {
             // no instructor email found — notify admins only (existing behavior)
             const adminHtml = `
                             <div style="font-family:Arial,Helvetica,sans-serif;color:#111">
-                                <p>No instructor email found for class <strong>${ct?.name || 'Class'}</strong> (assignment ${cls.id}).</p>
+                                <p>No instructor email found for class <strong>${ct?.name || 'Class'}</strong> (assignment ${cls.assignment_code || cls.id}).</p>
                                 <p>Zoom join link: <a href="${zoomData.join_url}">${zoomData.join_url}</a></p>
                             </div>
                         `;

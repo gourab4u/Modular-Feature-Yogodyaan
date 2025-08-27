@@ -43,16 +43,37 @@ function WeeklyScheduleContent() {
                 alert('You already have a booking for this class on this date.');
                 return;
             }
+            const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            // debug: surface IANA timezone captured in client console
+            console.debug('Booking timezone:', tz);
+            // Normalize user metadata: Supabase can return an object or a JSON/string.
+            // Handle both shapes safely before using split().
+            let meta = user.user_metadata ?? {};
+            if (typeof meta === 'string') {
+                try {
+                    meta = JSON.parse(meta);
+                }
+                catch {
+                    // If it's a plain string, treat it as the user's full name.
+                    meta = { full_name: meta };
+                }
+            }
+            const fullName = meta?.full_name || meta?.fullName || '';
+            const nameParts = typeof fullName === 'string' ? fullName.trim().split(/\s+/) : [];
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+            const phone = meta?.phone || meta?.phone_number || user.phone || '';
             const bookingData = {
                 user_id: user.id,
                 class_name: schedule.class_type.name,
                 instructor: schedule.instructor.full_name,
                 class_date: classDate,
                 class_time: schedule.start_time,
-                first_name: user.user_metadata?.full_name?.split(' ')[0] || '',
-                last_name: user.user_metadata?.full_name?.split(' ').slice(1).join(' ') || '',
+                timezone: tz,
+                first_name: firstName,
+                last_name: lastName,
                 email: user.email,
-                phone: user.user_metadata?.phone || '',
+                phone,
                 experience_level: 'beginner',
                 special_requests: '',
                 emergency_contact: '',
@@ -60,10 +81,17 @@ function WeeklyScheduleContent() {
                 status: 'confirmed',
                 booking_type: 'public_group'
             };
+            // debug: inspect payload sent to Supabase
+            console.debug('Booking payload:', bookingData);
             const { data: bookingResult, error: bookingError } = await supabase
                 .from('bookings')
                 .insert([bookingData])
-                .select('booking_id');
+                .select('*');
+            console.debug('Supabase insert response:', { bookingResult, bookingError });
+            if (bookingError) {
+                console.error('Supabase booking insert error:', bookingError);
+                throw bookingError;
+            }
             if (bookingError)
                 throw bookingError;
             const bookingId = bookingResult?.[0]?.booking_id || 'N/A';

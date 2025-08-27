@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
+import { COMMON_TIMEZONES, getUserTimezone } from '../../../shared/utils/timezoneUtils'
 import { useAuth } from '../../auth/contexts/AuthContext'
 
 interface ClassPackage {
@@ -51,7 +52,7 @@ export function BookCorporate() {
         // Schedule & Logistics
         preferredDays: [] as string[],
         preferredTimes: [] as string[],
-        timezone: '',
+        timezone: getUserTimezone(),
         startDate: '',
         location: '',
 
@@ -902,15 +903,11 @@ export function BookCorporate() {
                                             }`}
                                     >
                                         <option value="">Select timezone</option>
-                                        <option value="UTC-8">Pacific Time (UTC-8)</option>
-                                        <option value="UTC-7">Mountain Time (UTC-7)</option>
-                                        <option value="UTC-6">Central Time (UTC-6)</option>
-                                        <option value="UTC-5">Eastern Time (UTC-5)</option>
-                                        <option value="UTC+0">GMT (UTC+0)</option>
-                                        <option value="UTC+1">Central European Time (UTC+1)</option>
-                                        <option value="UTC+5:30">India Standard Time (UTC+5:30)</option>
-                                        <option value="UTC+8">Singapore Time (UTC+8)</option>
-                                        <option value="UTC+9">Japan Time (UTC+9)</option>
+                                        {COMMON_TIMEZONES.map((tz) => (
+                                            <option key={tz.value} value={tz.value}>
+                                                {tz.label} {tz.offset ? `(${tz.offset})` : ''}
+                                            </option>
+                                        ))}
                                     </select>
                                     {errors.timezone && <p className="text-red-500 text-sm mt-1">{errors.timezone}</p>}
                                 </div>

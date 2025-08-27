@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
+import { COMMON_TIMEZONES, getUserTimezone } from '../../../shared/utils/timezoneUtils'
 import { useAuth } from '../../auth/contexts/AuthContext'
 
 interface ClassPackage {
@@ -39,7 +40,7 @@ export function BookOneOnOne() {
         lastName: '',
         email: user?.email || '',
         phone: '',
-        timezone: '',
+        timezone: getUserTimezone(),
 
         // Session Details
         packageType: '',
@@ -483,15 +484,11 @@ export function BookOneOnOne() {
                                             }`}
                                     >
                                         <option value="">Select your timezone</option>
-                                        <option value="UTC-8">Pacific Time (UTC-8)</option>
-                                        <option value="UTC-7">Mountain Time (UTC-7)</option>
-                                        <option value="UTC-6">Central Time (UTC-6)</option>
-                                        <option value="UTC-5">Eastern Time (UTC-5)</option>
-                                        <option value="UTC+0">GMT (UTC+0)</option>
-                                        <option value="UTC+1">Central European Time (UTC+1)</option>
-                                        <option value="UTC+5:30">India Standard Time (UTC+5:30)</option>
-                                        <option value="UTC+8">Singapore Time (UTC+8)</option>
-                                        <option value="UTC+9">Japan Time (UTC+9)</option>
+                                        {COMMON_TIMEZONES.map((tz) => (
+                                            <option key={tz.value} value={tz.value}>
+                                                {tz.label} {tz.offset ? `(${tz.offset})` : ''}
+                                            </option>
+                                        ))}
                                     </select>
                                     {errors.timezone && <p className="text-red-500 text-sm mt-1">{errors.timezone}</p>}
                                 </div>
@@ -547,8 +544,8 @@ export function BookOneOnOne() {
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('all')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'all'
-                                                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                            : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
+                                                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     All
@@ -557,8 +554,8 @@ export function BookOneOnOne() {
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('regular')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'regular'
-                                                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                            : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
+                                                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     Regular
@@ -567,8 +564,8 @@ export function BookOneOnOne() {
                                                     type="button"
                                                     onClick={() => setCourseTypeFilter('crash')}
                                                     className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'crash'
-                                                            ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
-                                                            : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
+                                                        ? 'bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
                                                         }`}
                                                 >
                                                     Crash
@@ -592,8 +589,8 @@ export function BookOneOnOne() {
                                                             <div
                                                                 key={pkg.id}
                                                                 className={`border-2 rounded-lg transition-all duration-200 hover:shadow-md ${isSelected
-                                                                        ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md'
-                                                                        : 'border-gray-200 hover:border-blue-300'
+                                                                    ? 'border-blue-500 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/20 shadow-md'
+                                                                    : 'border-gray-200 hover:border-blue-300'
                                                                     }`}
                                                             >
                                                                 <div
@@ -655,8 +652,8 @@ export function BookOneOnOne() {
                                                                         )}
 
                                                                         <span className={`text-xs px-2 py-1 rounded ${pkg.course_type === 'crash'
-                                                                                ? 'bg-orange-100 text-orange-800'
-                                                                                : 'bg-green-100 text-green-800'
+                                                                            ? 'bg-orange-100 text-orange-800'
+                                                                            : 'bg-green-100 text-green-800'
                                                                             }`}>
                                                                             {pkg.course_type === 'crash' ? 'Crash Course' : 'Regular Course'}
                                                                         </span>
@@ -901,7 +898,7 @@ export function BookOneOnOne() {
                             <p className="text-gray-600 dark:text-white mb-4">
                                 Thank you for booking with us! We'll review your request and send you a confirmation email within 24 hours with your session details and payment instructions.
                             </p>
-                            
+
                             <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-8">
                                 <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Your Booking ID</h3>
                                 <p className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">{bookingId}</p>
