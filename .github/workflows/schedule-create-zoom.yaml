@@ -16,8 +16,8 @@ jobs:
           node-version: '20'
       - name: Install deps
         run: |
-          cd tools/scheduler || exit 0
-          npm ci || true
+          cd tools/scheduler
+          npm ci
       - name: Run scheduler
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
