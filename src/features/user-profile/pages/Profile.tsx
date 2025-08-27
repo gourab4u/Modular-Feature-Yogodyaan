@@ -1,15 +1,13 @@
-import { AlertCircle, Award, Calendar, Camera, CheckCircle, Clock, Edit2, Facebook, FileText, Globe, Instagram, Mail, Phone, Save, Shield, User, X, XCircle, Youtube } from 'lucide-react'
+import { AlertCircle, Award, Calendar, Camera, CheckCircle, Clock, Edit2, Facebook, FileText, Globe, Instagram, Mail, Phone, Save, User, X, XCircle, Youtube } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
-import { useAdmin } from '../../admin/contexts/AdminContext'
 import { useAuth } from '../../auth/contexts/AuthContext'
 
 export function Profile() {
   const { user } = useAuth()
-  const { isAdmin } = useAdmin()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -70,6 +68,55 @@ export function Profile() {
     { id: 'queries', label: 'My Queries', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Edit2 }
   ]
+
+  // ✅ Move utility functions to the top, before they're used
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+      case 'responded': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+      case 'new': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'
+      case 'in_progress': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+    }
+  }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'confirmed': return <CheckCircle className="w-4 h-4" />
+      case 'cancelled': return <XCircle className="w-4 h-4" />
+      default: return <AlertCircle className="w-4 h-4" />
+    }
+  }
+
+  const getExperienceColor = (years: number) => {
+    if (years === 0) return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
+    if (years <= 2) return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+    if (years <= 5) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+    return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+  }
+
+  const renderArray = (arr: any[], emptyText: string = 'None') => {
+    if (!Array.isArray(arr) || arr.length === 0) {
+      return <span className="text-gray-500 dark:text-slate-400">{emptyText}</span>
+    }
+    return arr.join(', ')
+  }
+
+  // ✅ Helper to safely render JSONB fields
+  const renderJsonField = (field: any, key: string) => {
+    if (!field || typeof field !== 'object') return 'Not provided'
+    return field[key] || 'Not provided'
+  }
 
   useEffect(() => {
     if (user) {
@@ -157,217 +204,42 @@ export function Profile() {
     try {
       setLoading(true)
 
-      // ✅ Enhanced debugging and error handling
-      console.log('🔍 Fetching data for user:', user.email)
+      // Bookings query remains the same
+      const bookingsResult = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
 
-      const [bookingsResult, queriesResult] = await Promise.all([
-        supabase
-          .from('bookings')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false }),
+      // Updated queries to filter by user_id properly
+      const queriesResult = await supabase
+        .from('contact_messages')
+        .select('id, name, email, phone, subject, message, status, created_at, user_id')
+        .eq('user_id', user.id) // This should now work with the user_id column
+        .order('created_at', { ascending: false })
 
-        supabase
-          .from('contact_messages')
-          .select('*')
-          .eq('email', user.email)
-          .order('created_at', { ascending: false })
-      ])
-
-      // Handle bookings
       if (bookingsResult.error) {
-        console.error('❌ Bookings error:', bookingsResult.error)
+        console.error('Error fetching bookings:', bookingsResult.error)
         setUserBookings([])
       } else {
-        console.log('✅ Bookings found:', bookingsResult.data?.length || 0)
         setUserBookings(bookingsResult.data || [])
       }
 
-      // Handle contact messages with detailed error checking
       if (queriesResult.error) {
-        console.error('❌ Contact messages error:', queriesResult.error)
-        console.log('Error details:', {
-          code: queriesResult.error.code,
-          message: queriesResult.error.message,
-          details: queriesResult.error.details,
-          hint: queriesResult.error.hint
-        })
-
-        // If it's an RLS error, try a different approach
-        if (queriesResult.error.code === '42501' || queriesResult.error.message?.includes('RLS')) {
-          console.log('🔐 RLS policy might be blocking access, trying alternative...')
-          // You might need to add RLS policies or use a different approach
-        }
-
+        console.error('Error fetching queries:', queriesResult.error)
         setUserQueries([])
       } else {
-        console.log('✅ Contact messages found:', queriesResult.data?.length || 0)
-        console.log('📧 Messages:', queriesResult.data)
-        setUserQueries(queriesResult.data || [])
+        setUserQueries(Array.isArray(queriesResult.data) ? queriesResult.data : [])
       }
 
     } catch (error) {
-      console.error('❌ General error fetching user data:', error)
+      console.error('Error in fetchUserData:', error)
       setUserBookings([])
       setUserQueries([])
     } finally {
       setLoading(false)
     }
   }
-
-  // ✅ Enhanced debug function with RLS checking
-  const debugQueries = async () => {
-    if (!user) return
-
-    console.log('=== 🔧 ENHANCED DEBUGGING ===')
-    console.log('👤 User email:', user.email)
-    console.log('🆔 User ID:', user.id)
-
-    try {
-      // Test 1: Check if we can read the table at all
-      console.log('\n📋 Test 1: Basic table access...')
-      const { data: basicTest, error: basicError } = await supabase
-        .from('contact_messages')
-        .select('count', { count: 'exact', head: true })
-
-      if (basicError) {
-        console.error('❌ Cannot access contact_messages table:', basicError)
-        console.log('💡 This suggests RLS is blocking ALL access')
-        return
-      } else {
-        console.log(`✅ Table accessible. Total messages: ${basicTest}`)
-      }
-
-      // Test 2: Try to read any messages (admin-like access)
-      console.log('\n📋 Test 2: Reading sample messages...')
-      const { data: sampleMessages, error: sampleError } = await supabase
-        .from('contact_messages')
-        .select('*')
-        .limit(3)
-
-      if (sampleError) {
-        console.error('❌ Cannot read messages:', sampleError)
-      } else {
-        console.log('✅ Sample messages accessible:', sampleMessages?.length || 0)
-        if (sampleMessages && sampleMessages.length > 0) {
-          console.log('📧 Sample message emails:', sampleMessages.map(m => m.email))
-        }
-      }
-
-      // Test 3: Check for messages with our email specifically
-      console.log('\n📋 Test 3: Searching for our email...')
-      const { data: userMessages, error: userError } = await supabase
-        .from('contact_messages')
-        .select('*')
-        .eq('email', user.email)
-
-      if (userError) {
-        console.error('❌ Cannot find user messages:', userError)
-        console.log('🔐 This is likely an RLS policy issue')
-      } else {
-        console.log('✅ User messages found:', userMessages?.length || 0)
-        if (userMessages && userMessages.length > 0) {
-          console.log('📧 Your messages:', userMessages)
-        }
-      }
-
-      // Test 4: Check current user authentication
-      console.log('\n📋 Test 4: Current user context...')
-      const { data: authUser, error: authError } = await supabase.auth.getUser()
-      if (authError) {
-        console.error('❌ Auth error:', authError)
-      } else {
-        console.log('✅ Current auth user:', authUser.user?.email)
-        console.log('🔑 User role:', authUser.user?.user_metadata?.role || 'No role set')
-      }
-
-    } catch (error) {
-      console.error('❌ Debug error:', error)
-    }
-  }
-
-
-  const testInsertMessage = async () => {
-    if (!user) {
-      console.error('❌ No user found for test insert')
-      return
-    }
-
-    console.log('🧪 Testing message insertion...')
-
-    const testMessage = {
-      name: 'Test User',
-      email: user.email,
-      subject: 'Test Message from Profile Debug',
-      message: 'This is a test message to verify the contact form works.',
-      status: 'new',
-      phone: '123-456-7890'
-    }
-
-    try {
-      const { data, error } = await supabase
-        .from('contact_messages')
-        .insert(testMessage)
-        .select()
-
-      if (error) {
-        console.error('❌ Test insert failed:', error)
-        console.log('💡 Possible issues:')
-        console.log('1. RLS policy blocks inserts')
-        console.log('2. Required fields missing')
-        console.log('3. Data type mismatch')
-        console.log('4. Table permissions issue')
-        alert('Test insert failed: ' + error.message)
-      } else {
-        console.log('✅ Test message inserted successfully:', data)
-        alert('✅ Test message inserted! Check your messages tab.')
-        // Refresh the queries
-        fetchUserData()
-      }
-    } catch (error: any) {
-      console.error('❌ Test insert error:', error)
-      alert('Test insert error: ' + error.message)
-    }
-  }
-
-  // ✅ Function to check and suggest RLS policy fixes
-  const suggestRLSFix = () => {
-    console.log('\n🔧 RLS POLICY SUGGESTIONS:')
-    console.log('You may need to add these RLS policies to your contact_messages table:')
-    console.log(`
--- 1. Allow anyone to insert contact messages
-CREATE POLICY "Anyone can insert contact messages" ON contact_messages
-FOR INSERT WITH CHECK (true);
-
--- 2. Allow users to read their own contact messages  
-CREATE POLICY "Users can read own contact messages" ON contact_messages
-FOR SELECT USING (email = auth.jwt() ->> 'email');
-
--- 3. Alternative: Allow users to read messages if they have a profile with matching email
-CREATE POLICY "Users can read messages via profile" ON contact_messages
-FOR SELECT USING (
-  email IN (
-    SELECT email FROM profiles WHERE user_id = auth.uid()
-  )
-);
-
--- To apply these policies, run them in your Supabase SQL editor
-  `)
-
-    // Also show in alert for easy copying
-    alert(`🔧 RLS Policy needed! Check console for SQL commands.
-
-Quick fix: Go to Supabase Dashboard > SQL Editor and run:
-
-CREATE POLICY "Anyone can insert contact messages" ON contact_messages
-FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Users can read own contact messages" ON contact_messages  
-FOR SELECT USING (email = auth.jwt() ->> 'email');`)
-  }
-
-
-
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -522,60 +394,15 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
     }
   }
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-green-100 text-green-800'
-      case 'pending': return 'bg-yellow-100 text-yellow-800'
-      case 'responded': return 'bg-blue-100 text-blue-800'
-      case 'cancelled': return 'bg-red-100 text-red-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'confirmed': return <CheckCircle className="w-4 h-4" />
-      case 'cancelled': return <XCircle className="w-4 h-4" />
-      default: return <AlertCircle className="w-4 h-4" />
-    }
-  }
-
-  const getExperienceColor = (years: number) => {
-    if (years === 0) return 'bg-gray-100 text-gray-800'
-    if (years <= 2) return 'bg-green-100 text-green-800'
-    if (years <= 5) return 'bg-yellow-100 text-yellow-800'
-    return 'bg-red-100 text-red-800'
-  }
-
-  const renderArray = (arr: any[], emptyText: string = 'None') => {
-    if (!Array.isArray(arr) || arr.length === 0) {
-      return <span className="text-gray-500">{emptyText}</span>
-    }
-    return arr.join(', ')
-  }
-
-  // ✅ Helper to safely render JSONB fields
-  const renderJsonField = (field: any, key: string) => {
-    if (!field || typeof field !== 'object') return 'Not provided'
-    return field[key] || 'Not provided'
-  }
-
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <XCircle className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-red-600 dark:text-red-400" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-6">Please sign in to view your profile.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Access Denied</h1>
+          <p className="text-gray-600 dark:text-slate-300 mb-6">Please sign in to view your profile.</p>
           <Button onClick={() => navigate('/login')}>Sign In</Button>
         </div>
       </div>
@@ -583,7 +410,7 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       {/* Enhanced Header with Gradient */}
       <div className="bg-gradient-to-r from-blue-600 to-green-600 shadow-lg">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -598,8 +425,8 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                     className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-lg"
                   />
                 ) : (
-                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center border-4 border-white shadow-lg">
-                    <User className="w-10 h-10 text-gray-400" />
+                  <div className="w-20 h-20 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center border-4 border-white shadow-lg">
+                    <User className="w-10 h-10 text-gray-400 dark:text-slate-300" />
                   </div>
                 )}
                 {editing && (
@@ -630,12 +457,6 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                       {profileData.phone}
                     </p>
                   )}
-                  {isAdmin && (
-                    <span className="bg-white bg-opacity-20 text-white px-3 py-1 rounded-full text-sm font-medium flex items-center">
-                      <Shield className="w-3 h-3 mr-1" />
-                      Admin
-                    </span>
-                  )}
                 </div>
                 {profileData.years_of_experience > 0 && (
                   <div className="mt-2">
@@ -660,7 +481,7 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                     }}
                     variant="outline"
                     size="sm"
-                    className="bg-white text-gray-700 border-white hover:bg-gray-50"
+                    className="bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-white dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
                   >
                     <X className="w-4 h-4 mr-2" /> Cancel
                   </Button>
@@ -668,7 +489,7 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                     onClick={handleSaveProfile}
                     loading={loading}
                     size="sm"
-                    className="bg-white text-blue-600 hover:bg-gray-50"
+                    className="bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-slate-600"
                   >
                     <Save className="w-4 h-4 mr-2" /> Save Changes
                   </Button>
@@ -678,7 +499,7 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                   onClick={() => setEditing(true)}
                   variant="outline"
                   size="sm"
-                  className="bg-white text-gray-700 border-white hover:bg-gray-50"
+                  className="bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 border-white dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600"
                 >
                   <Edit2 className="w-4 h-4 mr-2" /> Edit Profile
                 </Button>
@@ -689,7 +510,7 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white dark:bg-slate-800 shadow-sm border-b border-gray-200 dark:border-slate-700">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <nav className="flex space-x-8">
             {tabs.map((tab) => {
@@ -699,8 +520,8 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300 hover:border-gray-300 dark:hover:border-slate-600'
                     }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -718,68 +539,68 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Profile Information Card */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Profile Information</h2>
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-6 mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Profile Information</h2>
                 {errors.general && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                    <p className="text-red-600 text-sm">{errors.general}</p>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+                    <p className="text-red-600 dark:text-red-400 text-sm">{errors.general}</p>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Full Name</label>
                     {editing ? (
                       <input
                         type="text"
                         name="full_name"
                         value={profileData.full_name}
                         onChange={handleInputChange}
-                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.full_name ? 'border-red-500' : 'border-gray-300'
+                        className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${errors.full_name ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-slate-600'
                           }`}
                         placeholder="Enter your full name"
                       />
                     ) : (
-                      <p className="text-gray-900 py-2">{profileData.full_name || 'Not provided'}</p>
+                      <p className="text-gray-900 dark:text-white py-2">{profileData.full_name || 'Not provided'}</p>
                     )}
-                    {errors.full_name && <p className="text-red-500 text-sm mt-1">{errors.full_name}</p>}
+                    {errors.full_name && <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.full_name}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <p className="text-gray-900 py-2">{profileData.email}</p>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Email Address</label>
+                    <p className="text-gray-900 dark:text-white py-2">{profileData.email}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Phone Number</label>
                     {editing ? (
                       <input
                         type="tel"
                         name="phone"
                         value={profileData.phone}
                         onChange={handleInputChange}
-                        className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${errors.phone ? 'border-red-500' : 'border-gray-300'
+                        className={`w-full px-4 py-2 border rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors ${errors.phone ? 'border-red-500 dark:border-red-400' : 'border-gray-300 dark:border-slate-600'
                           }`}
                         placeholder="Enter your phone number"
                       />
                     ) : (
-                      <p className="text-gray-900 py-2">{profileData.phone || 'Not provided'}</p>
+                      <p className="text-gray-900 dark:text-white py-2">{profileData.phone || 'Not provided'}</p>
                     )}
-                    {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                    {errors.phone && <p className="text-red-500 dark:text-red-400 text-sm mt-1">{errors.phone}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Date of Birth</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Date of Birth</label>
                     {editing ? (
                       <input
                         type="date"
                         name="date_of_birth"
                         value={profileData.date_of_birth}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                       />
                     ) : (
-                      <p className="text-gray-900 py-2">
+                      <p className="text-gray-900 dark:text-white py-2">
                         {profileData.date_of_birth ? formatDate(profileData.date_of_birth) : 'Not provided'}
                       </p>
                     )}
@@ -788,12 +609,12 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                   {editing && (
                     <>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Gender</label>
                         <select
                           name="gender"
                           value={profileData.gender}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                         >
                           <option value="">Select Gender</option>
                           <option value="male">Male</option>
@@ -804,38 +625,38 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Years of Experience</label>
                         <input
                           type="number"
                           name="years_of_experience"
                           value={profileData.years_of_experience}
                           onChange={handleInputChange}
                           min="0"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="Years of yoga experience"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Location</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Location</label>
                         <input
                           type="text"
                           name="location"
                           value={profileData.location}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="Your location"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Nationality</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Nationality</label>
                         <input
                           type="text"
                           name="nationality"
                           value={profileData.nationality}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="Your nationality"
                         />
                       </div>
@@ -844,30 +665,30 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                 </div>
 
                 <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Bio</label>
                   {editing ? (
                     <textarea
                       name="bio"
                       rows={4}
                       value={profileData.bio}
                       onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors resize-none"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors resize-none"
                       placeholder="Tell us about yourself..."
                     />
                   ) : (
-                    <p className="text-gray-900 py-2">{profileData.bio || 'No bio provided'}</p>
+                    <p className="text-gray-900 dark:text-white py-2">{profileData.bio || 'No bio provided'}</p>
                   )}
                 </div>
 
                 {/* ✅ Display specialties safely */}
                 {!editing && profileData.specialties.length > 0 && (
                   <div className="mt-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Specialties</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Specialties</label>
                     <div className="flex flex-wrap gap-2">
                       {profileData.specialties.map((specialty, index) => (
                         <span
                           key={index}
-                          className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium"
+                          className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 px-3 py-1 rounded-full text-sm font-medium"
                         >
                           {specialty}
                         </span>
@@ -876,8 +697,8 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                   </div>
                 )}
 
-                <div className="pt-6 border-t border-gray-200 mt-6">
-                  <div className="flex items-center text-sm text-gray-600">
+                <div className="pt-6 border-t border-gray-200 dark:border-slate-600 mt-6">
+                  <div className="flex items-center text-sm text-gray-600 dark:text-slate-400">
                     <Calendar className="w-4 h-4 mr-2" />
                     Member since {formatDate(user.created_at)}
                   </div>
@@ -888,26 +709,26 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
             {/* Quick Stats Sidebar */}
             <div className="space-y-6">
               {/* Stats Card */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Stats</h3>
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Stats</h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Total Bookings</span>
-                    <span className="font-semibold text-blue-600">{userBookings.length}</span>
+                    <span className="text-gray-600 dark:text-slate-300">Total Bookings</span>
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">{userBookings.length}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Queries Sent</span>
-                    <span className="font-semibold text-green-600">{userQueries.length}</span>
+                    <span className="text-gray-600 dark:text-slate-300">Queries Sent</span>
+                    <span className="font-semibold text-green-600 dark:text-emerald-400">{userQueries.length}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Experience</span>
+                    <span className="text-gray-600 dark:text-slate-300">Experience</span>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getExperienceColor(profileData.years_of_experience)}`}>
                       {profileData.years_of_experience} {profileData.years_of_experience === 1 ? 'Year' : 'Years'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Profile Status</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${profileData.profile_completed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                    <span className="text-gray-600 dark:text-slate-300">Profile Status</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${profileData.profile_completed ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'}`}>
                       {profileData.profile_completed ? 'Complete' : 'Incomplete'}
                     </span>
                   </div>
@@ -915,20 +736,20 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
               </div>
 
               {/* Recent Activity */}
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Activity</h3>
                 <div className="space-y-3">
                   {userBookings.slice(0, 3).map((booking, index) => (
                     <div key={index} className="flex items-center space-x-3 text-sm">
                       <div className={`w-2 h-2 rounded-full ${getStatusColor(booking.status).replace('text-', 'bg-').replace('100', '500')}`}></div>
                       <div className="flex-1">
-                        <p className="font-medium">{booking.class_name}</p>
-                        <p className="text-gray-500">{formatDate(booking.class_date)}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{booking.class_name}</p>
+                        <p className="text-gray-500 dark:text-slate-400">{formatDate(booking.class_date)}</p>
                       </div>
                     </div>
                   ))}
                   {userBookings.length === 0 && (
-                    <p className="text-gray-500 text-sm">No recent activity</p>
+                    <p className="text-gray-500 dark:text-slate-400 text-sm">No recent activity</p>
                   )}
                 </div>
               </div>
@@ -936,14 +757,13 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
           </div>
         )}
 
-        {/* Rest of the tabs remain the same - Bookings and Queries */}
         {/* Bookings Tab */}
         {activeTab === 'bookings' && (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-600">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">My Bookings</h2>
-                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">My Bookings</h2>
+                <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
                   {userBookings.length} Total
                 </span>
               </div>
@@ -955,25 +775,25 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
               </div>
             ) : userBookings.length === 0 ? (
               <div className="text-center py-12">
-                <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No bookings yet</h3>
-                <p className="text-gray-600 mb-6">Start your yoga journey by booking your first class!</p>
+                <Calendar className="w-12 h-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No bookings yet</h3>
+                <p className="text-gray-600 dark:text-slate-300 mb-6">Start your yoga journey by booking your first class!</p>
                 <Button onClick={() => navigate('/schedule')}>Browse Classes</Button>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-slate-600">
                 {userBookings.map((booking, index) => (
-                  <div key={index} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div key={index} className="p-6 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{booking.class_name}</h3>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{booking.class_name}</h3>
                           <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center ${getStatusColor(booking.status)}`}>
                             {getStatusIcon(booking.status)}
                             <span className="ml-1">{booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}</span>
                           </span>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 dark:text-slate-300">
                           <div className="flex items-center">
                             <Calendar className="w-4 h-4 mr-2" />
                             {formatDate(booking.class_date)}
@@ -988,8 +808,8 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                           </div>
                         </div>
                         {booking.special_requests && (
-                          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                            <p className="text-sm text-blue-800">
+                          <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <p className="text-sm text-blue-800 dark:text-blue-400">
                               <FileText className="w-4 h-4 mr-1 inline" />
                               <strong>Special Requests:</strong> {booking.special_requests}
                             </p>
@@ -1004,18 +824,17 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
           </div>
         )}
 
-        {/* ✅ Queries Tab*/}
-        {/* ✅ Clean Queries Tab - Remove debug buttons */}
+        {/* Queries Tab */}
         {activeTab === 'queries' && (
-          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div className="p-6 border-b border-gray-200">
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-600">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-gray-900">My Messages</h2>
-                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-white">My Messages</h2>
+                <span className="bg-green-100 text-green-800 dark:bg-emerald-900/20 dark:text-emerald-400 px-3 py-1 rounded-full text-sm font-medium">
                   {userQueries.length} Total
                 </span>
               </div>
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-2">
                 Messages sent from: <span className="font-mono">{user.email}</span>
               </p>
             </div>
@@ -1026,10 +845,10 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
               </div>
             ) : userQueries.length === 0 ? (
               <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No messages found</h3>
-                <p className="text-gray-600 mb-6">
-                  No contact messages were sent from <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{user.email}</span>
+                <FileText className="w-12 h-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No messages found</h3>
+                <p className="text-gray-600 dark:text-slate-300 mb-6">
+                  You haven't sent any contact messages yet.
                 </p>
                 <div className="space-x-3">
                   <Button onClick={() => navigate('/contact')}>
@@ -1038,22 +857,22 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                 </div>
               </div>
             ) : (
-              <div className="divide-y divide-gray-200">
+              <div className="divide-y divide-gray-200 dark:divide-slate-600">
                 {userQueries.map((message, index) => (
-                  <div key={index} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div key={message.id || index} className="p-6 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                     <div className="flex items-start justify-between mb-3">
-                      <h3 className="text-lg font-semibold text-gray-900">{message.subject}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{message.subject}</h3>
                       <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(message.status)}`}>
                         {message.status.charAt(0).toUpperCase() + message.status.slice(1)}
                       </span>
                     </div>
-                    <p className="text-gray-700 mb-3">{message.message}</p>
-                    <div className="flex items-center justify-between text-sm text-gray-500">
+                    <p className="text-gray-700 dark:text-slate-300 mb-3 line-clamp-3">{message.message}</p>
+                    <div className="flex items-center justify-between text-sm text-gray-500 dark:text-slate-400">
                       <div className="flex items-center">
                         <Calendar className="w-4 h-4 mr-1" />
                         Sent on {formatDate(message.created_at)}
                       </div>
-                      <div className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                      <div className="text-xs font-mono bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">
                         From: {message.email}
                       </div>
                     </div>
@@ -1064,20 +883,19 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
           </div>
         )}
 
-
-        {/* ✅ Updated Settings Tab with actual schema fields */}
+        {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Account Settings</h2>
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Account Settings</h2>
               <div className="space-y-6">
 
                 {/* Emergency Contact */}
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h3>
+                <div className="border-b border-gray-200 dark:border-slate-600 pb-6">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Emergency Contact</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Name</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Emergency Contact Name</label>
                       {editing ? (
                         <input
                           type="text"
@@ -1088,15 +906,15 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                               emergency_contact: { ...prev.emergency_contact, name: e.target.value }
                             }))
                           }}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="Emergency contact name"
                         />
                       ) : (
-                        <p className="text-gray-900 py-2">{renderJsonField(profileData.emergency_contact, 'name')}</p>
+                        <p className="text-gray-900 dark:text-white py-2">{renderJsonField(profileData.emergency_contact, 'name')}</p>
                       )}
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact Phone</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Emergency Contact Phone</label>
                       {editing ? (
                         <input
                           type="tel"
@@ -1107,23 +925,23 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                               emergency_contact: { ...prev.emergency_contact, phone: e.target.value }
                             }))
                           }}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="Emergency contact phone"
                         />
                       ) : (
-                        <p className="text-gray-900 py-2">{renderJsonField(profileData.emergency_contact, 'phone')}</p>
+                        <p className="text-gray-900 dark:text-white py-2">{renderJsonField(profileData.emergency_contact, 'phone')}</p>
                       )}
                     </div>
                   </div>
                 </div>
 
                 {/* Social Media Links */}
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Social Media & Online Presence</h3>
+                <div className="border-b border-gray-200 dark:border-slate-600 pb-6">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Social Media & Online Presence</h3>
                   {editing ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                           <Globe className="w-4 h-4 inline mr-1" />
                           Website URL
                         </label>
@@ -1132,12 +950,12 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                           name="website_url"
                           value={profileData.website_url}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="https://your-website.com"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                           <Instagram className="w-4 h-4 inline mr-1" />
                           Instagram Handle
                         </label>
@@ -1146,12 +964,12 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                           name="instagram_handle"
                           value={profileData.instagram_handle}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="@your_handle"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                           <Facebook className="w-4 h-4 inline mr-1" />
                           Facebook Profile
                         </label>
@@ -1160,12 +978,12 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                           name="facebook_profile"
                           value={profileData.facebook_profile}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="https://facebook.com/your-profile"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                           <Youtube className="w-4 h-4 inline mr-1" />
                           YouTube Channel
                         </label>
@@ -1174,7 +992,7 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                           name="youtube_channel"
                           value={profileData.youtube_channel}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                           placeholder="https://youtube.com/your-channel"
                         />
                       </div>
@@ -1183,16 +1001,16 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {profileData.website_url && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Website</label>
-                          <a href={profileData.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Website</label>
+                          <a href={profileData.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
                             {profileData.website_url}
                           </a>
                         </div>
                       )}
                       {profileData.instagram_handle && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Instagram</label>
-                          <p className="text-gray-900">{profileData.instagram_handle}</p>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Instagram</label>
+                          <p className="text-gray-900 dark:text-white">{profileData.instagram_handle}</p>
                         </div>
                       )}
                     </div>
@@ -1200,11 +1018,11 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                 </div>
 
                 {/* Specialties */}
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Yoga Specialties</h3>
+                <div className="border-b border-gray-200 dark:border-slate-600 pb-6">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Yoga Specialties</h3>
                   {editing ? (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Select Your Specialties</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Select Your Specialties</label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {['Hatha Yoga', 'Vinyasa', 'Ashtanga', 'Yin Yoga', 'Hot Yoga', 'Meditation', 'Prenatal Yoga', 'Restorative Yoga'].map((specialty) => (
                           <label key={specialty} className="flex items-center space-x-2 cursor-pointer">
@@ -1225,16 +1043,16 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                                   }))
                                 }
                               }}
-                              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="rounded border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 focus:ring-blue-500 dark:focus:ring-blue-400"
                             />
-                            <span className="text-sm text-gray-700">{specialty}</span>
+                            <span className="text-sm text-gray-700 dark:text-slate-300">{specialty}</span>
                           </label>
                         ))}
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <div className="text-gray-900 py-2">
+                      <div className="text-gray-900 dark:text-white py-2">
                         {renderArray(profileData.specialties, 'No specialties selected')}
                       </div>
                     </div>
@@ -1242,17 +1060,17 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                 </div>
 
                 {/* Privacy Settings */}
-                <div className="border-b border-gray-200 pb-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Privacy Settings</h3>
+                <div className="border-b border-gray-200 dark:border-slate-600 pb-6">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Privacy Settings</h3>
                   {editing && (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Profile Visibility</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Profile Visibility</label>
                         <select
                           name="profile_visibility"
                           value={profileData.profile_visibility}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                         >
                           <option value="public">Public</option>
                           <option value="private">Private</option>
@@ -1260,12 +1078,12 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Preferred Contact Method</label>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Preferred Contact Method</label>
                         <select
                           name="preferred_contact_method"
                           value={profileData.preferred_contact_method}
                           onChange={handleInputChange}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+                          className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors"
                         >
                           <option value="email">Email</option>
                           <option value="phone">Phone</option>
@@ -1277,15 +1095,15 @@ FOR SELECT USING (email = auth.jwt() ->> 'email');`)
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Danger Zone</h3>
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Danger Zone</h3>
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
                     <div className="flex items-center">
-                      <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
+                      <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mr-3" />
                       <div className="flex-1">
-                        <h4 className="text-red-900 font-medium">Delete Account</h4>
-                        <p className="text-red-700 text-sm">Once you delete your account, there is no going back. Please be certain.</p>
+                        <h4 className="text-red-900 dark:text-red-400 font-medium">Delete Account</h4>
+                        <p className="text-red-700 dark:text-red-400 text-sm">Once you delete your account, there is no going back. Please be certain.</p>
                       </div>
-                      <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
+                      <Button variant="outline" className="border-red-300 dark:border-red-600 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30">
                         Delete Account
                       </Button>
                     </div>

@@ -52,7 +52,7 @@ export function RatingModule({
             className={`w-5 h-5 ${
               isFilled || isHovered
                 ? 'text-yellow-400 fill-current'
-                : 'text-gray-300'
+                : 'text-gray-400 dark:text-slate-500'
             }`}
           />
         </button>
@@ -63,8 +63,8 @@ export function RatingModule({
   }
 
   return (
-    <div className={`bg-white rounded-xl shadow-lg p-6 ${className}`}>
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Rate this Article</h3>
+    <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-gray-200 dark:border-slate-600 p-6 ${className}`}>
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Rate this Article</h3>
       
       {/* Average Rating Display */}
       <div className="mb-6">
@@ -72,11 +72,11 @@ export function RatingModule({
           <div className="flex space-x-1">
             {renderStars(averageRating)}
           </div>
-          <span className="text-lg font-semibold text-gray-900">
+          <span className="text-lg font-semibold text-gray-900 dark:text-white">
             {averageRating > 0 ? averageRating.toFixed(1) : 'No ratings yet'}
           </span>
         </div>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-slate-300">
           {totalRatings === 0 
             ? 'Be the first to rate this article!'
             : `Based on ${totalRatings} rating${totalRatings !== 1 ? 's' : ''}`
@@ -85,8 +85,8 @@ export function RatingModule({
       </div>
 
       {/* User Rating Interface */}
-      <div className="border-t border-gray-200 pt-6">
-        <p className="text-sm font-medium text-gray-700 mb-3">
+      <div className="border-t border-gray-200 dark:border-slate-600 pt-6">
+        <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
           {userRating ? 'Your rating:' : 'Rate this article:'}
         </p>
         
@@ -95,12 +95,12 @@ export function RatingModule({
         </div>
         
         {userRating && (
-          <p className="text-sm text-green-600 mb-2">
+          <p className="text-sm text-green-600 dark:text-green-400 mb-2">
             Thank you for rating this article!
           </p>
         )}
         
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-gray-500 dark:text-slate-400">
           Your rating helps other readers discover quality content.
         </p>
       </div>

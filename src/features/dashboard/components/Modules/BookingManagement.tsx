@@ -15,6 +15,19 @@ import { Button } from '../../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../../shared/lib/supabase'
 
+interface ClassPackage {
+  id: string
+  name: string
+  description?: string
+  price?: number
+  class_count?: number
+  validity_days?: number
+  type?: string
+  duration?: string
+  course_type?: string
+  is_archived?: boolean
+}
+
 interface Booking {
   id: string
   user_id: string
@@ -33,12 +46,21 @@ interface Booking {
   status: string
   created_at: string
   updated_at: string
+  timezone?: string
+  goals?: string
+  preferred_days?: string[]
+  preferred_times?: string[]
+  package_type?: string
+  booking_notes?: string
+  class_packages?: ClassPackage | null // This will contain the joined package data
 }
 
 export function BookingManagement() {
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [allPackages, setAllPackages] = useState<ClassPackage[]>([]) // For the edit dropdown
   const [loading, setLoading] = useState(true)
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
+  const [selectedPackage, setSelectedPackage] = useState<ClassPackage | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -50,6 +72,7 @@ export function BookingManagement() {
 
   useEffect(() => {
     fetchBookings()
+    fetchAllPackages() // Still need this for the edit dropdown
   }, [])
 
   const fetchBookings = async () => {
@@ -57,7 +80,10 @@ export function BookingManagement() {
       setLoading(true)
       const { data, error } = await supabase
         .from('bookings')
-        .select('*')
+        .select(`
+          *,
+          class_packages(id, name, description, price, class_count, validity_days, type, duration, course_type)
+        `)
         .order('created_at', { ascending: false })
 
       if (error) throw error
@@ -68,6 +94,45 @@ export function BookingManagement() {
       setLoading(false)
     }
   }
+
+  // Still need to fetch all packages for the edit dropdown
+  const fetchAllPackages = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('class_packages')
+        .select('id, name, description, price, class_count, validity_days, type, duration, course_type, is_archived')
+        .eq('is_archived', false)
+        .eq('is_active', true)
+
+      if (error) throw error
+      setAllPackages(data || [])
+    } catch (error) {
+      console.error('Error fetching packages:', error)
+    }
+  }
+
+  // Helper function to get package name - now much simpler
+  const getPackageName = (booking: Booking): string => {
+    if (!booking.class_packages) return 'Not provided'
+    return booking.class_packages.name
+  }
+
+  // Helper function to handle package click
+  const handlePackageClick = (booking: Booking) => {
+    if (booking.class_packages) {
+      setSelectedPackage(booking.class_packages)
+    }
+  }
+
+  // Helper function to format currency
+  const formatCurrency = (amount: number | undefined): string => {
+    if (!amount) return 'N/A'
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR'
+    }).format(amount)
+  }
+
 
   const handleViewBooking = (booking: Booking) => {
     setSelectedBooking(booking)
@@ -85,6 +150,7 @@ export function BookingManagement() {
       class_time: booking.class_time,
       status: booking.status,
       special_requests: booking.special_requests,
+      package_type: booking.package_type,
     })
   }
 
@@ -144,15 +210,26 @@ export function BookingManagement() {
 
       if (error) throw error
 
-      // Update local state
-      const updatedBookings = bookings.map(booking =>
-        booking.id === selectedBooking.id
-          ? { ...booking, ...updatedBooking }
-          : booking
-      )
+      // If package was updated, we need to refresh the booking data to get the new joined package info
+      if (updatedBooking.package_type && updatedBooking.package_type !== selectedBooking.package_type) {
+        await fetchBookings()
+        // Find the updated booking from the fresh data
+        const refreshedBooking = bookings.find(b => b.id === selectedBooking.id)
+        if (refreshedBooking) {
+          setSelectedBooking(refreshedBooking)
+        }
+      } else {
+        // Update local state for other fields
+        const updatedBookings = bookings.map(booking =>
+          booking.id === selectedBooking.id
+            ? { ...booking, ...updatedBooking }
+            : booking
+        )
 
-      setBookings(updatedBookings)
-      setSelectedBooking({ ...selectedBooking, ...updatedBooking })
+        setBookings(updatedBookings)
+        setSelectedBooking({ ...selectedBooking, ...updatedBooking })
+      }
+
       setIsEditing(false)
       setUpdatedBooking({})
 
@@ -549,6 +626,24 @@ export function BookingManagement() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Package
+                    </label>
+                    <select
+                      value={updatedBooking.package_type || ''}
+                      onChange={(e) => setUpdatedBooking({ ...updatedBooking, package_type: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Select a package</option>
+                      {allPackages.map((pkg) => (
+                        <option key={pkg.id} value={pkg.id}>
+                          {pkg.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Special Requests
                     </label>
                     <textarea
@@ -649,6 +744,36 @@ export function BookingManagement() {
                         <p className="text-sm text-gray-500">Booking Date</p>
                         <p className="font-medium">{formatDate(selectedBooking.created_at)}</p>
                       </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Time Zone</p>
+                        <p className="font-medium">{selectedBooking.timezone || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Goals</p>
+                        <p className="font-medium">{selectedBooking.goals || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Preferred Days</p>
+                        <p className="font-medium">{selectedBooking.preferred_days?.join(', ') || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Preferred Times</p>
+                        <p className="font-medium">{selectedBooking.preferred_times?.join(', ') || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Package</p>
+                        <button
+                          onClick={() => handlePackageClick(selectedBooking)}
+                          className="font-medium text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                          disabled={!selectedBooking.class_packages}
+                        >
+                          {getPackageName(selectedBooking)}
+                        </button>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">Health Conditions / Notes</p>
+                        <p className="font-medium">{selectedBooking.booking_notes || 'None'}</p>
+                      </div>
                     </div>
                   </div>
 
@@ -737,6 +862,94 @@ export function BookingManagement() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Package Details Modal */}
+      {selectedPackage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold text-gray-900">Package Details</h3>
+                <button
+                  onClick={() => setSelectedPackage(null)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-xl font-bold text-gray-900 mb-2">{selectedPackage.name}</h4>
+                  {selectedPackage.description && (
+                    <p className="text-gray-600 text-sm">{selectedPackage.description}</p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-blue-50 p-3 rounded-lg">
+                    <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Price</p>
+                    <p className="text-lg font-bold text-blue-900">{formatCurrency(selectedPackage.price)}</p>
+                  </div>
+
+                  <div className="bg-green-50 p-3 rounded-lg">
+                    <p className="text-xs text-green-600 font-medium uppercase tracking-wide">Classes</p>
+                    <p className="text-lg font-bold text-green-900">
+                      {selectedPackage.class_count ? `${selectedPackage.class_count} classes` : 'N/A'}
+                    </p>
+                  </div>
+
+                  <div className="bg-orange-50 p-3 rounded-lg">
+                    <p className="text-xs text-orange-600 font-medium uppercase tracking-wide">Validity</p>
+                    <p className="text-lg font-bold text-orange-900">
+                      {selectedPackage.validity_days ? `${selectedPackage.validity_days} days` : 'N/A'}
+                    </p>
+                  </div>
+
+                  <div className="bg-purple-50 p-3 rounded-lg">
+                    <p className="text-xs text-purple-600 font-medium uppercase tracking-wide">Duration</p>
+                    <p className="text-lg font-bold text-purple-900">
+                      {selectedPackage.duration || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Package Type</p>
+                    <p className="text-gray-900 capitalize">{selectedPackage.type || 'Not specified'}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">Course Type</p>
+                    <p className="text-gray-900 capitalize">{selectedPackage.course_type || 'Not specified'}</p>
+                  </div>
+                </div>
+
+                {selectedPackage.class_count && selectedPackage.price && (
+                  <div className="bg-gray-50 p-3 rounded-lg">
+                    <p className="text-xs text-gray-600 font-medium uppercase tracking-wide">Price per Class</p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {formatCurrency(selectedPackage.price / selectedPackage.class_count)}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setSelectedPackage(null)}
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         </div>

@@ -1,0 +1,30 @@
+name: schedule-create-zoom
+
+on:
+  schedule:
+    - cron: '*/5 * * * *' # every 5 minutes
+
+jobs:
+  run-scheduler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install deps
+        run: |
+          cd tools/scheduler || exit 0
+          npm ci || true
+      - name: Run scheduler
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EDGE_FUNCTION_URL: ${{ secrets.EDGE_FUNCTION_URL }}
+          HOURS_BEFORE: '12'
+          WINDOW_MINUTES: '5'
+          SCHEDULER_SECRET_HEADER: ${{ secrets.SCHEDULER_SECRET_HEADER || '' }}
+          SCHEDULER_SECRET_TOKEN: ${{ secrets.SCHEDULER_SECRET_TOKEN || '' }}
+        run: |
+          node tools/scheduler/scheduler.js

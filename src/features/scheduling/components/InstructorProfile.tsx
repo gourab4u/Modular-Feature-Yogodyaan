@@ -97,7 +97,10 @@ function InstructorProfile() {
             if (scheduleError) {
                 console.error('Error fetching schedules:', scheduleError)
             } else {
-                setSchedules(scheduleData || [])
+                setSchedules((scheduleData || []).map((s: any) => ({
+                    ...s,
+                    class_type: Array.isArray(s.class_type) ? s.class_type[0] : s.class_type
+                })))
             }
 
         } catch (err: any) {
@@ -127,19 +130,19 @@ function InstructorProfile() {
     const getDifficultyColor = (level: string) => {
         switch (level?.toLowerCase()) {
             case 'beginner':
-                return 'bg-green-100 text-green-800'
+                return 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
             case 'intermediate':
-                return 'bg-yellow-100 text-yellow-800'
+                return 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'
             case 'advanced':
-                return 'bg-red-100 text-red-800'
+                return 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
             default:
-                return 'bg-gray-100 text-gray-800'
+                return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
         }
     }
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                 <LoadingSpinner size="lg" />
             </div>
         )
@@ -147,10 +150,10 @@ function InstructorProfile() {
 
     if (error || !instructor) {
         return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                 <div className="text-center">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Instructor Not Found</h1>
-                    <p className="text-gray-600 mb-6">{error || 'The instructor profile you are looking for does not exist.'}</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Instructor Not Found</h1>
+                    <p className="text-gray-600 dark:text-gray-300 mb-6">{error || 'The instructor profile you are looking for does not exist.'}</p>
                     <Button onClick={() => window.history.back()}>
                         Go Back
                     </Button>
@@ -160,10 +163,10 @@ function InstructorProfile() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header Section */}
-                <div className="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden mb-8">
                     <div className="p-8">
                         <div className="flex flex-col md:flex-row items-start md:items-center space-y-4 md:space-y-0 md:space-x-6">
                             {/* Avatar */}
@@ -186,34 +189,34 @@ function InstructorProfile() {
 
                             {/* Basic Info */}
                             <div className="flex-grow">
-                                <h1 className="text-3xl font-bold text-gray-900 mb-2">{instructor.full_name}</h1>
+                                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{instructor.full_name}</h1>
 
                                 {instructor.certification && (
-                                    <div className="flex items-center text-blue-600 mb-2">
+                                    <div className="flex items-center text-blue-600 dark:text-blue-400 mb-2">
                                         <Award className="w-5 h-5 mr-2" />
                                         <span className="font-medium">{instructor.certification}</span>
                                     </div>
                                 )}
 
                                 {instructor.experience_years && (
-                                    <div className="flex items-center text-gray-600 mb-4">
+                                    <div className="flex items-center text-gray-600 dark:text-gray-300 mb-4">
                                         <Star className="w-5 h-5 mr-2" />
                                         <span>{instructor.experience_years} years of experience</span>
                                     </div>
                                 )}
 
                                 {/* Contact Info */}
-                                <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                                <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-300">
                                     <div className="flex items-center">
                                         <Mail className="w-4 h-4 mr-1" />
-                                        <a href={`mailto:${instructor.email}`} className="hover:text-blue-600">
+                                        <a href={`mailto:${instructor.email}`} className="hover:text-blue-600 dark:hover:text-blue-400">
                                             {instructor.email}
                                         </a>
                                     </div>
                                     {instructor.phone && (
                                         <div className="flex items-center">
                                             <Phone className="w-4 h-4 mr-1" />
-                                            <a href={`tel:${instructor.phone}`} className="hover:text-blue-600">
+                                            <a href={`tel:${instructor.phone}`} className="hover:text-blue-600 dark:hover:text-blue-400">
                                                 {instructor.phone}
                                             </a>
                                         </div>
@@ -229,21 +232,21 @@ function InstructorProfile() {
                     <div className="lg:col-span-2 space-y-8">
                         {/* Bio Section */}
                         {instructor.bio && (
-                            <div className="bg-white rounded-xl shadow-lg p-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-4">About</h2>
-                                <p className="text-gray-700 leading-relaxed">{instructor.bio}</p>
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">About</h2>
+                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{instructor.bio}</p>
                             </div>
                         )}
 
                         {/* Specialties Section */}
                         {instructor.specialties && instructor.specialties.length > 0 && (
-                            <div className="bg-white rounded-xl shadow-lg p-6">
-                                <h2 className="text-xl font-bold text-gray-900 mb-4">Specialties</h2>
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Specialties</h2>
                                 <div className="flex flex-wrap gap-3">
                                     {instructor.specialties.map((specialty, index) => (
                                         <span
                                             key={index}
-                                            className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full text-sm font-medium"
+                                            className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-4 py-2 rounded-full text-sm font-medium"
                                         >
                                             {specialty}
                                         </span>
@@ -253,32 +256,32 @@ function InstructorProfile() {
                         )}
 
                         {/* Class Schedule Section */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h2 className="text-xl font-bold text-gray-900 mb-6">Class Schedule</h2>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Class Schedule</h2>
 
                             {schedules.length === 0 ? (
                                 <div className="text-center py-8">
                                     <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                                    <p className="text-gray-500">No classes scheduled at the moment</p>
+                                    <p className="text-gray-500 dark:text-gray-400">No classes scheduled at the moment</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
                                     {schedules.map((schedule) => (
                                         <div
                                             key={schedule.id}
-                                            className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                                            className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow bg-white dark:bg-gray-700"
                                         >
                                             <div className="flex justify-between items-start mb-3">
                                                 <div>
-                                                    <h3 className="font-semibold text-gray-900">{schedule.class_type.name}</h3>
-                                                    <p className="text-sm text-gray-600">{getDayName(schedule.day_of_week)}</p>
+                                                    <h3 className="font-semibold text-gray-900 dark:text-white">{schedule.class_type.name}</h3>
+                                                    <p className="text-sm text-gray-600 dark:text-gray-300">{getDayName(schedule.day_of_week)}</p>
                                                 </div>
                                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${getDifficultyColor(schedule.class_type.difficulty_level)}`}>
                                                     {schedule.class_type.difficulty_level}
                                                 </span>
                                             </div>
 
-                                            <div className="flex items-center space-x-4 text-sm text-gray-600">
+                                            <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-300">
                                                 <div className="flex items-center">
                                                     <Clock className="w-4 h-4 mr-1" />
                                                     {formatTime(schedule.start_time)} ({schedule.duration_minutes}min)
@@ -288,14 +291,14 @@ function InstructorProfile() {
                                                     Max {schedule.max_participants} students
                                                 </div>
                                                 {schedule.class_type.price && (
-                                                    <div className="font-semibold text-blue-600">
+                                                    <div className="font-semibold text-blue-600 dark:text-blue-400">
                                                         ${schedule.class_type.price}
                                                     </div>
                                                 )}
                                             </div>
 
                                             {schedule.class_type.description && (
-                                                <p className="text-sm text-gray-600 mt-2">{schedule.class_type.description}</p>
+                                                <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{schedule.class_type.description}</p>
                                             )}
                                         </div>
                                     ))}
@@ -306,8 +309,8 @@ function InstructorProfile() {
 
                     {/* Right Column - Quick Actions */}
                     <div className="space-y-6">
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h3>
                             <div className="space-y-3">
                                 <Button className="w-full" onClick={() => window.location.href = '/schedule'}>
                                     <Calendar className="w-4 h-4 mr-2" />
@@ -332,20 +335,20 @@ function InstructorProfile() {
                         </div>
 
                         {/* Stats Card */}
-                        <div className="bg-gradient-to-br from-blue-50 to-green-50 rounded-xl p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">Instructor Stats</h3>
+                        <div className="bg-gradient-to-br from-blue-50 to-green-50 dark:from-blue-900 dark:to-green-900 rounded-xl p-6">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Instructor Stats</h3>
                             <div className="space-y-3">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Experience</span>
-                                    <span className="font-semibold">{instructor.experience_years || 0} years</span>
+                                    <span className="text-gray-600 dark:text-gray-300">Experience</span>
+                                    <span className="font-semibold dark:text-white">{instructor.experience_years || 0} years</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Weekly Classes</span>
-                                    <span className="font-semibold">{schedules.length}</span>
+                                    <span className="text-gray-600 dark:text-gray-300">Weekly Classes</span>
+                                    <span className="font-semibold dark:text-white">{schedules.length}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Specialties</span>
-                                    <span className="font-semibold">{instructor.specialties?.length || 0}</span>
+                                    <span className="text-gray-600 dark:text-gray-300">Specialties</span>
+                                    <span className="font-semibold dark:text-white">{instructor.specialties?.length || 0}</span>
                                 </div>
                             </div>
                         </div>

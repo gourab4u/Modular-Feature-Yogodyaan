@@ -1,6 +1,51 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 
+
 @tailwind base;
+
+/* Logo zoom helper: responsive zoom that doesn't change layout size
+   - default (small screens): scale(3)
+   - mobile (<=639px): scale(3) with small right shift
+   - tablet (640-1023px): scale(2.5) with right shift
+   - large laptop (1024-1279px): scale(3) with right shift
+   - desktop (>=1280px): scale(4) expanding from left so it doesn't overflow viewport
+*/
+.logo-zoom {
+  transform-origin: center;
+  transition: transform 160ms ease;
+  /* default for the smallest screens */
+  transform: scale(3);
+  display: block;
+}
+
+@media (max-width: 639px) {
+  .logo-zoom {
+    transform: scale(3) translateX(8px);
+    will-change: transform;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .logo-zoom {
+    transform: scale(2.5) translateX(10px);
+    will-change: transform;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .logo-zoom {
+    transform: scale(3) translateX(10px);
+    will-change: transform;
+  }
+}
+
+@media (min-width: 1280px) {
+  .logo-zoom {
+    transform-origin: left center;
+    transform: scale(4) translateX(8px);
+  }
+}
+
 @tailwind components;
 @tailwind utilities;
 
@@ -12,6 +57,7 @@
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     line-height: 1.6;
+    @apply bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100;
   }
 
   h1,
@@ -23,6 +69,7 @@
     font-family: 'Poppins', system-ui, -apple-system, sans-serif;
     line-height: 1.2;
   }
+
 }
 
 @layer components {
@@ -31,11 +78,11 @@
   }
 
   .btn-secondary {
-    @apply bg-white hover:bg-gray-50 text-blue-600 font-semibold py-3 px-6 rounded-lg border-2 border-blue-600 transition-all duration-300 transform hover:scale-105;
+    @apply bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 font-semibold py-3 px-6 rounded-lg border-2 border-blue-600 dark:border-blue-400 transition-all duration-300 transform hover:scale-105;
   }
 
   .card {
-    @apply bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1;
+    @apply bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1;
   }
 
   .gradient-bg {
@@ -162,13 +209,25 @@
   background: #f1f1f1;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
 }
 
 /* Quill editor customization */
@@ -463,19 +522,30 @@
 
 /* Modern CSS Variables */
 :root {
-  --primary-blue: #2563eb;
-  --primary-purple: #7c3aed;
-  --primary-green: #059669;
-  --gray-50: #f9fafb;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
-  --gray-600: #4b5563;
-  --gray-700: #374151;
-  --gray-900: #111827;
+  --primary-blue: #3b82f6;
+  --primary-purple: #8b5cf6;
+  --primary-green: #10b981;
+  --accent-amber: #f59e0b;
+
+  /* Light theme colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: #e2e8f0;
+
   --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
   --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+}
+
+/* Dark theme variables */
+.dark {
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --border-color: #334155;
 }
 
 /* Reset and Base Styles */
@@ -966,6 +1036,13 @@ body {
     font-size: 2rem;
   }
 
+  .logo-zoom {
+    /* slightly bigger on small screens but shifted right to avoid left-side clipping */
+    transform: scale(1.4) translateX(6px);
+    /* ensure the scaled image can overflow the wrapper without affecting layout */
+    will-change: transform;
+  }
+
   .hero-subtitle {
     font-size: 1rem;
   }
@@ -1054,5 +1131,13 @@ textarea:focus {
   .booking-form {
     box-shadow: none;
     border: 1px solid var(--gray-300);
+  }
+}
+
+/* Ensure logo zoom applies on very small screens (<=451px) - placed at end to override earlier rules */
+@media (max-width: 451px) {
+  .logo-zoom {
+    transform: scale(3) translateX(8px);
+    will-change: transform;
   }
 }

@@ -1,15 +1,37 @@
-import { Building, Calendar, Mail, Phone, Star, Users } from 'lucide-react'
-import { useState } from 'react'
+import { Building, Calendar, ChevronDown, ChevronUp, Clock, Mail, Phone, Search, Star, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../../shared/components/ui/Button'
 import { LoadingSpinner } from '../../../shared/components/ui/LoadingSpinner'
 import { supabase } from '../../../shared/lib/supabase'
+import { COMMON_TIMEZONES, getUserTimezone } from '../../../shared/utils/timezoneUtils'
 import { useAuth } from '../../auth/contexts/AuthContext'
+
+interface ClassPackage {
+    id: string
+    name: string
+    description: string | null
+    class_count: number
+    price: number
+    validity_days: number
+    class_type_restrictions: string[] | null
+    is_active: boolean
+    type: string | null
+    duration: string | null
+    course_type: string | null
+}
 
 export function BookCorporate() {
     const { user } = useAuth()
     const [step, setStep] = useState(1)
     const [loading, setLoading] = useState(false)
     const [errors, setErrors] = useState<Record<string, string>>({})
+    const [bookingId, setBookingId] = useState<string>('')
+    const [classPackages, setClassPackages] = useState<ClassPackage[]>([])
+    const [loadingPackages, setLoadingPackages] = useState(true)
+    const [packageSearch, setPackageSearch] = useState('')
+    const [selectedPackage, setSelectedPackage] = useState<ClassPackage | null>(null)
+    const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+    const [courseTypeFilter, setCourseTypeFilter] = useState<'all' | 'regular' | 'crash'>('all')
 
     const [formData, setFormData] = useState({
         // Company Info
@@ -22,16 +44,15 @@ export function BookCorporate() {
         phone: '',
 
         // Program Details
-        programType: '',
+        packageType: '',
         participantCount: '',
         frequency: '',
-        duration: '',
         objectives: '',
 
         // Schedule & Logistics
         preferredDays: [] as string[],
         preferredTimes: [] as string[],
-        timezone: '',
+        timezone: getUserTimezone(),
         startDate: '',
         location: '',
 
@@ -42,62 +63,114 @@ export function BookCorporate() {
         previousExperience: ''
     })
 
-    const programTypes = [
-        {
-            id: 'desk-yoga',
-            name: 'Desk Yoga Sessions',
-            description: 'Chair-based yoga perfect for office environments',
-            duration: '15-30 min',
-            minParticipants: 5,
-            maxParticipants: 50,
-            price: 150
-        },
-        {
-            id: 'stress-relief',
-            name: 'Stress Relief Workshop',
-            description: 'Comprehensive stress management through yoga and meditation',
-            duration: '45-60 min',
-            minParticipants: 10,
-            maxParticipants: 30,
-            price: 300
-        },
-        {
-            id: 'team-building',
-            name: 'Team Building Yoga',
-            description: 'Interactive sessions designed to build team cohesion',
-            duration: '60-90 min',
-            minParticipants: 8,
-            maxParticipants: 25,
-            price: 400
-        },
-        {
-            id: 'wellness-series',
-            name: 'Corporate Wellness Series',
-            description: 'Multi-week program for comprehensive employee wellness',
-            duration: '4-12 weeks',
-            minParticipants: 15,
-            maxParticipants: 100,
-            price: 2000
-        },
-        {
-            id: 'lunch-learn',
-            name: 'Lunch & Learn Sessions',
-            description: 'Educational workshops during lunch breaks',
-            duration: '30-45 min',
-            minParticipants: 10,
-            maxParticipants: 40,
-            price: 200
-        },
-        {
-            id: 'executive',
-            name: 'Executive Wellness Program',
-            description: 'Premium wellness program for leadership teams',
-            duration: '60 min',
-            minParticipants: 3,
-            maxParticipants: 15,
-            price: 500
+    // Fetch class packages from database
+    useEffect(() => {
+        fetchClassPackages()
+    }, [])
+
+    const fetchClassPackages = async () => {
+        try {
+            setLoadingPackages(true)
+            const { data, error } = await supabase
+                .from('class_packages')
+                .select('*')
+                .eq('is_active', true)
+                .eq('type', 'Corporate')
+                .order('price')
+
+            if (error) {
+                throw error
+            }
+
+            setClassPackages(data || [])
+        } catch (error) {
+            console.error('Error fetching class packages:', error)
+            setErrors({ classPackages: 'Failed to load class packages. Please refresh the page.' })
+        } finally {
+            setLoadingPackages(false)
         }
-    ]
+    }
+
+    // Filter class packages based on search and course type filter
+    const filteredPackages = classPackages.filter(pkg => {
+        const matchesSearch = pkg.name.toLowerCase().includes(packageSearch.toLowerCase()) ||
+            (pkg.description && pkg.description.toLowerCase().includes(packageSearch.toLowerCase()))
+
+        const matchesCourseType = courseTypeFilter === 'all' || pkg.course_type === courseTypeFilter
+
+        return matchesSearch && matchesCourseType
+    })
+
+    const toggleCardExpansion = (packageId: string) => {
+        const newExpanded = new Set(expandedCards)
+        if (newExpanded.has(packageId)) {
+            newExpanded.delete(packageId)
+        } else {
+            newExpanded.add(packageId)
+        }
+        setExpandedCards(newExpanded)
+    }
+
+    const truncateDescription = (description: string, maxLength: number = 100) => {
+        if (description.length <= maxLength) return description
+        return description.substring(0, maxLength) + '...'
+    }
+
+    // Save form data to localStorage before redirecting to login
+    const saveFormDataAndRedirect = () => {
+        const formDataToSave = {
+            ...formData,
+            selectedPackage,
+            selectedStep: step,
+            courseTypeFilter,
+            expandedCards: Array.from(expandedCards)
+        }
+        localStorage.setItem('pendingCorporateBookingData', JSON.stringify(formDataToSave))
+        window.location.href = '/login?redirect=/book/corporate'
+    }
+
+    // Restore form data after login
+    useEffect(() => {
+        if (user) {
+            const savedData = localStorage.getItem('pendingCorporateBookingData')
+            if (savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData)
+                    setFormData({
+                        companyName: parsedData.companyName || '',
+                        industry: parsedData.industry || '',
+                        companySize: parsedData.companySize || '',
+                        contactName: parsedData.contactName || '',
+                        position: parsedData.position || '',
+                        email: parsedData.email || user.email || '',
+                        phone: parsedData.phone || '',
+                        packageType: parsedData.packageType || '',
+                        participantCount: parsedData.participantCount || '',
+                        frequency: parsedData.frequency || '',
+                        objectives: parsedData.objectives || '',
+                        preferredDays: parsedData.preferredDays || [],
+                        preferredTimes: parsedData.preferredTimes || [],
+                        timezone: parsedData.timezone || '',
+                        startDate: parsedData.startDate || '',
+                        location: parsedData.location || '',
+                        budget: parsedData.budget || '',
+                        specialRequests: parsedData.specialRequests || '',
+                        hasWellnessProgram: parsedData.hasWellnessProgram || '',
+                        previousExperience: parsedData.previousExperience || ''
+                    })
+                    setSelectedPackage(parsedData.selectedPackage || null)
+                    setStep(parsedData.selectedStep || 1)
+                    setCourseTypeFilter(parsedData.courseTypeFilter || 'all')
+                    setExpandedCards(new Set(parsedData.expandedCards || []))
+
+                    // Clear saved data
+                    localStorage.removeItem('pendingCorporateBookingData')
+                } catch (error) {
+                    console.error('Error restoring form data:', error)
+                }
+            }
+        }
+    }, [user])
 
     const industries = [
         'Technology', 'Finance', 'Healthcare', 'Education', 'Manufacturing',
@@ -132,6 +205,14 @@ export function BookCorporate() {
         }
     }
 
+    const handlePackageSelect = (classPackage: ClassPackage) => {
+        setSelectedPackage(classPackage)
+        setFormData(prev => ({ ...prev, packageType: classPackage.id }))
+        if (errors.packageType) {
+            setErrors(prev => ({ ...prev, packageType: '' }))
+        }
+    }
+
     const handleArrayToggle = (field: 'preferredDays' | 'preferredTimes', value: string) => {
         setFormData(prev => ({
             ...prev,
@@ -155,7 +236,7 @@ export function BookCorporate() {
                 if (!formData.phone.trim()) newErrors.phone = 'Phone number is required'
                 break
             case 2:
-                if (!formData.programType) newErrors.programType = 'Please select a program type'
+                if (!formData.packageType) newErrors.packageType = 'Please select a package'
                 if (!formData.participantCount) newErrors.participantCount = 'Number of participants is required'
                 if (!formData.frequency) newErrors.frequency = 'Please select frequency'
                 if (!formData.objectives.trim()) newErrors.objectives = 'Please describe your objectives'
@@ -181,16 +262,25 @@ export function BookCorporate() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
+
+        // Check if user is authenticated
+        if (!user) {
+            // Save form data and redirect to login
+            saveFormDataAndRedirect()
+            return
+        }
+
         if (!validateStep(3)) return
 
         try {
             setLoading(true)
 
-            const selectedProgram = programTypes.find(p => p.id === formData.programType)
+            const durationStr = selectedPackage?.duration
+            const session_duration_minutes = durationStr ? (parseInt(durationStr, 10) || 60) : 60
 
             const bookingData = {
-                user_id: user?.id || null,
-                class_name: `Corporate: ${selectedProgram?.name}`,
+                user_id: user.id,
+                class_name: `Corporate: ${selectedPackage?.name}`,
                 instructor: 'Yogodaan Corporate Team',
                 class_date: formData.startDate,
                 class_time: formData.preferredTimes[0],
@@ -198,7 +288,7 @@ export function BookCorporate() {
                 last_name: formData.contactName.split(' ').slice(1).join(' ') || '',
                 email: formData.email,
                 phone: formData.phone,
-                experience_level: 'corporate',
+                experience_level: 'intermediate', // Default for corporate bookings
                 special_requests: formData.specialRequests,
                 status: 'pending',
                 booking_type: 'corporate',
@@ -211,18 +301,25 @@ export function BookCorporate() {
                 preferred_times: formData.preferredTimes,
                 session_frequency: formData.frequency,
                 goals: formData.objectives,
-                current_wellness_programs: formData.hasWellnessProgram,
+                current_wellness_programs: formData.hasWellnessProgram ? formData.hasWellnessProgram === 'yes' : null,
                 timezone: formData.timezone,
                 emergency_contact: formData.contactName,
-                emergency_phone: formData.phone
+                emergency_phone: formData.phone,
+                class_package_id: selectedPackage?.id || null,
+                price: selectedPackage?.price || 0,
+                session_duration: session_duration_minutes,
+                equipment_needed: false,
+                booking_notes: formData.previousExperience ? `Previous Experience: ${formData.previousExperience}` : null
             }
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('bookings')
                 .insert([bookingData])
+                .select('booking_id')
 
             if (error) throw error
 
+            setBookingId(data?.[0]?.booking_id || 'N/A')
             setStep(4) // Success step
         } catch (error: any) {
             setErrors({ general: error.message || 'An error occurred while submitting your request.' })
@@ -232,12 +329,11 @@ export function BookCorporate() {
     }
 
     const calculateEstimatedPrice = () => {
-        const selectedProgram = programTypes.find(p => p.id === formData.programType)
         const selectedFrequency = frequencies.find(f => f.id === formData.frequency)
 
-        if (!selectedProgram || !selectedFrequency || !formData.participantCount) return 0
+        if (!selectedPackage || !selectedFrequency || !formData.participantCount) return 0
 
-        const basePrice = selectedProgram.price
+        const basePrice = selectedPackage.price
         const participantMultiplier = Math.max(1, parseInt(formData.participantCount) / 20)
         const monthlyPrice = basePrice * participantMultiplier * selectedFrequency.multiplier
 
@@ -245,13 +341,28 @@ export function BookCorporate() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800">
             {/* Header */}
-            <div className="bg-white shadow-sm">
+            <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 shadow-sm">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                     <div className="text-center">
-                        <h1 className="text-3xl font-bold text-gray-900">Corporate Wellness Program</h1>
-                        <p className="text-gray-600 mt-2">Transform your workplace with customized yoga and wellness solutions</p>
+                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white dark:text-white">Corporate Wellness Program</h1>
+                        <p className="text-gray-600 dark:text-white dark:text-slate-300 mt-2">Transform your workplace with customized yoga and wellness solutions</p>
+
+                        {/* Login prompt for unauthenticated users */}
+                        {!user && (
+                            <div className="mt-4 bg-purple-50 dark:bg-purple-900/20 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-4">
+                                <p className="text-purple-800 dark:text-purple-200 text-sm">
+                                    <span className="font-medium">Note:</span> You'll need to log in to complete your booking.
+                                    <button
+                                        onClick={() => window.location.href = '/login'}
+                                        className="ml-2 text-purple-600 dark:text-purple-400 dark:text-purple-400 underline hover:text-purple-800 dark:hover:text-purple-200"
+                                    >
+                                        Log in now
+                                    </button>
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Progress Bar */}
@@ -261,22 +372,22 @@ export function BookCorporate() {
                                 <div key={stepNumber} className="flex items-center">
                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${step >= stepNumber
                                         ? 'bg-purple-600 text-white'
-                                        : 'bg-gray-200 text-gray-600'
+                                        : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-white'
                                         }`}>
                                         {step > stepNumber ? '✓' : stepNumber}
                                     </div>
                                     {stepNumber < 4 && (
-                                        <div className={`w-16 h-1 mx-2 ${step > stepNumber ? 'bg-purple-600' : 'bg-gray-200'
+                                        <div className={`w-16 h-1 mx-2 ${step > stepNumber ? 'bg-purple-600' : 'bg-gray-200 dark:bg-gray-600'
                                             }`} />
                                     )}
                                 </div>
                             ))}
                         </div>
                         <div className="flex justify-center space-x-20 mt-2">
-                            <span className="text-xs text-gray-500">Company Info</span>
-                            <span className="text-xs text-gray-500">Program Details</span>
-                            <span className="text-xs text-gray-500">Schedule</span>
-                            <span className="text-xs text-gray-500">Confirmation</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Company Info</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Program Details</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Schedule</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-300">Confirmation</span>
                         </div>
                     </div>
                 </div>
@@ -289,19 +400,25 @@ export function BookCorporate() {
                     </div>
                 )}
 
+                {errors.classPackages && (
+                    <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p className="text-red-600 text-sm">{errors.classPackages}</p>
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit}>
                     {/* Step 1: Company Information */}
                     {step === 1 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <Building className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Company Information</h2>
-                                <p className="text-gray-600">Tell us about your organization</p>
+                                <Building className="w-12 h-12 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Company Information</h2>
+                                <p className="text-gray-600 dark:text-white">Tell us about your organization</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="md:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Company Name *
                                     </label>
                                     <input
@@ -309,7 +426,7 @@ export function BookCorporate() {
                                         name="companyName"
                                         value={formData.companyName}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.companyName ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 bg-white dark:bg-slate-700 text-gray-900 dark:text-white ${errors.companyName ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Enter your company name"
                                     />
@@ -317,14 +434,14 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Industry *
                                     </label>
                                     <select
                                         name="industry"
                                         value={formData.industry}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.industry ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 bg-white dark:bg-slate-700 text-gray-900 dark:text-white ${errors.industry ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select industry</option>
@@ -336,14 +453,14 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Company Size *
                                     </label>
                                     <select
                                         name="companySize"
                                         value={formData.companySize}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.companySize ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.companySize ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select company size</option>
@@ -355,7 +472,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Contact Person *
                                     </label>
                                     <input
@@ -363,7 +480,7 @@ export function BookCorporate() {
                                         name="contactName"
                                         value={formData.contactName}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.contactName ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.contactName ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Full name"
                                     />
@@ -371,7 +488,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Position/Title *
                                     </label>
                                     <input
@@ -379,7 +496,7 @@ export function BookCorporate() {
                                         name="position"
                                         value={formData.position}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.position ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.position ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Your position/title"
                                     />
@@ -387,7 +504,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Email *
                                     </label>
                                     <input
@@ -395,7 +512,7 @@ export function BookCorporate() {
                                         name="email"
                                         value={formData.email}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.email ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.email ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Email address"
                                     />
@@ -403,7 +520,7 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Phone Number *
                                     </label>
                                     <input
@@ -411,7 +528,7 @@ export function BookCorporate() {
                                         name="phone"
                                         value={formData.phone}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.phone ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.phone ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Phone number"
                                     />
@@ -429,47 +546,184 @@ export function BookCorporate() {
 
                     {/* Step 2: Program Details */}
                     {step === 2 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <Star className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Program Details</h2>
-                                <p className="text-gray-600">Choose the perfect program for your team</p>
+                                <Star className="w-12 h-12 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Program Details</h2>
+                                <p className="text-gray-600 dark:text-white">Choose the perfect program for your team</p>
                             </div>
 
-                            {/* Program Type Selection */}
+                            {/* Package Selection */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
-                                    Program Type *
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
+                                    Available Corporate Programs *
                                 </label>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {programTypes.map((program) => (
-                                        <div
-                                            key={program.id}
-                                            onClick={() => setFormData(prev => ({ ...prev, programType: program.id }))}
-                                            className={`p-6 border-2 rounded-lg cursor-pointer transition-all ${formData.programType === program.id
-                                                ? 'border-purple-500 bg-purple-50'
-                                                : 'border-gray-200 hover:border-gray-300'
-                                                }`}
-                                        >
-                                            <div className="flex justify-between items-start mb-2">
-                                                <h3 className="font-semibold text-gray-900">{program.name}</h3>
-                                                <span className="text-purple-600 font-bold">From ${program.price}</span>
+
+                                {loadingPackages ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 dark:border-purple-400"></div>
+                                        <span className="ml-2 text-gray-600 dark:text-white">Loading programs...</span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        {/* Search Bar and Filter Toggle */}
+                                        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+                                            {/* Search Bar */}
+                                            <div className="relative flex-1">
+                                                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Search programs..."
+                                                    value={packageSearch}
+                                                    onChange={(e) => setPackageSearch(e.target.value)}
+                                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                />
                                             </div>
-                                            <p className="text-gray-600 text-sm mb-3">{program.description}</p>
-                                            <div className="text-xs text-gray-500 space-y-1">
-                                                <div>Duration: {program.duration}</div>
-                                                <div>Participants: {program.minParticipants}-{program.maxParticipants}</div>
+
+                                            {/* Course Type Filter Toggle */}
+                                            <div className="flex bg-gray-100 dark:bg-slate-700 rounded-lg p-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCourseTypeFilter('all')}
+                                                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'all'
+                                                        ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
+                                                        }`}
+                                                >
+                                                    All
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCourseTypeFilter('regular')}
+                                                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'regular'
+                                                        ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
+                                                        }`}
+                                                >
+                                                    Regular
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setCourseTypeFilter('crash')}
+                                                    className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${courseTypeFilter === 'crash'
+                                                        ? 'bg-white dark:bg-slate-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                                        : 'text-gray-600 dark:text-white hover:text-gray-900 dark:text-white'
+                                                        }`}
+                                                >
+                                                    Crash
+                                                </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                                {errors.programType && <p className="text-red-500 text-sm mt-1">{errors.programType}</p>}
+
+                                        {/* Package Cards */}
+                                        <div className="grid gap-4 max-h-96 overflow-y-auto">
+                                            {filteredPackages.length === 0 ? (
+                                                <div className="text-center py-8 text-gray-500 dark:text-gray-300">
+                                                    {packageSearch ? 'No programs found matching your search.' : 'No programs available.'}
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {filteredPackages.map((pkg) => {
+                                                        const isExpanded = expandedCards.has(pkg.id)
+                                                        const isSelected = selectedPackage?.id === pkg.id
+
+                                                        return (
+                                                            <div
+                                                                key={pkg.id}
+                                                                className={`border-2 rounded-lg transition-all duration-200 hover:shadow-md ${isSelected
+                                                                    ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 shadow-md'
+                                                                    : 'border-gray-200 hover:border-purple-300'
+                                                                    }`}
+                                                            >
+                                                                <div
+                                                                    onClick={() => handlePackageSelect(pkg)}
+                                                                    className="p-6 cursor-pointer"
+                                                                >
+                                                                    <div className="flex justify-between items-start mb-3">
+                                                                        <h3 className="font-semibold text-gray-900 dark:text-white text-lg">{pkg.name}</h3>
+                                                                        <span className="text-purple-600 dark:text-purple-400 font-bold text-xl">₹{pkg.price}</span>
+                                                                    </div>
+
+                                                                    {pkg.description && (
+                                                                        <div className="mb-3">
+                                                                            <p className="text-gray-600 dark:text-white text-sm">
+                                                                                {isExpanded ? pkg.description : truncateDescription(pkg.description)}
+                                                                            </p>
+                                                                            {pkg.description.length > 100 && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation()
+                                                                                        toggleCardExpansion(pkg.id)
+                                                                                    }}
+                                                                                    className="text-purple-600 dark:text-purple-400 text-sm font-medium mt-1 flex items-center hover:text-purple-700 dark:text-purple-300"
+                                                                                >
+                                                                                    {isExpanded ? (
+                                                                                        <>Show Less <ChevronUp className="w-3 h-3 ml-1" /></>
+                                                                                    ) : (
+                                                                                        <>Show More <ChevronDown className="w-3 h-3 ml-1" /></>
+                                                                                    )}
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
+                                                                    <div className="flex flex-wrap gap-3 items-center text-sm text-gray-600 dark:text-white">
+                                                                        <span className="flex items-center">
+                                                                            <Users className="w-4 h-4 mr-1" />
+                                                                            {pkg.class_count} {pkg.class_count === 1 ? 'Session' : 'Sessions'}
+                                                                        </span>
+
+                                                                        {pkg.course_type === 'crash' && pkg.duration ? (
+                                                                            <span className="flex items-center">
+                                                                                <Clock className="w-4 h-4 mr-1" />
+                                                                                {pkg.duration}
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="flex items-center">
+                                                                                <Clock className="w-4 h-4 mr-1" />
+                                                                                {pkg.validity_days} Days Validity
+                                                                            </span>
+                                                                        )}
+
+                                                                        <span className={`text-xs px-2 py-1 rounded ${pkg.course_type === 'crash'
+                                                                            ? 'bg-orange-100 text-orange-800'
+                                                                            : 'bg-green-100 text-green-800'
+                                                                            }`}>
+                                                                            {pkg.course_type === 'crash' ? 'Crash Course' : 'Regular Course'}
+                                                                        </span>
+
+                                                                        {pkg.class_type_restrictions && pkg.class_type_restrictions.length > 0 && (
+                                                                            <span className="text-xs bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded">
+                                                                                Specific Classes Only
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {isSelected && (
+                                                                        <div className="mt-3 flex justify-end">
+                                                                            <div className="w-5 h-5 bg-purple-50 dark:bg-purple-900/200 rounded-full flex items-center justify-center">
+                                                                                <div className="w-2 h-2 bg-white dark:bg-slate-700 rounded-full"></div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+
+                                {errors.packageType && <p className="text-red-500 text-sm mt-1">{errors.packageType}</p>}
                             </div>
 
-                            {/* Participant Count */}
+                            {/* Participant Count and Frequency */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Expected Number of Participants *
                                     </label>
                                     <input
@@ -479,7 +733,7 @@ export function BookCorporate() {
                                         onChange={handleInputChange}
                                         min="1"
                                         max="500"
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.participantCount ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.participantCount ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                         placeholder="Number of participants"
                                     />
@@ -487,14 +741,14 @@ export function BookCorporate() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Session Frequency *
                                     </label>
                                     <select
                                         name="frequency"
                                         value={formData.frequency}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.frequency ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.frequency ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select frequency</option>
@@ -508,7 +762,7 @@ export function BookCorporate() {
 
                             {/* Objectives */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Program Objectives *
                                 </label>
                                 <textarea
@@ -516,7 +770,7 @@ export function BookCorporate() {
                                     value={formData.objectives}
                                     onChange={handleInputChange}
                                     rows={4}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.objectives ? 'border-red-300' : 'border-gray-300'
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.objectives ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                         }`}
                                     placeholder="What do you hope to achieve with this program? (e.g., reduce stress, improve team bonding, enhance productivity...)"
                                 />
@@ -525,7 +779,7 @@ export function BookCorporate() {
 
                             {/* Current Wellness Program */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Does your company currently have a wellness program?
                                 </label>
                                 <div className="flex space-x-4">
@@ -556,7 +810,7 @@ export function BookCorporate() {
 
                             {/* Previous Experience */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Previous Yoga/Wellness Experience
                                 </label>
                                 <textarea
@@ -564,7 +818,7 @@ export function BookCorporate() {
                                     value={formData.previousExperience}
                                     onChange={handleInputChange}
                                     rows={3}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                     placeholder="Tell us about any previous yoga or wellness programs your team has participated in..."
                                 />
                             </div>
@@ -582,16 +836,16 @@ export function BookCorporate() {
 
                     {/* Step 3: Schedule & Logistics */}
                     {step === 3 && (
-                        <div className="bg-white rounded-xl shadow-lg p-8">
+                        <div className="bg-white dark:bg-slate-700 dark:bg-slate-800 rounded-xl shadow-lg p-8">
                             <div className="text-center mb-8">
-                                <Calendar className="w-12 h-12 text-purple-600 mx-auto mb-4" />
-                                <h2 className="text-2xl font-bold text-gray-900">Schedule & Logistics</h2>
-                                <p className="text-gray-600">Set up your program schedule</p>
+                                <Calendar className="w-12 h-12 text-purple-600 dark:text-purple-400 mx-auto mb-4" />
+                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Schedule & Logistics</h2>
+                                <p className="text-gray-600 dark:text-white">Set up your program schedule</p>
                             </div>
 
                             {/* Preferred Days */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
                                     Preferred Days *
                                 </label>
                                 <div className="grid grid-cols-5 gap-3">
@@ -601,8 +855,8 @@ export function BookCorporate() {
                                             type="button"
                                             onClick={() => handleArrayToggle('preferredDays', day)}
                                             className={`p-3 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredDays.includes(day)
-                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                                : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                                ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                                                : 'border-gray-200 text-gray-700 dark:text-white hover:border-gray-300 dark:border-slate-600'
                                                 }`}
                                         >
                                             {day.slice(0, 3)}
@@ -614,7 +868,7 @@ export function BookCorporate() {
 
                             {/* Preferred Times */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-4">
                                     Preferred Times *
                                 </label>
                                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
@@ -624,8 +878,8 @@ export function BookCorporate() {
                                             type="button"
                                             onClick={() => handleArrayToggle('preferredTimes', time)}
                                             className={`p-3 text-sm font-medium rounded-lg border-2 transition-all ${formData.preferredTimes.includes(time)
-                                                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                                                : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                                ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                                                : 'border-gray-200 text-gray-700 dark:text-white hover:border-gray-300 dark:border-slate-600'
                                                 }`}
                                         >
                                             {time}
@@ -638,32 +892,28 @@ export function BookCorporate() {
                             {/* Timezone and Start Date */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Timezone *
                                     </label>
                                     <select
                                         name="timezone"
                                         value={formData.timezone}
                                         onChange={handleInputChange}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.timezone ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.timezone ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     >
                                         <option value="">Select timezone</option>
-                                        <option value="UTC-8">Pacific Time (UTC-8)</option>
-                                        <option value="UTC-7">Mountain Time (UTC-7)</option>
-                                        <option value="UTC-6">Central Time (UTC-6)</option>
-                                        <option value="UTC-5">Eastern Time (UTC-5)</option>
-                                        <option value="UTC+0">GMT (UTC+0)</option>
-                                        <option value="UTC+1">Central European Time (UTC+1)</option>
-                                        <option value="UTC+5:30">India Standard Time (UTC+5:30)</option>
-                                        <option value="UTC+8">Singapore Time (UTC+8)</option>
-                                        <option value="UTC+9">Japan Time (UTC+9)</option>
+                                        {COMMON_TIMEZONES.map((tz) => (
+                                            <option key={tz.value} value={tz.value}>
+                                                {tz.label} {tz.offset ? `(${tz.offset})` : ''}
+                                            </option>
+                                        ))}
                                     </select>
                                     {errors.timezone && <p className="text-red-500 text-sm mt-1">{errors.timezone}</p>}
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                         Preferred Start Date *
                                     </label>
                                     <input
@@ -672,7 +922,7 @@ export function BookCorporate() {
                                         value={formData.startDate}
                                         onChange={handleInputChange}
                                         min={new Date().toISOString().split('T')[0]}
-                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.startDate ? 'border-red-300' : 'border-gray-300'
+                                        className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.startDate ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                             }`}
                                     />
                                     {errors.startDate && <p className="text-red-500 text-sm mt-1">{errors.startDate}</p>}
@@ -681,14 +931,14 @@ export function BookCorporate() {
 
                             {/* Location */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Session Location *
                                 </label>
                                 <select
                                     name="location"
                                     value={formData.location}
                                     onChange={handleInputChange}
-                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 ${errors.location ? 'border-red-300' : 'border-gray-300'
+                                    className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 ${errors.location ? 'border-red-300' : 'border-gray-300 dark:border-slate-600'
                                         }`}
                                 >
                                     <option value="">Select location preference</option>
@@ -702,29 +952,29 @@ export function BookCorporate() {
 
                             {/* Budget Range */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Budget Range (Monthly)
                                 </label>
                                 <select
                                     name="budget"
                                     value={formData.budget}
                                     onChange={handleInputChange}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                 >
                                     <option value="">Select budget range</option>
-                                    <option value="under-500">Under $500</option>
-                                    <option value="500-1000">$500 - $1,000</option>
-                                    <option value="1000-2500">$1,000 - $2,500</option>
-                                    <option value="2500-5000">$2,500 - $5,000</option>
-                                    <option value="5000-10000">$5,000 - $10,000</option>
-                                    <option value="over-10000">Over $10,000</option>
+                                    <option value="under-500">Under ₹500</option>
+                                    <option value="500-1000">₹500 - ₹1,000</option>
+                                    <option value="1000-2500">₹1,000 - ₹2,500</option>
+                                    <option value="2500-5000">₹2,500 - ₹5,000</option>
+                                    <option value="5000-10000">₹5,000 - ₹10,000</option>
+                                    <option value="over-10000">Over ₹10,000</option>
                                     <option value="flexible">Flexible/To be discussed</option>
                                 </select>
                             </div>
 
                             {/* Special Requests */}
                             <div className="mb-8">
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-white mb-2">
                                     Special Requirements or Requests
                                 </label>
                                 <textarea
@@ -732,19 +982,27 @@ export function BookCorporate() {
                                     value={formData.specialRequests}
                                     onChange={handleInputChange}
                                     rows={4}
-                                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
                                     placeholder="Any specific requirements, equipment needs, accessibility considerations, or special requests..."
                                 />
                             </div>
 
                             {/* Price Estimate */}
-                            {formData.programType && formData.participantCount && formData.frequency && (
-                                <div className="bg-purple-50 rounded-lg p-6 mb-8">
-                                    <h3 className="font-semibold text-gray-900 mb-4">Estimated Investment</h3>
+                            {selectedPackage && formData.participantCount && formData.frequency && (
+                                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6 mb-8">
+                                    <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Estimated Investment</h3>
                                     <div className="space-y-2 text-sm">
                                         <div className="flex justify-between">
                                             <span>Program:</span>
-                                            <span>{programTypes.find(p => p.id === formData.programType)?.name}</span>
+                                            <span>{selectedPackage.name}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Course Type:</span>
+                                            <span className="capitalize">{selectedPackage.course_type}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Sessions:</span>
+                                            <span>{selectedPackage.class_count}</span>
                                         </div>
                                         <div className="flex justify-between">
                                             <span>Participants:</span>
@@ -754,12 +1012,23 @@ export function BookCorporate() {
                                             <span>Frequency:</span>
                                             <span>{frequencies.find(f => f.id === formData.frequency)?.name}</span>
                                         </div>
+                                        {selectedPackage.course_type === 'crash' && selectedPackage.duration ? (
+                                            <div className="flex justify-between">
+                                                <span>Duration:</span>
+                                                <span>{selectedPackage.duration}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between">
+                                                <span>Validity:</span>
+                                                <span>{selectedPackage.validity_days} Days</span>
+                                            </div>
+                                        )}
                                         <div className="border-t pt-2 mt-2">
                                             <div className="flex justify-between font-semibold text-lg">
                                                 <span>Estimated Monthly Cost:</span>
-                                                <span className="text-purple-600">${calculateEstimatedPrice()}</span>
+                                                <span className="text-purple-600 dark:text-purple-400">₹{calculateEstimatedPrice()}</span>
                                             </div>
-                                            <p className="text-xs text-gray-500 mt-1">
+                                            <p className="text-xs text-gray-500 dark:text-gray-300 mt-1">
                                                 *Final pricing will be customized based on your specific requirements
                                             </p>
                                         </div>
@@ -780,35 +1049,41 @@ export function BookCorporate() {
 
                     {/* Step 4: Success */}
                     {step === 4 && !loading && (
-                        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8 text-center">
                             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
                                 <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             </div>
 
-                            <h2 className="text-3xl font-bold text-gray-900 mb-4">Request Submitted Successfully!</h2>
-                            <p className="text-gray-600 mb-8">
+                            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Request Submitted Successfully!</h2>
+                            <p className="text-gray-600 dark:text-white mb-4">
                                 Thank you for your interest in our Corporate Wellness Program! Our team will review your requirements and get back to you within 1 business day with a customized proposal.
                             </p>
 
-                            <div className="bg-purple-50 rounded-lg p-6 mb-8">
-                                <h3 className="font-semibold text-gray-900 mb-4">What Happens Next?</h3>
-                                <div className="space-y-3 text-sm text-gray-700 text-left">
+                            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 mb-8">
+                                <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Your Request ID</h3>
+                                <p className="text-2xl font-bold text-green-900 dark:text-green-100 mb-1">{bookingId}</p>
+                                <p className="text-sm text-green-700 dark:text-green-300">Please save this ID for your records</p>
+                            </div>
+
+                            <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-6 mb-8">
+                                <h3 className="font-semibold text-gray-900 dark:text-white mb-4">What Happens Next?</h3>
+                                <div className="space-y-3 text-sm text-gray-700 dark:text-white text-left">
                                     <div className="flex items-center">
-                                        <Users className="w-4 h-4 text-purple-600 mr-2" />
+                                        <Users className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
                                         <span>Our corporate wellness specialist will review your requirements</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Mail className="w-4 h-4 text-purple-600 mr-2" />
+                                        <Mail className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
                                         <span>You'll receive a detailed proposal within 1 business day</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Phone className="w-4 h-4 text-purple-600 mr-2" />
+                                        <Phone className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
                                         <span>We'll schedule a consultation call to discuss your program</span>
                                     </div>
                                     <div className="flex items-center">
-                                        <Calendar className="w-4 h-4 text-purple-600 mr-2" />
+                                        <Calendar className="w-4 h-4 text-purple-600 dark:text-purple-400 mr-2" />
                                         <span>Once approved, we'll coordinate the program schedule</span>
                                     </div>
                                 </div>
@@ -832,9 +1107,9 @@ export function BookCorporate() {
                     )}
 
                     {loading && (
-                        <div className="bg-white rounded-xl shadow-lg p-8 text-center">
+                        <div className="bg-white dark:bg-slate-700 rounded-xl shadow-lg p-8 text-center">
                             <LoadingSpinner size="lg" />
-                            <p className="text-gray-600 mt-4">Submitting your corporate wellness request...</p>
+                            <p className="text-gray-600 dark:text-white mt-4">Submitting your corporate wellness request...</p>
                         </div>
                     )}
                 </form>
