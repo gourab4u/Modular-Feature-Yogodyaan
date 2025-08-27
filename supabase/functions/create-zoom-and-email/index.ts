@@ -16,6 +16,9 @@ const ZOOM_ACCOUNT_ID = Deno.env.get("ZOOM_ACCOUNT_ID")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const FROM_EMAIL = Deno.env.get("CLASSES_FROM_EMAIL")!;
 const ADMIN_EMAILS = (Deno.env.get("CLASSES_ADMIN_EMAIL") || "").split(",").map(s => s.trim()).filter(Boolean);
+// optional scheduler auth: header name and expected token
+const SCHEDULER_SECRET_HEADER = Deno.env.get("SCHEDULER_SECRET_HEADER") || null;
+const SCHEDULER_SECRET_TOKEN = Deno.env.get("SCHEDULER_SECRET_TOKEN") || null;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -130,6 +133,14 @@ async function sendResendEmail(to: string | string[], subject: string, html: str
 
 serve(async (req) => {
     try {
+        // If scheduler auth is configured, require the header to match the token
+        if (SCHEDULER_SECRET_HEADER && SCHEDULER_SECRET_TOKEN) {
+            const provided = req.headers.get(SCHEDULER_SECRET_HEADER);
+            if (!provided || provided !== SCHEDULER_SECRET_TOKEN) {
+                console.warn('Unauthorized request: missing or invalid scheduler header');
+                return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
+            }
+        }
         const body = await req.json().catch(() => ({}));
         const classId = body?.classId;
         if (!classId) return new Response("classId required", { status: 400 });
