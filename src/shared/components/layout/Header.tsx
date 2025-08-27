@@ -26,6 +26,11 @@ export function Header() {
     { name: 'Contact', href: '/contact' },
   ];
 
+  const legalNavigation = [
+    { name: 'Privacy Policy', href: '/privacy' },
+    { name: 'Terms of Service', href: '/terms' },
+  ];
+
   const isActive = (path: string) => location.pathname === path;
 
   // Close dropdown when clicking outside
@@ -78,6 +83,21 @@ export function Header() {
                 {item.name}
               </Link>
             ))}
+            {/* Legal Links with separator */}
+            <div className="border-l border-gray-300 dark:border-slate-600 pl-8 flex space-x-6">
+              {legalNavigation.map((item) => (
+                <Link
+                  key={item.name}
+                  to={item.href}
+                  className={`font-medium text-sm transition-colors duration-200 ${isActive(item.href)
+                    ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 pb-1'
+                    : 'text-gray-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400'
+                    }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
           </nav>
 
           {/* User Menu */}
@@ -179,6 +199,23 @@ export function Header() {
                   {item.name}
                 </Link>
               ))}
+              {/* Legal Links - Mobile */}
+              <div className="pt-2 border-t border-gray-200 dark:border-slate-700">
+                <span className="text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2 block">Legal</span>
+                {legalNavigation.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.href}
+                    className={`font-medium text-sm transition-colors duration-200 block py-1 ${isActive(item.href)
+                      ? 'text-blue-600'
+                      : 'text-gray-600 dark:text-slate-400 hover:text-blue-600'
+                      }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
               <div className="pt-4 border-t">
                 {/* Theme Toggle for Mobile */}
                 <div className="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-gray-700 mb-3">
