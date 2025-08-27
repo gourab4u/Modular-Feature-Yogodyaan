@@ -46,7 +46,10 @@ export const useClassAssignmentData = () => {
                 supabase.from('class_packages').select('id, name, description, duration, price, class_count, validity_days, type, course_type, is_active').eq('is_active', true).eq('is_archived', false),
                 supabase.from('roles').select('id, name').in('name', ['instructor', 'yoga_acharya']),
                 supabase.from('class_assignments').select(`
-                    *
+                    *,
+                    assignment_bookings (
+                        booking_id
+                    )
                 `).order('assigned_at', { ascending: false }),
                 supabase.from('class_schedules').select('*').eq('is_active', true).order('day_of_week', { ascending: true }),
                 supabase.from('class_schedules').select(`

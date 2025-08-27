@@ -129,8 +129,14 @@ export const EditAssignmentModal = ({ assignment, isVisible, bookings, onClose, 
                     // For non-package assignments, match by class type, time, and duration
                     query = query
                         .eq('class_type_id', assignment.class_type_id)
-                        .eq('start_time', assignment.start_time)
-                        .eq('end_time', assignment.end_time);
+                        .eq('start_time', assignment.start_time);
+                    // Handle NULL end_time properly
+                    if (assignment.end_time === null) {
+                        query = query.is('end_time', null);
+                    }
+                    else {
+                        query = query.eq('end_time', assignment.end_time);
+                    }
                 }
                 const { data: futureClasses, error: fetchError } = await query;
                 if (fetchError) {

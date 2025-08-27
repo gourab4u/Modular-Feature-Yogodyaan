@@ -58,17 +58,17 @@ export const EditAssignmentModal = ({
                 monthly_assignment_method: (assignment as any).monthly_assignment_method || 'weekly_recurrence',
                 manual_selections: (assignment as any).manual_selections || []
             })
-            
+
             // Determine base payment amount based on payment type and original student count
             const originalStudentCount = bookingIds.length > 0 ? bookingIds.length : 1
             const paymentType = (assignment as any).payment_type || 'per_class'
-            
+
             let baseAmount = assignment.payment_amount || 0
             if (paymentType === 'per_student_per_class') {
                 // If it's per student, the stored amount is the total, so calculate per-student rate
                 baseAmount = originalStudentCount > 0 ? (assignment.payment_amount || 0) / originalStudentCount : (assignment.payment_amount || 0)
             }
-            
+
             setBasePaymentAmount(baseAmount)
             setStudentCount(originalStudentCount)
         }
@@ -79,7 +79,7 @@ export const EditAssignmentModal = ({
     // Calculate payment amount based on current student count and payment type
     const calculateCurrentPaymentAmount = (currentStudentCount: number): number => {
         const paymentType = formData.payment_type || (assignment as any).payment_type || 'per_class'
-        
+
         switch (paymentType) {
             case 'per_student_per_class':
                 // Base amount × current student count
@@ -104,7 +104,7 @@ export const EditAssignmentModal = ({
                 setBasePaymentAmount(value)
             }
         }
-        
+
         setFormData(prev => ({
             ...prev,
             [field]: value
@@ -140,15 +140,15 @@ export const EditAssignmentModal = ({
             const originalBookingIds = assignment.assignment_bookings?.map(ab => ab.booking_id).sort() || []
             const newBookingIds = formData.booking_ids.filter(id => id && id.trim() !== '').sort()
             const bookingsChanged = JSON.stringify(originalBookingIds) !== JSON.stringify(newBookingIds)
-            
+
             // Determine if this is a series assignment (not adhoc)
             const isSeriesAssignment = assignment.schedule_type !== 'adhoc'
-            
+
             // If booking IDs have changed and this is a series assignment, update all future classes
             if (bookingsChanged && isSeriesAssignment) {
                 // Find all future classes in the same series
                 const currentAssignmentDate = assignment.date
-                
+
                 let query = supabase
                     .from('class_assignments')
                     .select('id, date, schedule_type')
@@ -156,7 +156,7 @@ export const EditAssignmentModal = ({
                     .eq('schedule_type', assignment.schedule_type)
                     .gte('date', currentAssignmentDate) // Include current date and future
                     .order('date', { ascending: true })
-                
+
                 // Add additional filters based on assignment type
                 if (assignment.package_id) {
                     // For package-based assignments, match by package
@@ -166,9 +166,15 @@ export const EditAssignmentModal = ({
                     query = query
                         .eq('class_type_id', assignment.class_type_id)
                         .eq('start_time', assignment.start_time)
-                        .eq('end_time', assignment.end_time)
+
+                    // Handle NULL end_time properly
+                    if (assignment.end_time === null) {
+                        query = query.is('end_time', null)
+                    } else {
+                        query = query.eq('end_time', assignment.end_time)
+                    }
                 }
-                
+
                 const { data: futureClasses, error: fetchError } = await query
 
                 if (fetchError) {
@@ -177,9 +183,9 @@ export const EditAssignmentModal = ({
 
                 // Update all future classes in the series (including current class)
                 const classesToUpdate = futureClasses || []
-                
+
                 console.log(`Found ${classesToUpdate.length} classes in series to update with new booking associations`)
-                
+
                 if (classesToUpdate.length === 0) {
                     console.log('No future classes found to update')
                 } else {
@@ -190,7 +196,7 @@ export const EditAssignmentModal = ({
                         `New students will be added to all remaining classes.\n\n` +
                         `Do you want to continue?`
                     )
-                    
+
                     if (!userConfirmed) {
                         setSaving(false)
                         return
@@ -433,7 +439,7 @@ export const EditAssignmentModal = ({
                                         <div>
                                             <p className="text-sm font-medium text-amber-800">Series Assignment</p>
                                             <p className="text-sm text-amber-700 mt-1">
-                                                Changes to booking assignments will be applied to all remaining classes in this series. 
+                                                Changes to booking assignments will be applied to all remaining classes in this series.
                                                 New students will automatically join all future classes.
                                             </p>
                                         </div>

@@ -87,7 +87,7 @@ export interface UserProfile {
 
 export interface ConflictDetails {
     hasConflict: boolean
-    conflictingClass?: ClassAssignment | ClassSchedule
+    conflictingClass?: ClassAssignment | ClassSchedule | Partial<ClassAssignment>
     message?: string
     conflictType?: 'instructor' | 'resource' | 'capacity' | 'timing'
     severity?: 'warning' | 'error'

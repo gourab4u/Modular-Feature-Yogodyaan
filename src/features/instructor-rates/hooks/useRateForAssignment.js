@@ -27,14 +27,13 @@ export const useRateForAssignment = (scheduleType, category, classTypeId, packag
                         .eq('category', category)
                         .lte('effective_from', today)
                         .or(`effective_until.is.null,effective_until.gte.${today}`)
-                        .limit(1)
                         .eq('is_active', true);
                     if (!scheduleType || !category) {
                         console.error("Missing required filters: scheduleType or category");
                         return null;
                     }
                     for (const f of filters) {
-                        if (f.isNull || f.v === '') {
+                        if (f.isNull || f.v === null || f.v === '') {
                             // @ts-ignore
                             q = q.is(f.k, null);
                         }

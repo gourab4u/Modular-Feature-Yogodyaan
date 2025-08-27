@@ -92,7 +92,7 @@ export function ClassAssignmentManager() {
     }
 
     // Enhanced conflict checking function
-    function checkForConflicts() {
+    async function checkForConflicts() {
         if (!formData.instructor_id || !formData.date || !formData.start_time || !formData.end_time) {
             setConflictWarning(null)
             return
@@ -108,26 +108,55 @@ export function ClassAssignmentManager() {
         // Enhanced conflict detection
         const conflicts: ConflictDetails[] = []
 
-        // 1. Check instructor conflicts with existing assignments
-        const conflictingAssignments = assignments.filter(assignment => {
-            if (assignment.instructor_id !== formData.instructor_id) return false
-            if (assignment.date !== formData.date) return false
-            if (assignment.class_status === 'cancelled') return false
+        try {
+            // 1. Check instructor conflicts with future classes in the database
+            const { data: futureClasses, error: futureClassesError } = await supabase
+                .from('class_assignments')
+                .select('id, date, schedule_type, start_time, end_time, class_type_id, instructor_id')
+                .eq('instructor_id', formData.instructor_id)
+                .eq('schedule_type', 'weekly')
+                .gte('date', formData.date)
+                .eq('class_type_id', formData.class_type_id || '')
+                .eq('start_time', formData.start_time + ':00')
+                .is('end_time', null)
+                .order('date', { ascending: true })
 
-            const assignmentStart = timeToMinutes(assignment.start_time || '')
-            const assignmentEnd = timeToMinutes(assignment.end_time || '')
+            if (futureClassesError) {
+                console.error('Error fetching future classes:', futureClassesError)
+                // Continue with local conflict checking even if database query fails
+            } else if (futureClasses && futureClasses.length > 0) {
+                conflicts.push({
+                    hasConflict: true,
+                    conflictingClass: futureClasses[0],
+                    message: `Future weekly class found at ${formatTime(futureClasses[0].start_time)}`,
+                    conflictType: 'instructor',
+                    severity: 'warning'
+                })
+            }
 
-            return (proposedStart < assignmentEnd && proposedEnd > assignmentStart)
-        })
+            // 2. Check instructor conflicts with existing assignments
+            const conflictingAssignments = assignments.filter(assignment => {
+                if (assignment.instructor_id !== formData.instructor_id) return false
+                if (assignment.date !== formData.date) return false
+                if (assignment.class_status === 'cancelled') return false
 
-        if (conflictingAssignments.length > 0) {
-            conflicts.push({
-                hasConflict: true,
-                conflictingClass: conflictingAssignments[0],
-                message: `Instructor has another class at ${formatTime(conflictingAssignments[0].start_time)} - ${formatTime(conflictingAssignments[0].end_time)}`,
-                conflictType: 'instructor',
-                severity: 'error'
+                const assignmentStart = timeToMinutes(assignment.start_time || '')
+                const assignmentEnd = timeToMinutes(assignment.end_time || '')
+
+                return (proposedStart < assignmentEnd && proposedEnd > assignmentStart)
             })
+
+            if (conflictingAssignments.length > 0) {
+                conflicts.push({
+                    hasConflict: true,
+                    conflictingClass: conflictingAssignments[0],
+                    message: `Instructor has another class at ${formatTime(conflictingAssignments[0].start_time)} - ${formatTime(conflictingAssignments[0].end_time)}`,
+                    conflictType: 'instructor',
+                    severity: 'error'
+                })
+            }
+        } catch (error) {
+            console.error('Error in conflict checking:', error)
         }
 
         // 2. Check instructor conflicts with weekly schedules
