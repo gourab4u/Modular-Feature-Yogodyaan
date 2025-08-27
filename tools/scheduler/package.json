@@ -1,0 +1,9 @@
+{
+    "name": "scheduler",
+    "version": "1.0.0",
+    "type": "module",
+    "private": true,
+    "dependencies": {
+        "luxon": "^3.4.0"
+    }
+}
