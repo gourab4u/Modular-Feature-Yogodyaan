@@ -11,7 +11,7 @@ export function Privacy(): JSX.Element {
             {/* Hero */}
             <header className="bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-slate-800 dark:to-slate-900 py-16">
                 <div className="max-w-5xl mx-auto px-6">
-                    <p className="text-sm text-gray-500 dark:text-slate-400">Last updated: August 26, 2025</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">Last updated: August 27, 2025</p>
                     <h1 className="mt-4 text-4xl sm:text-5xl font-extrabold tracking-tight">Privacy Policy</h1>
                     <p className="mt-3 text-lg text-gray-700 dark:text-slate-300 max-w-3xl">
                         This page explains how Yogodyaan collects, uses, and protects your personal information.
@@ -31,10 +31,12 @@ export function Privacy(): JSX.Element {
                                     <li><a href="#definitions" className="text-emerald-600 dark:text-emerald-400 hover:underline">Interpretation & Definitions</a></li>
                                     <li><a href="#data-collected" className="text-emerald-600 dark:text-emerald-400 hover:underline">Types of Data Collected</a></li>
                                     <li><a href="#cookies" className="text-emerald-600 dark:text-emerald-400 hover:underline">Tracking & Cookies</a></li>
+                                    <li><a href="#third-party-auth" className="text-emerald-600 dark:text-emerald-400 hover:underline">Third-Party Authentication</a></li>
                                     <li><a href="#use" className="text-emerald-600 dark:text-emerald-400 hover:underline">How We Use Data</a></li>
                                     <li><a href="#sharing" className="text-emerald-600 dark:text-emerald-400 hover:underline">Sharing & Transfers</a></li>
                                     <li><a href="#retention" className="text-emerald-600 dark:text-emerald-400 hover:underline">Retention & Deletion</a></li>
                                     <li><a href="#security" className="text-emerald-600 dark:text-emerald-400 hover:underline">Security</a></li>
+                                    <li><a href="#user-rights" className="text-emerald-600 dark:text-emerald-400 hover:underline">Your Rights & Data Control</a></li>
                                     <li><a href="#contact" className="text-emerald-600 dark:text-emerald-400 hover:underline">Contact</a></li>
                                 </ul>
 
@@ -110,6 +112,31 @@ export function Privacy(): JSX.Element {
                                 </div>
                             </section>
 
+                            <section id="third-party-auth" className="mt-8">
+                                <h2>Third-Party Authentication Services</h2>
+
+                                <h3>Google Sign-In/OAuth</h3>
+                                <p>
+                                    When you choose to sign in using Google OAuth, we collect certain information from your Google account including:
+                                </p>
+                                <ul>
+                                    <li>Email address</li>
+                                    <li>Basic profile information (name, profile picture)</li>
+                                    <li>Google account identifier</li>
+                                </ul>
+
+                                <p>This information is used solely for:</p>
+                                <ul>
+                                    <li>Account creation and authentication</li>
+                                    <li>Providing personalized service experience</li>
+                                    <li>Communication related to your account and our services</li>
+                                </ul>
+
+                                <p className="mt-3">
+                                    We do not store your Google password or have access to other Google account data beyond what you explicitly authorize during the OAuth consent process.
+                                </p>
+                            </section>
+
                             <section id="use" className="mt-8">
                                 <h2>Use of Your Personal Data</h2>
                                 <p>We may use Personal Data to:</p>
@@ -128,8 +155,21 @@ export function Privacy(): JSX.Element {
                             <section id="sharing" className="mt-8">
                                 <h2>Sharing Your Personal Information</h2>
                                 <p>We may share information in limited circumstances:</p>
+
+                                <h3>Service Providers</h3>
+                                <p>We may share your Personal Data with Service Providers to monitor and analyze the use of our Service, including but not limited to:</p>
                                 <ul>
-                                    <li><strong>Service Providers:</strong> for hosting, analytics, email, and support.</li>
+                                    <li><strong>Google LLC:</strong> For authentication services (Google OAuth/Sign-In), analytics, and cloud services</li>
+                                    <li><strong>Hosting providers:</strong> For website hosting and maintenance</li>
+                                    <li><strong>Email service providers:</strong> For communication and marketing emails</li>
+                                    <li><strong>Analytics providers:</strong> For usage analysis and service improvement</li>
+                                </ul>
+                                <p className="mt-3">
+                                    These Service Providers have access to your Personal Data only to perform these tasks on our behalf and are obligated not to disclose or use it for any other purpose.
+                                </p>
+
+                                <h3>Other Sharing</h3>
+                                <ul>
                                     <li><strong>Affiliates:</strong> companies under common control that must follow this policy.</li>
                                     <li><strong>Business transfers:</strong> in connection with mergers or acquisitions.</li>
                                     <li><strong>Other users:</strong> when you post to public areas of the Service.</li>
@@ -157,6 +197,28 @@ export function Privacy(): JSX.Element {
                                 </p>
                             </section>
 
+                            <section id="user-rights" className="mt-8">
+                                <h2>Your Rights and Data Control</h2>
+                                <p>
+                                    Depending on your location, you may have the following rights regarding your Personal Data:
+                                </p>
+                                <ul>
+                                    <li><strong>Access:</strong> Request copies of your personal data</li>
+                                    <li><strong>Rectification:</strong> Request correction of inaccurate data</li>
+                                    <li><strong>Erasure:</strong> Request deletion of your data</li>
+                                    <li><strong>Portability:</strong> Request transfer of your data</li>
+                                    <li><strong>Restriction:</strong> Request restriction of data processing</li>
+                                    <li><strong>Objection:</strong> Object to our processing of your data</li>
+                                    <li><strong>Withdraw Consent:</strong> Withdraw consent for data processing</li>
+                                </ul>
+                                <p className="mt-3">
+                                    To exercise these rights, contact us at namaste@yogodyaan.site
+                                </p>
+                                <p className="mt-3">
+                                    <strong>Google Account Data:</strong> If you signed in using Google OAuth, you can also manage your data through your Google account settings and revoke our app's access at any time through your Google Account permissions.
+                                </p>
+                            </section>
+
                             <section id="children" className="mt-8">
                                 <h2>Children's Privacy</h2>
                                 <p>
@@ -179,11 +241,18 @@ export function Privacy(): JSX.Element {
                             </section>
 
                             <section id="contact" className="mt-8">
-                                <h2>Contact Us</h2>
-                                <p>If you have questions about this Privacy Policy, contact us at:</p>
-                                <ul>
-                                    <li><a href="mailto:namaste@yogodyaan.site" className="text-emerald-600 dark:text-emerald-400 hover:underline">namaste@yogodyaan.site</a></li>
-                                </ul>
+                                <h2>Contact Us (Enhanced)</h2>
+                                <p>If you have any questions about this Privacy Policy, your data, or our privacy practices, you can contact us:</p>
+
+                                <div className="mt-4">
+                                    <p><strong>Email:</strong> <a href="mailto:namaste@yogodyaan.site" className="text-emerald-600 dark:text-emerald-400 hover:underline">namaste@yogodyaan.site</a></p>
+                                    <p><strong>Address:</strong> 15 Garia Station Road, Kolkata, West Bengal, India</p>
+                                    <p><strong>Response Time:</strong> We aim to respond to privacy inquiries within 7 business days</p>
+                                </div>
+
+                                <p className="mt-3">
+                                    For Google OAuth related privacy concerns, you may also contact Google directly through their privacy support channels.
+                                </p>
                             </section>
 
                             <div className="mt-8 flex justify-end items-center">
