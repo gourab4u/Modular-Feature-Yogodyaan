@@ -43,26 +43,62 @@ async function fetchUpcomingClasses() {
 
 async function callEdge(classId) {
     const headers = { 'Content-Type': 'application/json' };
-    // Add gateway-accepted Authorization header when anon key is available
-    if (SUPABASE_ANON_KEY) {
-        headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
-    }
+
+    // FIXED: Always add Authorization header for Supabase edge functions
+    // Try anon key first, then fall back to service role key
+    const authToken = SUPABASE_ANON_KEY || SUPABASE_KEY;
+    headers['Authorization'] = `Bearer ${authToken}`;
+
+    // Add custom scheduler secret if provided
     if (process.env.SCHEDULER_SECRET_HEADER && process.env.SCHEDULER_SECRET_TOKEN) {
         headers[process.env.SCHEDULER_SECRET_HEADER] = process.env.SCHEDULER_SECRET_TOKEN;
     }
-    // non-sensitive debug: print header keys only (do not print values)
-    console.log('calling edge', EDGE_FN, 'headers keys:', Object.keys(headers));
-    const resp = await fetch(EDGE_FN, { method: 'POST', headers, body: JSON.stringify({ classId }) });
+
+    // Enhanced debug logging
+    console.log('calling edge', EDGE_FN);
+    console.log('headers keys:', Object.keys(headers));
+    console.log('using auth token type:', SUPABASE_ANON_KEY ? 'anon' : 'service_role');
+
+    const resp = await fetch(EDGE_FN, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ classId })
+    });
+
     const text = await resp.text().catch(() => '');
+
+    // Enhanced error logging
+    if (!resp.ok) {
+        console.error(`Edge function call failed: ${resp.status} ${resp.statusText}`);
+        console.error('Response body:', text);
+
+        // If 401, provide troubleshooting info
+        if (resp.status === 401) {
+            console.error('Authorization troubleshooting:');
+            console.error('- Check if SUPABASE_ANON_KEY is set correctly');
+            console.error('- Verify edge function URL is correct');
+            console.error('- Ensure edge function accepts the Authorization header');
+            console.error('- Check if custom secret header/token are expected by edge function');
+        }
+    }
+
     return { status: resp.status, body: text };
 }
 
 async function run() {
     console.log(new Date().toISOString(), 'scheduler start');
-    // non-sensitive debug: confirm whether required envs are present in the process
-    console.log('env presence:', 'EDGE_FUNCTION_URL=', !!process.env.EDGE_FUNCTION_URL, 'SCHEDULER_SECRET_HEADER=', !!process.env.SCHEDULER_SECRET_HEADER, 'SCHEDULER_SECRET_TOKEN=', !!process.env.SCHEDULER_SECRET_TOKEN);
-    // non-sensitive check: detect accidental equality or header-like values (do NOT print secret values)
-    // avoid printing or comparing secret values here; keep presence-only checks above
+
+    // Enhanced environment debugging
+    console.log('Environment check:');
+    console.log('- SUPABASE_URL:', !!process.env.SUPABASE_URL ? 'set' : 'missing');
+    console.log('- SUPABASE_SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY ? 'set' : 'missing');
+    console.log('- SUPABASE_ANON_KEY:', !!SUPABASE_ANON_KEY ? 'set' : 'missing');
+    console.log('- EDGE_FUNCTION_URL:', !!process.env.EDGE_FUNCTION_URL ? 'set' : 'missing');
+    console.log('- SCHEDULER_SECRET_HEADER:', !!process.env.SCHEDULER_SECRET_HEADER ? 'set' : 'missing');
+    console.log('- SCHEDULER_SECRET_TOKEN:', !!process.env.SCHEDULER_SECRET_TOKEN ? 'set' : 'missing');
+    console.log('- HOURS_BEFORE:', HOURS_BEFORE);
+    console.log('- WINDOW_MINUTES:', WINDOW_MINUTES);
+
     const now = DateTime.utc();
     const classes = await fetchUpcomingClasses();
     console.log('candidates:', (classes || []).length);
