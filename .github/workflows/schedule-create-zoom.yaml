@@ -3,7 +3,12 @@ name: schedule-create-zoom
 on:
   schedule:
     - cron: '*/5 * * * *' # every 5 minutes
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force_invoke:
+        description: "Set to 'true' to force invoking edge for candidates (debug)"
+        required: false
+        default: 'false'
 
 jobs:
   run-scheduler:
@@ -35,6 +40,8 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           EDGE_FUNCTION_URL: ${{ secrets.EDGE_FUNCTION_URL }}
+          # map manual input to FORCE_INVOKE (defaults to 'false')
+          FORCE_INVOKE: ${{ github.event.inputs.force_invoke || 'false' }}
           HOURS_BEFORE: '12'
           WINDOW_MINUTES: '5'
           SCHEDULER_SECRET_HEADER: ${{ secrets.SCHEDULER_SECRET_HEADER || '' }}
