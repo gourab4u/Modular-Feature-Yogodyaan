@@ -18,6 +18,18 @@ jobs:
         run: |
           cd tools/scheduler
           npm install --no-audit --no-fund
+      - name: Debug env presence
+        run: |
+          if [ -z "${EDGE_FUNCTION_URL}" ]; then
+            echo "EDGE_FUNCTION_URL is EMPTY"
+            exit 1
+          else
+            # print only the host portion (safer than printing the full secret)
+            host=$(echo "${EDGE_FUNCTION_URL}" | sed -E 's#https?://##' | cut -d'/' -f1)
+            echo "EDGE_FUNCTION_URL is set, host: $host"
+          fi
+        env:
+          EDGE_FUNCTION_URL: ${{ secrets.EDGE_FUNCTION_URL }}
       - name: Run scheduler
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
