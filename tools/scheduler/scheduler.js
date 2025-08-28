@@ -44,6 +44,22 @@ async function callEdge(classId) {
     if (process.env.SCHEDULER_SECRET_HEADER && process.env.SCHEDULER_SECRET_TOKEN) {
         headers[process.env.SCHEDULER_SECRET_HEADER] = process.env.SCHEDULER_SECRET_TOKEN;
     }
+    // non-sensitive debug: print header keys and masked values (do not print full secrets)
+    try {
+    const masked = {};
+        Object.keys(headers).forEach((k) => {
+            const v = String(headers[k] || '');
+            if (/auth|secret|token/i.test(k)) {
+                masked[k] = v.length > 8 ? `${v.slice(0,4)}...${v.slice(-4)}` : '***';
+            } else {
+                masked[k] = v;
+            }
+        });
+        console.log('calling edge', EDGE_FN, 'headers keys:', Object.keys(headers));
+        console.log('calling edge masked headers:', JSON.stringify(masked));
+    } catch (e) {
+        // ignore logging errors
+    }
     const resp = await fetch(EDGE_FN, { method: 'POST', headers, body: JSON.stringify({ classId }) });
     const text = await resp.text().catch(() => '');
     return { status: resp.status, body: text };
