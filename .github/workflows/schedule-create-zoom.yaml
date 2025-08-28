@@ -23,19 +23,16 @@ jobs:
         run: |
           cd tools/scheduler
           npm install --no-audit --no-fund
-      - name: Debug env presence
-        run: |
-          if [ -z "${EDGE_FUNCTION_URL}" ]; then
-            echo "EDGE_FUNCTION_URL is EMPTY"
-            exit 1
-          else
-            # print only the host portion (safer than printing the full secret)
-            host=$(echo "${EDGE_FUNCTION_URL}" | sed -E 's#https?://##' | cut -d'/' -f1)
-            echo "EDGE_FUNCTION_URL is set, host: $host"
-          fi
-        env:
-          EDGE_FUNCTION_URL: ${{ secrets.EDGE_FUNCTION_URL }}
+  # debug step removed: avoid printing EDGE_FUNCTION_URL or host to logs
       - name: Run scheduler
+        - name: Verify secrets present (safe)
+          run: |
+            node -e "console.log('SUPABASE_ANON_KEY set=', !!process.env.SUPABASE_ANON_KEY, 'SUPABASE_SERVICE_ROLE_KEY set=', !!process.env.SUPABASE_SERVICE_ROLE_KEY, 'EDGE_FUNCTION_URL set=', !!process.env.EDGE_FUNCTION_URL, 'SCHEDULER_SECRET_TOKEN set=', !!process.env.SCHEDULER_SECRET_TOKEN)"
+          env:
+            SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+            SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+            EDGE_FUNCTION_URL: ${{ secrets.EDGE_FUNCTION_URL }}
+            SCHEDULER_SECRET_TOKEN: ${{ secrets.SCHEDULER_SECRET_TOKEN }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
