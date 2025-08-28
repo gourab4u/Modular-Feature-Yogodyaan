@@ -69,6 +69,15 @@ export function About() {
       specialization: "Kids Yoga",
       image: "/images/Instructor_Amita.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
       bio: "Amita inspires children with playful, safe yoga practices that build confidence and coordination."
+    },
+    {
+      name: "Sima Purakayastha",
+      title: "Certified Yoga Instructor & Fitness trainer",
+      certifications: ["Masters in Yoga", "ADYT"],
+      experience: "10+ years",
+      specialization: "Yoga Therapy",
+      image: "/images/Instructor_Sima.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
+      bio: "Sima combines her expertise in yoga and fitness to offer holistic wellness solutions, focusing on individual needs."
     }
   ]
 

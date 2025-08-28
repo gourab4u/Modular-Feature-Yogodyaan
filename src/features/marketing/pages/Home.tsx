@@ -54,6 +54,7 @@ export function Home() {
     {
       name: "Kasturi Ray",
       location: "Kolkata, India",
+      position: "Student",
       content: "Joining Yogodyaan has been a life changing experience since the past six months. Yog, meditation and individual attendtion by Bratati is giving new way of holistic well being. Thank You 🙏",
       image: "/images/testimonial_Kasturi_Ray.jpg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
       rating: 5,
@@ -62,17 +63,18 @@ export function Home() {
     {
       name: "Rina",
       location: "Auckland, New Zealand",
+      position: "Student",
       content: "I was visiting my niece in India and joined her in session with Bratati. Hearing the correct pronunciation of the Asanas, experiencing the working of an online class inspired me to revive my yoga practice. I feel fortunate to learn yoga with Bratati’s guidance and instructions. Her attention to posture, gradually build strength and balance helps me improve wellbeing. Her pleasant and kind, yet encouraging approach goes a long way in sustaining my commitment to yoga.  The  added tips on poses are gentle reminders to make it practical and doable in the daily routine.",
       image: "/images/Testimonial_Rina.jpg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop",
       rating: 5,
       type: "1-on-1"
     },
     {
-      name: "Emily Chen",
-      position: "Project Manager",
-      location: "Singapore",
-      content: "The group sessions create such a supportive community. It's amazing how we can connect with people from around the world.",
-      image: "https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
+      name: "Moumita Pradhan",
+      location: "Kolkata, India",
+      position: "Student",
+      content: "I have been associated with yogodyaan for a quiet a few years.. Practicing under Bratati's guidance has been a wonderful experience. She teaches each asana in such a clear and supportive way that even the most challenging pose feel achievable. What stands out most is the care she takes for each individual's needs, making sure we feel comfortable, safe and confident throughout the session. Her approach creates a nurturing and motivating environment that makes yoga truly enjoyable and sustainable.",
+      image: "/images/testimonial_Moumita_Pradhan.jpg?auto=compress&cs=tinysrgb&w=150&h=150&fit=crop"
     }
   ]
 
