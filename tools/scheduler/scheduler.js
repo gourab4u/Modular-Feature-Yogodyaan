@@ -16,6 +16,8 @@ import { DateTime } from 'luxon';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// prefer an anon/public key for gateway forwarding (can be set as SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY)
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || null;
 const EDGE_FN = process.env.EDGE_FUNCTION_URL;
 const HOURS_BEFORE = parseInt(process.env.HOURS_BEFORE || '12', 10);
 const WINDOW_MINUTES = parseInt(process.env.WINDOW_MINUTES || '5', 10);
@@ -41,16 +43,20 @@ async function fetchUpcomingClasses() {
 
 async function callEdge(classId) {
     const headers = { 'Content-Type': 'application/json' };
+    // Add gateway-accepted Authorization header when anon key is available
+    if (SUPABASE_ANON_KEY) {
+        headers['Authorization'] = `Bearer ${SUPABASE_ANON_KEY}`;
+    }
     if (process.env.SCHEDULER_SECRET_HEADER && process.env.SCHEDULER_SECRET_TOKEN) {
         headers[process.env.SCHEDULER_SECRET_HEADER] = process.env.SCHEDULER_SECRET_TOKEN;
     }
     // non-sensitive debug: print header keys and masked values (do not print full secrets)
     try {
-    const masked = {};
+        const masked = {};
         Object.keys(headers).forEach((k) => {
             const v = String(headers[k] || '');
             if (/auth|secret|token/i.test(k)) {
-                masked[k] = v.length > 8 ? `${v.slice(0,4)}...${v.slice(-4)}` : '***';
+                masked[k] = v.length > 8 ? `${v.slice(0, 4)}...${v.slice(-4)}` : '***';
             } else {
                 masked[k] = v;
             }

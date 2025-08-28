@@ -133,9 +133,15 @@ async function sendResendEmail(to: string | string[], subject: string, html: str
 
 serve(async (req) => {
     try {
+        // non-sensitive debug: list incoming header names (do NOT log values)
+        try { console.log('debug: incomingHeaders=', JSON.stringify(Array.from(req.headers.keys()))); } catch (e) { }
         // If scheduler auth is configured, require the header to match the token
         if (SCHEDULER_SECRET_HEADER && SCHEDULER_SECRET_TOKEN) {
             const provided = req.headers.get(SCHEDULER_SECRET_HEADER);
+            try {
+                // non-sensitive debug: log presence/equality as booleans only (do NOT log secrets)
+                console.log('debug: expectedHeaderSet=', !!SCHEDULER_SECRET_HEADER, 'providedHeaderPresent=', !!provided, 'providedEqualsToken=', provided === SCHEDULER_SECRET_TOKEN);
+            } catch (e) { /* ignore logging errors */ }
             if (!provided || provided !== SCHEDULER_SECRET_TOKEN) {
                 console.warn('Unauthorized request: missing or invalid scheduler header');
                 return new Response(JSON.stringify({ error: 'unauthorized' }), { status: 401 });
