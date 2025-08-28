@@ -69,6 +69,13 @@ async function run() {
     console.log(new Date().toISOString(), 'scheduler start');
     // non-sensitive debug: confirm whether required envs are present in the process
     console.log('env presence:', 'EDGE_FUNCTION_URL=', !!process.env.EDGE_FUNCTION_URL, 'SCHEDULER_SECRET_HEADER=', !!process.env.SCHEDULER_SECRET_HEADER, 'SCHEDULER_SECRET_TOKEN=', !!process.env.SCHEDULER_SECRET_TOKEN);
+    // non-sensitive check: detect accidental equality or header-like values (do NOT print secret values)
+    try {
+        const headerRaw = process.env.SCHEDULER_SECRET_HEADER || '';
+        const tokenRaw = process.env.SCHEDULER_SECRET_TOKEN || '';
+        const looksLikeHeader = (s) => /^x[-_]/i.test(String(s));
+        console.log('debug: header===token?', headerRaw === tokenRaw, 'headerLooksLikeHeader?', looksLikeHeader(headerRaw), 'tokenLooksLikeHeader?', looksLikeHeader(tokenRaw));
+    } catch (e) { }
     const now = DateTime.utc();
     const classes = await fetchUpcomingClasses();
     console.log('candidates:', (classes || []).length);
