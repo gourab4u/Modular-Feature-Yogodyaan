@@ -50,22 +50,8 @@ async function callEdge(classId) {
     if (process.env.SCHEDULER_SECRET_HEADER && process.env.SCHEDULER_SECRET_TOKEN) {
         headers[process.env.SCHEDULER_SECRET_HEADER] = process.env.SCHEDULER_SECRET_TOKEN;
     }
-    // non-sensitive debug: print header keys and masked values (do not print full secrets)
-    try {
-        const masked = {};
-        Object.keys(headers).forEach((k) => {
-            const v = String(headers[k] || '');
-            if (/auth|secret|token/i.test(k)) {
-                masked[k] = v.length > 8 ? `${v.slice(0, 4)}...${v.slice(-4)}` : '***';
-            } else {
-                masked[k] = v;
-            }
-        });
-        console.log('calling edge', EDGE_FN, 'headers keys:', Object.keys(headers));
-        console.log('calling edge masked headers:', JSON.stringify(masked));
-    } catch (e) {
-        // ignore logging errors
-    }
+    // non-sensitive debug: print header keys only (do not print values)
+    console.log('calling edge', EDGE_FN, 'headers keys:', Object.keys(headers));
     const resp = await fetch(EDGE_FN, { method: 'POST', headers, body: JSON.stringify({ classId }) });
     const text = await resp.text().catch(() => '');
     return { status: resp.status, body: text };
@@ -76,12 +62,7 @@ async function run() {
     // non-sensitive debug: confirm whether required envs are present in the process
     console.log('env presence:', 'EDGE_FUNCTION_URL=', !!process.env.EDGE_FUNCTION_URL, 'SCHEDULER_SECRET_HEADER=', !!process.env.SCHEDULER_SECRET_HEADER, 'SCHEDULER_SECRET_TOKEN=', !!process.env.SCHEDULER_SECRET_TOKEN);
     // non-sensitive check: detect accidental equality or header-like values (do NOT print secret values)
-    try {
-        const headerRaw = process.env.SCHEDULER_SECRET_HEADER || '';
-        const tokenRaw = process.env.SCHEDULER_SECRET_TOKEN || '';
-        const looksLikeHeader = (s) => /^x[-_]/i.test(String(s));
-        console.log('debug: header===token?', headerRaw === tokenRaw, 'headerLooksLikeHeader?', looksLikeHeader(headerRaw), 'tokenLooksLikeHeader?', looksLikeHeader(tokenRaw));
-    } catch (e) { }
+    // avoid printing or comparing secret values here; keep presence-only checks above
     const now = DateTime.utc();
     const classes = await fetchUpcomingClasses();
     console.log('candidates:', (classes || []).length);
