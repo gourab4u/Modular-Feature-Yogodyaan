@@ -57,16 +57,39 @@ async function run() {
 
     for (const c of classes || []) {
         try {
-            if (!c?.date || !c?.start_time) continue;
+            if (!c?.date || !c?.start_time) {
+                console.log('skipping candidate (missing date/start_time)', c?.id);
+                continue;
+            }
             const classZone = c.timezone || 'UTC';
             const classDt = DateTime.fromISO(`${c.date}T${c.start_time}`, { zone: classZone });
-            if (!classDt.isValid) continue;
+            if (!classDt.isValid) {
+                console.log('skipping candidate (invalid class datetime)', c.id, c.date, c.start_time, classZone);
+                continue;
+            }
+
             const minutesUntil = Math.round(classDt.toUTC().diff(now, 'minutes').minutes);
             const target = HOURS_BEFORE * 60;
+
+            // verbose debug output to diagnose why candidates are not invoked
+            console.log(`candidate ${c.id}: assignment_code=${c.assignment_code || ''} date=${c.date} start_time=${c.start_time} timezone=${classZone}`);
+            console.log(`  classDt (ISO): ${classDt.toISO()} | minutesUntil: ${minutesUntil} | target: ${target} (+/- ${WINDOW_MINUTES})`);
+
+            const force = String(process.env.FORCE_INVOKE || '').toLowerCase();
+            const isForced = force === '1' || force === 'true';
+            if (isForced) {
+                console.log(`  FORCE_INVOKE enabled — invoking edge for ${c.id}`);
+                const r = await callEdge(c.id);
+                console.log('  edge response', r.status, r.body);
+                continue;
+            }
+
             if (minutesUntil >= target - WINDOW_MINUTES && minutesUntil <= target + WINDOW_MINUTES) {
                 console.log(`Invoking edge for ${c.id} (starts in ${minutesUntil} minutes) assignment_code=${c.assignment_code}`);
                 const r = await callEdge(c.id);
                 console.log('edge response', r.status, r.body);
+            } else {
+                console.log(`  skipping (not within window) for ${c.id} — starts in ${minutesUntil} minutes`);
             }
         } catch (err) {
             console.error('error processing class', c?.id, String(err));
