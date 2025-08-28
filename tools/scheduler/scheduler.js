@@ -96,12 +96,14 @@ async function run() {
                 continue;
             }
 
-            if (minutesUntil >= target - WINDOW_MINUTES && minutesUntil <= target + WINDOW_MINUTES) {
+            // New behavior: invoke when the class starts in less than or equal to HOURS_BEFORE hours
+            // i.e. when minutesUntil <= target (and class hasn't started yet). This avoids a narrow window.
+            if (minutesUntil <= target && minutesUntil >= 0) {
                 console.log(`Invoking edge for ${c.id} (starts in ${minutesUntil} minutes) assignment_code=${c.assignment_code}`);
                 const r = await callEdge(c.id);
                 console.log('edge response', r.status, r.body);
             } else {
-                console.log(`  skipping (not within window) for ${c.id} — starts in ${minutesUntil} minutes`);
+                console.log(`  skipping (not within ${HOURS_BEFORE} hours) for ${c.id} — starts in ${minutesUntil} minutes`);
             }
         } catch (err) {
             console.error('error processing class', c?.id, String(err));
