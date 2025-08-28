@@ -146,10 +146,7 @@ export function Login() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <Link to="/" className="flex items-center justify-center space-x-2 mb-8">
-            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-xl">Y</span>
-            </div>
-            <span className="text-3xl font-bold text-gradient">Yogodyaan</span>
+            <img src="/images/Brand.png" alt="Yogodyaan" className="w-24 h-auto" />
           </Link>
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
             {isSignUp ? 'Create your account' : 'Sign in to your account'}

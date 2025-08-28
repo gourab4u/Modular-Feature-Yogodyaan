@@ -33,7 +33,7 @@ export function Footer() {
               ) : (
                 // fallback to public image for footer
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src="/images/Brand-orange-footer.png" alt={brandName} className="w-10 h-10 object-contain" />
+                <img src="/images/Brand.png" alt={brandName} className="w-10 h-10 object-contain" />
               )}
               <div className="flex flex-col">
                 <span className="text-2xl font-bold leading-tight">{brandName}</span>
