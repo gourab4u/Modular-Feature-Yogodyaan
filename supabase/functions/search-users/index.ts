@@ -61,14 +61,15 @@ Deno.serve(async (req) => {
         try {
             const { data: profileMatches, error: profileErr } = await supabaseAdmin
                 .from('profiles')
-                .select('id, full_name, email')
+                .select('user_id, full_name, email')
                 .or(`full_name.ilike.${qLike},email.ilike.${qLike}`)
                 .limit(limit);
 
             if (!profileErr && Array.isArray(profileMatches)) {
                 for (const p of profileMatches) {
-                    users[p.id] = {
-                        id: p.id,
+                    const uid = p.user_id || p.id || null;
+                    users[uid] = {
+                        id: uid,
                         email: p.email || null,
                         full_name: p.full_name || null,
                         source: 'profile'

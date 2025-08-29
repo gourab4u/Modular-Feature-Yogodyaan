@@ -1481,11 +1481,11 @@ const TransactionManagement = () => {
                     value={newTx.billing_plan_type}
                     onChange={(e) => {
                       const val = e.target.value as BillingPlanType;
-                      setNewTx({
-                        ...newTx,
+                      setNewTx(prev => ({
+                        ...prev,
                         billing_plan_type: val,
-                        billing_period_month: val === 'monthly' ? newTx.billing_period_month : ''
-                      });
+                        billing_period_month: val === 'monthly' ? prev.billing_period_month : ''
+                      }));
                     }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -1500,7 +1500,7 @@ const TransactionManagement = () => {
                     <input
                       type="month"
                       value={newTx.billing_period_month}
-                      onChange={(e) => setNewTx({ ...newTx, billing_period_month: e.target.value })}
+                      onChange={(e) => setNewTx(prev => ({ ...prev, billing_period_month: e.target.value, billing_plan_type: 'monthly' }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
