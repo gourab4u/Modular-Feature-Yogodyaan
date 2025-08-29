@@ -99,6 +99,8 @@ Deno.serve(async (req) => {
             payment_method = null,
             stripe_payment_intent_id = null,
             description = null,
+            billing_plan_type = null,
+            billing_period_month = null,
         } = body || {};
 
         // If user_id not provided but an email is, try to resolve an existing auth user
@@ -137,6 +139,8 @@ Deno.serve(async (req) => {
             payment_method,
             stripe_payment_intent_id,
             description,
+            billing_plan_type: billing_plan_type ?? null,
+            billing_period_month: billing_period_month ?? null,
             user_email: user_email ?? null,
             user_full_name: user_full_name ?? null,
         };

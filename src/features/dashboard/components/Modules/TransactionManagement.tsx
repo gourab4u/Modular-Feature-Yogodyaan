@@ -1345,7 +1345,7 @@ const TransactionManagement = () => {
                       onChange={async (e) => {
                         const v = e.target.value;
                         setSelectedUser(null);
-                        setNewTx({ ...newTx, userEmail: v });
+                        setNewTx(prev => ({ ...prev, userEmail: v }));
                         await searchUsers(v);
                       }}
                       placeholder="Type name or email to search..."
@@ -1361,7 +1361,7 @@ const TransactionManagement = () => {
                             key={u.id}
                             onClick={() => {
                               setSelectedUser(u);
-                              setNewTx({ ...newTx, userEmail: u.email || '', user_name: u.full_name || '' });
+                              setNewTx(prev => ({ ...prev, userEmail: u.email || '', user_name: u.full_name || '' }));
                               setUserSearchResults([]);
                             }}
                             className="px-3 py-2 hover:bg-gray-50 cursor-pointer"
@@ -1399,7 +1399,7 @@ const TransactionManagement = () => {
                               if (res.ok) {
                                 const created = await res.json();
                                 setSelectedUser({ id: created.id, email: created.email, full_name: created.full_name || created.email });
-                                setNewTx({ ...newTx, userEmail: created.email || newTx.userEmail, user_name: created.full_name || newTx.user_name });
+                                setNewTx(prev => ({ ...prev, userEmail: created.email || prev.userEmail, user_name: created.full_name || prev.user_name }));
                                 alert('User created');
                               } else {
                                 const err = await res.text();
@@ -1428,7 +1428,7 @@ const TransactionManagement = () => {
                     <input
                       type="number"
                       value={newTx.amount}
-                      onChange={(e) => setNewTx({ ...newTx, amount: Number(e.target.value) })}
+                      onChange={(e) => setNewTx(prev => ({ ...prev, amount: Number(e.target.value) }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
@@ -1436,7 +1436,7 @@ const TransactionManagement = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
                     <select
                       value={newTx.currency}
-                      onChange={(e) => setNewTx({ ...newTx, currency: e.target.value })}
+                      onChange={(e) => setNewTx(prev => ({ ...prev, currency: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="INR">INR</option>
@@ -1449,7 +1449,7 @@ const TransactionManagement = () => {
                   <input
                     type="text"
                     value={newTx.description}
-                    onChange={(e) => setNewTx({ ...newTx, description: e.target.value })}
+                    onChange={(e) => setNewTx(prev => ({ ...prev, description: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -1457,7 +1457,7 @@ const TransactionManagement = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
                   <select
                     value={newTx.payment_method}
-                    onChange={(e) => setNewTx({ ...newTx, payment_method: e.target.value })}
+                    onChange={(e) => setNewTx(prev => ({ ...prev, payment_method: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     {paymentMethodOptions.map(pm => (
@@ -1469,7 +1469,7 @@ const TransactionManagement = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">GST %</label>
                   <select
                     value={newTx.gst_rate}
-                    onChange={(e) => setNewTx({ ...newTx, gst_rate: e.target.value })}
+                    onChange={(e) => setNewTx(prev => ({ ...prev, gst_rate: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     {['0', '5', '10', '18', '28'].map(r => <option key={r} value={r}>{r}%</option>)}
