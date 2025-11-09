@@ -21,6 +21,7 @@ export function Header() {
     { name: 'Home', href: '/' },
     { name: 'About', href: '/about' },
     { name: 'Services', href: '/services' },
+    { name: 'Yoga for You', href: '/yoga-for-you' },
     { name: 'Schedule', href: '/schedule' },
     { name: 'Learning', href: '/learning' },
     { name: 'Contact', href: '/contact' },
@@ -57,7 +58,7 @@ export function Header() {
             <div className="w-12 h-12 sm:w-12 sm:h-12 overflow-visible rounded-full flex items-center justify-center relative">
               <img
                 src={logoOrange}
-                alt="Yogodyaan Logo"
+                alt="Yogique Logo"
                 className="logo-zoom w-auto object-contain block"
                 style={{ height: '40px', width: '40px' }}
               />
@@ -248,3 +249,4 @@ export function Header() {
     </header>
   );
 }
+

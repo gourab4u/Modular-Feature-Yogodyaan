@@ -69,6 +69,15 @@ export function About() {
       specialization: "Kids Yoga",
       image: "/images/Instructor_Amita.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
       bio: "Amita inspires children with playful, safe yoga practices that build confidence and coordination."
+    },
+    {
+      name: "Sima Purakayastha",
+      title: "Certified Yoga Instructor & Fitness trainer",
+      certifications: ["Masters in Yoga", "ADYT"],
+      experience: "10+ years",
+      specialization: "Yoga Therapy",
+      image: "/images/Instructor_Sima.jpg?auto=compress&cs=tinysrgb&w=300&h=300&fit=crop",
+      bio: "Sima combines her expertise in yoga and fitness to offer holistic wellness solutions, focusing on individual needs."
     }
   ]
 
@@ -77,11 +86,14 @@ export function About() {
       {/* Hero Section */}
       <section className="bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-800 text-gray-900 dark:text-white py-20">
         <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h1 className="text-5xl font-bold mb-6 text-gray-900 dark:text-white">About Yogodyaan</h1>
+          <h1 className="text-5xl font-bold mb-6 text-gray-900 dark:text-white">About Yogique</h1>
           <p className="text-xl text-gray-600 dark:text-slate-300">
             Dedicated to spreading the transformative power of yoga and creating a community
             where everyone can find their path to wellness and inner peace.
           </p>
+          <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/70 dark:bg-slate-900/60 border border-gray-200 dark:border-slate-700 shadow-sm">
+            <span className="text-sm text-gray-700 dark:text-slate-200">Yogique is a brand of Sampurnayogam LLP (registered)</span>
+          </div>
         </div>
       </section>
 
@@ -90,13 +102,13 @@ export function About() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">Welcome to Yogodyaan – Breathe. Move. Transform.</h2>
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-6">Welcome to Yogique – Breathe. Move. Transform.</h2>
               <div className="space-y-4 text-gray-700 dark:text-white text-lg">
                 <p>
-                  Founded by Ms. Bratati Batabyal in 2021, Yogodyaan is an all-online yoga platform empowering people to live healthier, more mindful lives through yoga.
+                  Founded by Ms. Bratati Batabyal in 2021, Yogique is an all-online yoga platform empowering people to live healthier, more mindful lives through yoga. Yogique operates under the umbrella of Sampurnayogam LLP, a registered company.
                 </p>
                 <p>
-                  We’ve trained 1000+ students in different parts of the world—offering accessible, expert-led sessions that blend ancient yogic wisdom with modern lifestyles.
+                  We’ve trained 1000+ students in different parts of the world—offering accessible, expert-led sessions that blend ancient yogic wisdom with modern lifestyles. We offer online B2C classes, group programs, and specialized wellness sessions.
                 </p>
                 <p>
                   From corporate wellness and chair yoga to programs for beginners and advanced practitioners, we’re here to help you de-stress, strengthen, and reconnect—wherever you are.
