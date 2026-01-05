@@ -1,39 +1,378 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description"
-    content="Yogique — an initiative by Sampurnayogam LLP. Global Online Yoga Platform for accessible B2C classes, group programs, and corporate wellness." />
-  <meta name="keywords"
-    content="online yoga, corporate wellness, yoga classes, meditation, stress relief, professional wellness, global yoga" />
-  <meta name="author" content="Yogique" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>We've Moved - Yogodyaan</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://yogique.life/" />
-  <meta property="og:title" content="Yogique — an initiative by Sampurnayogam LLP | Global Online Yoga" />
-  <meta property="og:description"
-    content="Accessible B2C classes, group sessions, and corporate wellness by Sampurnayogam LLP." />
-  <meta property="og:image" content="/og-image.jpg" />
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f4a460 0%, #d4874f 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
 
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="https://yogique.life/" />
-  <meta property="twitter:title" content="Yogique — an initiative by Sampurnayogam LLP | Global Online Yoga" />
-  <meta property="twitter:description"
-    content="Accessible B2C classes, group sessions, and corporate wellness by Sampurnayogam LLP." />
-  <meta property="twitter:image" content="/og-image.jpg" />
-  <meta name="google-site-verification" content="PASTE_YOUR_VERIFICATION_CODE_HERE" />
+        body::before {
+            content: '';
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            top: -250px;
+            right: -250px;
+            animation: float 8s ease-in-out infinite;
+        }
 
-  <title>Yogique — an initiative by Sampurnayogam LLP | Global Online Yoga</title>
+        body::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            bottom: -200px;
+            left: -200px;
+            animation: float 6s ease-in-out infinite reverse;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(30px); }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 30px;
+            padding: 60px 40px;
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1;
+            animation: slideUp 0.8s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .logo-placeholder {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            background: linear-gradient(135deg, #f4a460 0%, #d4874f 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 4em;
+            box-shadow: 0 10px 30px rgba(212, 135, 79, 0.4);
+        }
+
+        h1 {
+            color: #d4874f;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #555;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .new-domain {
+            background: linear-gradient(135deg, #f4a460 0%, #d4874f 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-size: 1.5em;
+            font-weight: 600;
+            margin: 30px 0;
+            display: inline-block;
+            box-shadow: 0 10px 30px rgba(212, 135, 79, 0.4);
+            transition: transform 0.3s ease;
+        }
+
+        .new-domain:hover {
+            transform: translateY(-5px);
+        }
+
+        .breathing-section {
+            margin: 40px 0;
+            padding: 30px;
+            background: linear-gradient(135deg, rgba(244, 164, 96, 0.1) 0%, rgba(212, 135, 79, 0.1) 100%);
+            border-radius: 20px;
+            border: 2px solid rgba(212, 135, 79, 0.2);
+        }
+
+        .breathing-title {
+            color: #d4874f;
+            font-size: 1.5em;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .breathing-circle {
+            width: 200px;
+            height: 200px;
+            margin: 30px auto;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f4a460 0%, #d4874f 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(212, 135, 79, 0.5);
+            transition: all 4s ease-in-out;
+        }
+
+        .breathing-circle.inhale {
+            transform: scale(1.4);
+            box-shadow: 0 15px 60px rgba(212, 135, 79, 0.7);
+        }
+
+        .breathing-circle.exhale {
+            transform: scale(1);
+            box-shadow: 0 10px 40px rgba(212, 135, 79, 0.5);
+        }
+
+        .breathing-text {
+            color: white;
+            font-size: 1.8em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .timer-display {
+            font-size: 2.5em;
+            color: #d4874f;
+            font-weight: 700;
+            margin: 20px 0;
+        }
+
+        .breathing-instruction {
+            color: #666;
+            font-size: 1.1em;
+            margin-top: 15px;
+            min-height: 30px;
+        }
+
+        .redirect-btn {
+            background: linear-gradient(135deg, #f4a460 0%, #d4874f 100%);
+            color: white;
+            border: none;
+            padding: 18px 50px;
+            font-size: 1.2em;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 10px 30px rgba(212, 135, 79, 0.4);
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .redirect-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(212, 135, 79, 0.6);
+        }
+
+        .redirect-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .skip-btn {
+            background: transparent;
+            color: #d4874f;
+            border: 2px solid #d4874f;
+            padding: 12px 30px;
+            font-size: 1em;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .skip-btn:hover {
+            background: #d4874f;
+            color: white;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 40px 25px;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .new-domain {
+                font-size: 1.2em;
+                padding: 15px 20px;
+            }
+
+            .breathing-circle {
+                width: 150px;
+                height: 150px;
+            }
+
+            .breathing-text {
+                font-size: 1.4em;
+            }
+
+            .redirect-btn {
+                padding: 15px 40px;
+                font-size: 1.1em;
+            }
+        }
+    </style>
 </head>
-
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
+    <div class="container">
+        <img src="https://yogique.life/images/Brand.png" alt="Yogodyaan Logo" style="width: 120px; height: 120px; margin: 0 auto 30px; display: block; object-fit: contain;">
 
+        <h1>Namaste 🙏</h1>
+        
+        <p class="subtitle">
+            We've embarked on a new journey! Our yoga community has found a new home.
+        </p>
+
+        <div class="new-domain">
+            yogique.life
+        </div>
+
+        <div class="breathing-section">
+            <div class="breathing-title">Take a Mindful Breath Before You Continue</div>
+            <p style="color: #666; font-size: 0.95em; margin-bottom: 10px;">
+                Join us for a 1-minute breathing exercise
+            </p>
+
+            <div class="breathing-circle" id="breathingCircle">
+                <div class="breathing-text" id="breathingText">Ready</div>
+            </div>
+
+            <div class="timer-display" id="timerDisplay">1:00</div>
+            <div class="breathing-instruction" id="instruction">Click "Start" to begin</div>
+
+            <button class="redirect-btn" id="startBtn" onclick="startBreathing()">
+                Start Breathing Exercise
+            </button>
+            <br>
+            <button class="skip-btn" onclick="skipToSite()">
+                Skip & Continue →
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let totalTime = 60;
+        let currentTime = 60;
+        let breathingInterval;
+        let timerInterval;
+        let breathingPhase = 'ready';
+        let cycleCount = 0;
+
+        function startBreathing() {
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('startBtn').style.display = 'none';
+            breathingPhase = 'inhale';
+            cycleCount = 0;
+            
+            startBreathingCycle();
+            
+            timerInterval = setInterval(() => {
+                currentTime--;
+                const minutes = Math.floor(currentTime / 60);
+                const seconds = currentTime % 60;
+                document.getElementById('timerDisplay').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (currentTime <= 0) {
+                    completeExercise();
+                }
+            }, 1000);
+        }
+
+        function startBreathingCycle() {
+            breathingInterval = setInterval(() => {
+                const circle = document.getElementById('breathingCircle');
+                const text = document.getElementById('breathingText');
+                const instruction = document.getElementById('instruction');
+                
+                if (breathingPhase === 'inhale') {
+                    circle.classList.remove('exhale');
+                    circle.classList.add('inhale');
+                    text.textContent = 'Inhale';
+                    instruction.textContent = 'Breathe in slowly through your nose...';
+                    breathingPhase = 'hold1';
+                    
+                } else if (breathingPhase === 'hold1') {
+                    text.textContent = 'Hold';
+                    instruction.textContent = 'Hold your breath gently...';
+                    breathingPhase = 'exhale';
+                    
+                } else if (breathingPhase === 'exhale') {
+                    circle.classList.remove('inhale');
+                    circle.classList.add('exhale');
+                    text.textContent = 'Exhale';
+                    instruction.textContent = 'Breathe out slowly through your mouth...';
+                    breathingPhase = 'hold2';
+                    
+                } else if (breathingPhase === 'hold2') {
+                    text.textContent = 'Hold';
+                    instruction.textContent = 'Pause before the next breath...';
+                    breathingPhase = 'inhale';
+                    cycleCount++;
+                }
+            }, 4000);
+        }
+
+        function completeExercise() {
+            clearInterval(breathingInterval);
+            clearInterval(timerInterval);
+            
+            document.getElementById('breathingText').textContent = 'Complete!';
+            document.getElementById('instruction').textContent = 'Redirecting you now...';
+            
+            setTimeout(() => {
+                window.location.href = 'https://yogique.life/';
+            }, 2000);
+        }
+
+        function skipToSite() {
+            if (breathingInterval) clearInterval(breathingInterval);
+            if (timerInterval) clearInterval(timerInterval);
+            window.location.href = 'https://yogique.life/';
+        }
+    </script>
+</body>
 </html>
