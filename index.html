@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>We've Moved - Yogodyaan</title>
     <style>
         /* Ensure no scrolling and full-height baseline */
@@ -17,12 +17,13 @@
         }
 
         :root{
-            --bg-start: #F6F8F6;
-            --bg-end: #F2EFE9;
-            --accent-start: #7FA89A;
-            --accent-end: #BFE6D9;
-            --accent-dark: #557F77;
-            --accent-shadow: 85,127,119;
+            /* Yogique brand palette sampled from Brand.png */
+            --bg-start: #F6FBFC;
+            --bg-end: #EEF6F9;
+            --accent-start: #e6ac19; /* primary gold */
+            --accent-end: #e3a917;   /* secondary gold */
+            --accent-dark: #c17a0b;  /* darker gold/brown for headings/text */
+            --accent-shadow: 230,172,25; /* rgb(230,172,25) */
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -31,7 +32,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: env(safe-area-inset-top,20px) env(safe-area-inset-right,20px) env(safe-area-inset-bottom,20px) env(safe-area-inset-left,20px);
             position: relative;
             overflow: hidden;
         }
@@ -68,7 +69,7 @@
         .container {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
-            border-radius: 30px;
+            border-radius: 20px;
             padding: 60px 50px;
             max-width: 900px;
             width: 100%;
@@ -113,10 +114,11 @@
         }
 
         .subtitle {
-            color: #555;
+            color: var(--accent-dark);
             font-size: 1.2em;
             margin-bottom: 30px;
             line-height: 1.6;
+            opacity: 0.95;
         }
 
         .new-domain {
@@ -139,9 +141,9 @@
         .breathing-section {
             margin: 40px 0;
             padding: 40px;
-            background: linear-gradient(135deg, rgba(127,168,154,0.05) 0%, rgba(191,230,217,0.04) 100%);
+            background: linear-gradient(135deg, rgba(var(--accent-shadow), 0.05) 0%, rgba(var(--accent-shadow), 0.02) 100%);
             border-radius: 20px;
-            border: 2px solid rgba(var(--accent-shadow), 0.08);
+            border: 2px solid rgba(var(--accent-shadow), 0.06);
         }
 
         .breathing-title {
@@ -172,7 +174,7 @@
 
         .breathing-circle.exhale {
             transform: scale(1);
-            box-shadow: 0 10px 40px rgba(212, 135, 79, 0.5);
+            box-shadow: 0 10px 40px rgba(var(--accent-shadow), 0.18);
         }
 
         .breathing-text {
@@ -191,7 +193,7 @@
         }
 
         .breathing-instruction {
-            color: #666;
+            color: var(--accent-dark);
             font-size: 1.1em;
             margin-top: 15px;
             min-height: 30px;
@@ -215,7 +217,7 @@
 
         .redirect-btn:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(212, 135, 79, 0.6);
+            box-shadow: 0 15px 40px rgba(var(--accent-shadow), 0.45);
         }
 
         .redirect-btn:disabled {
@@ -243,7 +245,7 @@
 
         @media (max-width: 600px) {
             .container {
-                padding: 40px 25px;
+                padding: 24px 18px;
             }
 
             h1 {
@@ -268,6 +270,17 @@
                 padding: 15px 40px;
                 font-size: 1.1em;
             }
+            /* Make the card feel like a PWA full-width sheet on mobile */
+            .container {
+                max-width: none;
+                width: calc(100% - 32px);
+                border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.18);
+                transform: none !important; /* prevent JS scale override on mobile */
+            }
+            body {
+                padding: env(safe-area-inset-top,12px) env(safe-area-inset-right,12px) env(safe-area-inset-bottom,12px) env(safe-area-inset-left,12px);
+            }
         }
     </style>
 </head>
@@ -287,7 +300,7 @@
 
         <div class="breathing-section">
             <div class="breathing-title">Take a Mindful Breath Before You Continue</div>
-            <p style="color: #666; font-size: 0.95em; margin-bottom: 10px;">
+            <p style="color: rgba(var(--accent-shadow),0.9); font-size: 0.95em; margin-bottom: 10px;">
                 Join us for a 1-minute breathing exercise
             </p>
 
@@ -396,6 +409,13 @@
 
             // reset any previous scale
             container.style.transform = 'scale(1)';
+
+            // For small screens we want a full-width PWA-like card handled by CSS.
+            if (window.innerWidth <= 600) {
+                container.style.transform = 'none';
+                container.style.margin = '0 auto';
+                return;
+            }
 
             const rect = container.getBoundingClientRect();
             const padding = 24; // keep some breathing room
