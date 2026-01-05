@@ -8,7 +8,8 @@
         /* Ensure no scrolling and full-height baseline */
         html {
             height: 100%;
-            overflow: hidden;
+            overflow: auto; /* allow scrolling on small screens */
+            -webkit-overflow-scrolling: touch; /* smooth native scrolling on iOS */
         }
         * {
             margin: 0;
@@ -34,7 +35,7 @@
             justify-content: center;
             padding: env(safe-area-inset-top,20px) env(safe-area-inset-right,20px) env(safe-area-inset-bottom,20px) env(safe-area-inset-left,20px);
             position: relative;
-            overflow: hidden;
+            overflow: auto;
         }
 
         body::before {
